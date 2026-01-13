@@ -135,6 +135,7 @@ export default function LessonBuilder({ lessonId, moduleId, onReady }) {
   };
 
   if (!lesson) return <div style={{ padding: '16px' }}>Chargement de la leçon...</div>;
+  
   return (
     <div style={{ display: 'flex', height: '100%', backgroundColor: '#ffffff' }}>
       {/* Sidebar fixe 30% */}
@@ -235,89 +236,7 @@ export default function LessonBuilder({ lessonId, moduleId, onReady }) {
 
       {/* Zone de contenu 70% */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {/* Header interne avec actions */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            borderBottom: '1px solid #e5e7eb',
-            backgroundColor: '#ffffff',
-            padding: '12px 16px',
-          }}
-        >
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              onClick={handleUndo}
-              className="btn btn-sm btn-outline-secondary"
-              title="Annuler"
-              disabled={history.length === 0}
-            >
-              <i className="bi bi-arrow-counterclockwise"></i>
-            </button>
-            <button
-              onClick={handleRedo}
-              className="btn btn-sm btn-outline-secondary"
-              title="Rétablir"
-              disabled={future.length === 0}
-            >
-              <i className="bi bi-arrow-clockwise"></i>
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {/* Toggle vue apprenant / édition */}
-            {viewMode === 'edit' ? (
-              <button
-                className="btn btn-sm btn-outline-primary"
-                onClick={() => setViewMode('preview')}
-              >
-                <i className="bi bi-eye me-1"></i> Voir la page
-              </button>
-            ) : (
-              <button
-                className="btn btn-sm btn-outline-secondary"
-                onClick={() => setViewMode('edit')}
-              >
-                <i className="bi bi-pencil me-1"></i> Mode édition
-              </button>
-            )}
-
-            {/* Statut avec pastille */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span
-                style={{
-                  width: '10px',
-                  height: '10px',
-                  borderRadius: '50%',
-                  backgroundColor: getStatusColor(lesson.status),
-                  display: 'inline-block',
-                }}
-              ></span>
-              <select
-                value={lesson.status}
-                onChange={(e) => setLesson((prev) => ({ ...prev, status: e.target.value }))}
-                className="form-select form-select-sm"
-                style={{ width: 'auto', fontSize: '13px' }}
-              >
-                <option value="draft">Brouillon</option>
-                <option value="published">Publié</option>
-                <option value="disabled">Désactivé</option>
-              </select>
-            </div>
-
-            {/* Bouton sauvegarder (jaune vif) */}
-            <button
-              onClick={handleSave}
-              className="btn btn-sm btn-warning fw-bold"
-              style={{ minWidth: '100px' }}
-            >
-              Sauvegarder
-            </button>
-          </div>
-        </div>
-
-        {/* Zone d'édition ou preview */}
+        {/* Zone d'édition ou preview - SANS header en doublon */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px', backgroundColor: '#f9fafb' }}>
           {viewMode === 'edit' ? (
             <LessonEditorView
@@ -347,6 +266,7 @@ function getStatusColor(status) {
   if (status === 'disabled') return '#ef4444';
   return '#facc15';
 }
+
 // Création de blocs avec valeurs par défaut
 function createBlock(type) {
   const id = uuid();
