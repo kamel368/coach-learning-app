@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
+import { Trash2 } from 'lucide-react';
 
 const quillModules = {
   toolbar: [
@@ -238,13 +239,12 @@ export default function LessonEditorView({
                   }}
                   title="Supprimer ce bloc"
                 >
-                  <i 
-                    className="bi bi-trash3" 
+                  <Trash2 
+                    className="w-5 h-5"
                     style={{ 
-                      fontSize: '18px', 
                       color: '#3b82f6',
                     }}
-                  ></i>
+                  />
                 </button>
               )}
             </div>

@@ -1,7 +1,18 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { useContext } from 'react';
-import 'bootstrap-icons/font/bootstrap-icons.css';
+import { 
+  LayoutDashboard, 
+  Users, 
+  BookOpen, 
+  ListTree, 
+  FileText, 
+  HelpCircle, 
+  BrainCircuit, 
+  UserCog,
+  Menu,
+  LogOut
+} from 'lucide-react';
 
 export const SIDEBAR_WIDTH = 220;
 export const SIDEBAR_WIDTH_COLLAPSED = 60;
@@ -36,14 +47,14 @@ const handleLogout = async () => {
 
 
   const menuItems = [
-    { path: '/admin', icon: 'bi-house', label: 'Dashboard' },
-    { path: '/admin/categories', icon: 'bi-briefcase', label: 'Rôles Métier' },
-    { path: '/admin/programs', icon: 'bi-journal-text', label: 'Programmes' },
-    { path: '/admin/modules', icon: 'bi-layers', label: 'Chapitres' },
-    { path: '/admin/lessons', icon: 'bi-book', label: 'Leçons' },
-    { path: '/admin/quizzes', icon: 'bi-question-circle', label: 'QCM' },
-    { path: '/admin/ai-exercises', icon: 'bi-cpu', label: 'Exercices IA' },
-    { path: '/admin/users', icon: 'bi-people', label: 'Utilisateurs' },
+    { path: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
+    { path: '/admin/categories', icon: Users, label: 'Rôles Métier' },
+    { path: '/admin/programs', icon: BookOpen, label: 'Programmes' },
+    { path: '/admin/modules', icon: ListTree, label: 'Chapitres' },
+    { path: '/admin/lessons', icon: FileText, label: 'Leçons' },
+    { path: '/admin/quizzes', icon: HelpCircle, label: 'QCM' },
+    { path: '/admin/ai-exercises', icon: BrainCircuit, label: 'Exercices IA' },
+    { path: '/admin/users', icon: UserCog, label: 'Utilisateurs' },
   ];
 
   const isActive = (path) => {
@@ -135,7 +146,7 @@ const handleLogout = async () => {
               e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
-            <i className="bi bi-list"></i>
+            <Menu className="w-5 h-5" />
           </button>
         </div>
 
@@ -156,47 +167,50 @@ const handleLogout = async () => {
 
         {/* Menu items */}
         <nav style={{ marginBottom: '16px' }}>
-          {menuItems.map((item) => (
-            <a
-              key={item.path}
-              href={item.path}
-              onClick={(e) => {
-                e.preventDefault();
-                navigate(item.path);
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: isOpen ? '12px' : '0',
-                justifyContent: isOpen ? 'flex-start' : 'center',
-                padding: '10px',
-                borderRadius: '8px',
-                textDecoration: 'none',
-                color: isActive(item.path) ? '#111827' : '#4b5563',
-                backgroundColor: isActive(item.path) ? '#fbbf24' : 'transparent',
-                fontSize: '14px',
-                fontWeight: isActive(item.path) ? '600' : '400',
-                marginBottom: '4px',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive(item.path)) {
-                  e.currentTarget.style.backgroundColor = '#f3f4f6';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive(item.path)) {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }
-              }}
-            >
-              <i className={`bi ${item.icon}`} style={{ fontSize: '18px', minWidth: '18px' }}></i>
-              {isOpen && <span>{item.label}</span>}
-            </a>
-          ))}
+          {menuItems.map((item) => {
+            const IconComponent = item.icon;
+            return (
+              <a
+                key={item.path}
+                href={item.path}
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate(item.path);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: isOpen ? '12px' : '0',
+                  justifyContent: isOpen ? 'flex-start' : 'center',
+                  padding: '10px',
+                  borderRadius: '8px',
+                  textDecoration: 'none',
+                  color: isActive(item.path) ? '#111827' : '#4b5563',
+                  backgroundColor: isActive(item.path) ? '#fbbf24' : 'transparent',
+                  fontSize: '14px',
+                  fontWeight: isActive(item.path) ? '600' : '400',
+                  marginBottom: '4px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive(item.path)) {
+                    e.currentTarget.style.backgroundColor = '#f3f4f6';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive(item.path)) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }
+                }}
+              >
+                <IconComponent className="w-5 h-5" style={{ minWidth: '20px' }} />
+                {isOpen && <span>{item.label}</span>}
+              </a>
+            );
+          })}
         </nav>
       </div>
 
@@ -233,6 +247,7 @@ const handleLogout = async () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            gap: '8px',
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = '#f3f4f6';
@@ -242,7 +257,14 @@ const handleLogout = async () => {
           }}
           title={isOpen ? '' : 'Déconnexion'}
         >
-          {isOpen ? 'Déconnexion' : <i className="bi bi-box-arrow-right"></i>}
+          {isOpen ? (
+            <>
+              <LogOut className="w-4 h-4" />
+              <span>Déconnexion</span>
+            </>
+          ) : (
+            <LogOut className="w-5 h-5" />
+          )}
         </button>
       </div>
     </aside>

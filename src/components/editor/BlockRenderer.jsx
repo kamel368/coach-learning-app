@@ -1,3 +1,5 @@
+import { ArrowUp, ArrowDown, Pencil, Trash2 } from 'lucide-react';
+
 export default function BlockRenderer({ 
   block, 
   onEdit, 
@@ -32,19 +34,19 @@ export default function BlockRenderer({
       <div className="card-footer bg-light d-flex gap-2 justify-content-end">
         {!isFirst && (
           <button className="btn btn-sm btn-outline-secondary" onClick={onMoveUp}>
-            <i className="bi bi-arrow-up"></i>
+            <ArrowUp className="w-4 h-4" />
           </button>
         )}
         {!isLast && (
           <button className="btn btn-sm btn-outline-secondary" onClick={onMoveDown}>
-            <i className="bi bi-arrow-down"></i>
+            <ArrowDown className="w-4 h-4" />
           </button>
         )}
         <button className="btn btn-sm btn-outline-primary" onClick={onEdit}>
-          <i className="bi bi-pencil"></i>
+          <Pencil className="w-4 h-4" />
         </button>
         <button className="btn btn-sm btn-outline-danger" onClick={onDelete}>
-          <i className="bi bi-trash"></i>
+          <Trash2 className="w-4 h-4" />
         </button>
       </div>
     </div>

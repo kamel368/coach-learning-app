@@ -13,6 +13,7 @@ import {
   deleteDoc,
   setDoc,
 } from "firebase/firestore";
+import { Plus, FileText, HelpCircle, BrainCircuit, ListTree } from "lucide-react";
 
 export default function AdminProgramDetail() {
   const { programId } = useParams();
@@ -688,9 +689,13 @@ export default function AdminProgramDetail() {
                 fontSize: 14,
                 fontWeight: 600,
                 cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
               }}
             >
-              + Ajouter un chapitre
+              <ListTree className="w-4 h-4" />
+              Ajouter un chapitre
             </button>
           </div>
 
@@ -800,43 +805,88 @@ export default function AdminProgramDetail() {
                       type="button"
                       onClick={() => handleAddLessonForChapter(chapter.id)}
                       style={{
-                        padding: "6px 10px",
+                        padding: "6px 12px",
                         borderRadius: 999,
-                        border: "1px solid #d1d5db",
-                        background: "#f9fafb",
+                        border: "1px solid #3b82f6",
+                        background: "#eff6ff",
+                        color: "#1e40af",
                         fontSize: 12,
+                        fontWeight: 500,
                         cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "#dbeafe";
+                        e.currentTarget.style.transform = "translateY(-1px)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "#eff6ff";
+                        e.currentTarget.style.transform = "translateY(0)";
                       }}
                     >
-                      + Leçon
+                      <FileText className="w-3 h-3" />
+                      Leçon
                     </button>
                     <button
                       type="button"
                       onClick={() => handleAddQuizForChapter(chapter.id)}
                       style={{
-                        padding: "6px 10px",
+                        padding: "6px 12px",
                         borderRadius: 999,
-                        border: "1px solid #d1d5db",
-                        background: "#f9fafb",
+                        border: "1px solid #10b981",
+                        background: "#d1fae5",
+                        color: "#065f46",
                         fontSize: 12,
+                        fontWeight: 500,
                         cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "#a7f3d0";
+                        e.currentTarget.style.transform = "translateY(-1px)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "#d1fae5";
+                        e.currentTarget.style.transform = "translateY(0)";
                       }}
                     >
-                      + QCM
+                      <HelpCircle className="w-3 h-3" />
+                      QCM
                     </button>
                     <button
                       type="button"
                       onClick={() => handleAddAIExerciseForChapter(chapter.id)}
                       style={{
-                        padding: "6px 10px",
+                        padding: "6px 12px",
                         borderRadius: 999,
-                        border: "1px solid #d1d5db",
-                        background: "#f9fafb",
+                        border: "1px solid #8b5cf6",
+                        background: "#ede9fe",
+                        color: "#5b21b6",
                         fontSize: 12,
+                        fontWeight: 500,
                         cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "#ddd6fe";
+                        e.currentTarget.style.transform = "translateY(-1px)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "#ede9fe";
+                        e.currentTarget.style.transform = "translateY(0)";
                       }}
                     >
-                      + Exercice IA
+                      <BrainCircuit className="w-3 h-3" />
+                      Exercice IA
                     </button>
                   </div>
 

@@ -1,3 +1,5 @@
+import { GripVertical } from 'lucide-react';
+
 export default function BlocksList({ blocks, onBlockClick }) {
   if (!blocks || blocks.length === 0) {
     return (
@@ -18,11 +20,11 @@ export default function BlocksList({ blocks, onBlockClick }) {
           <li
             key={index}
             className="list-group-item list-group-item-action text-center"
-            style={{ cursor: 'pointer', fontSize: '12px' }}
+            style={{ cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             onClick={() => onBlockClick(index)}
           >
-            <i className="bi bi-grip-vertical me-2"></i>
-            {block.type} #{index + 1}
+            <GripVertical className="w-4 h-4" />
+            <span>{block.type} #{index + 1}</span>
           </li>
         ))}
       </ul>

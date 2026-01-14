@@ -1,7 +1,15 @@
 @import "tailwindcss";
 
+/* ================================================
+   🎨 OPTIMISATION LUCIDE REACT
+   Configuration pour les icônes SVG Lucide
+   ================================================ */
 
-
+/* Optimisation des SVG (Lucide React) */
+svg {
+  display: inline-block;
+  vertical-align: middle;
+}
 
 :root {
   --color-bg: #f5f5f7;

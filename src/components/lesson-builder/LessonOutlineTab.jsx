@@ -1,6 +1,17 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useEffect } from 'react';
+import { 
+  GripVertical, 
+  Type, 
+  Info, 
+  Image, 
+  ChevronDown, 
+  Clock, 
+  Minus, 
+  Video, 
+  Link 
+} from 'lucide-react';
 
 function SortableBlockItem({ block, selectedBlockId, onSelect }) {
   const {
@@ -56,10 +67,7 @@ function SortableBlockItem({ block, selectedBlockId, onSelect }) {
           WebkitUserSelect: 'none',
         }}
       >
-        <i
-          className="bi bi-grip-vertical"
-          style={{ fontSize: '16px', color: '#9ca3af' }}
-        ></i>
+        <GripVertical className="w-4 h-4" style={{ color: '#9ca3af' }} />
 
         <span
           style={{
@@ -128,64 +136,65 @@ export default function LessonOutlineTab({ blocks, selectedBlockId, onSelect }) 
 }
 
 function labelForBlockType(type) {
-  const iconStyle = { fontSize: '14px', marginRight: '6px', color: '#6b7280' };
+  const iconStyle = { marginRight: '6px', color: '#6b7280' };
+  const iconClass = "w-4 h-4";
 
   switch (type) {
     case 'text':
       return (
-        <>
-          <i className="bi bi-file-text" style={iconStyle}></i>
+        <span style={{ display: 'flex', alignItems: 'center' }}>
+          <Type className={iconClass} style={iconStyle} />
           Texte
-        </>
+        </span>
       );
     case 'info':
       return (
-        <>
-          <i className="bi bi-info-circle" style={iconStyle}></i>
+        <span style={{ display: 'flex', alignItems: 'center' }}>
+          <Info className={iconClass} style={iconStyle} />
           Bloc d&apos;info
-        </>
+        </span>
       );
     case 'image':
       return (
-        <>
-          <i className="bi bi-image" style={iconStyle}></i>
+        <span style={{ display: 'flex', alignItems: 'center' }}>
+          <Image className={iconClass} style={iconStyle} />
           Image
-        </>
+        </span>
       );
     case 'toggle':
       return (
-        <>
-          <i className="bi bi-chevron-down" style={iconStyle}></i>
+        <span style={{ display: 'flex', alignItems: 'center' }}>
+          <ChevronDown className={iconClass} style={iconStyle} />
           Cacher/Afficher
-        </>
+        </span>
       );
     case 'timeline':
       return (
-        <>
-          <i className="bi bi-clock-history" style={iconStyle}></i>
+        <span style={{ display: 'flex', alignItems: 'center' }}>
+          <Clock className={iconClass} style={iconStyle} />
           Timeline
-        </>
+        </span>
       );
     case 'separator':
       return (
-        <>
-          <i className="bi bi-dash-lg" style={iconStyle}></i>
+        <span style={{ display: 'flex', alignItems: 'center' }}>
+          <Minus className={iconClass} style={iconStyle} />
           Séparateur
-        </>
+        </span>
       );
     case 'video':
       return (
-        <>
-          <i className="bi bi-play-btn" style={iconStyle}></i>
+        <span style={{ display: 'flex', alignItems: 'center' }}>
+          <Video className={iconClass} style={iconStyle} />
           Vidéo
-        </>
+        </span>
       );
     case 'lessonLink':
       return (
-        <>
-          <i className="bi bi-link-45deg" style={iconStyle}></i>
+        <span style={{ display: 'flex', alignItems: 'center' }}>
+          <Link className={iconClass} style={iconStyle} />
           Lien leçon
-        </>
+        </span>
       );
     default:
       return type;

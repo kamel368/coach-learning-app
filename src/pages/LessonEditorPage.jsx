@@ -2,7 +2,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import LessonBuilder from '../components/lesson-builder/LessonBuilder';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import 'bootstrap-icons/font/bootstrap-icons.css';
+import { Undo2, Redo2, Eye, Pencil, X } from 'lucide-react';
 
 export default function LessonEditorPage() {
   const { programId, moduleId, lessonId } = useParams();
@@ -58,7 +58,7 @@ export default function LessonEditorPage() {
                   title="Annuler"
                   disabled={builderRef.history.length === 0}
                 >
-                  <i className="bi bi-arrow-counterclockwise"></i>
+                  <Undo2 className="w-4 h-4" />
                 </button>
                 <button
                   onClick={builderRef.handleRedo}
@@ -66,7 +66,7 @@ export default function LessonEditorPage() {
                   title="Rétablir"
                   disabled={builderRef.future.length === 0}
                 >
-                  <i className="bi bi-arrow-clockwise"></i>
+                  <Redo2 className="w-4 h-4" />
                 </button>
               </>
             )}
@@ -77,15 +77,17 @@ export default function LessonEditorPage() {
                 <button
                   className="btn btn-sm btn-outline-primary"
                   onClick={() => builderRef.setViewMode('preview')}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  <i className="bi bi-eye me-1"></i> Voir la page
+                  <Eye className="w-4 h-4" /> Voir la page
                 </button>
               ) : (
                 <button
                   className="btn btn-sm btn-outline-secondary"
                   onClick={() => builderRef.setViewMode('edit')}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  <i className="bi bi-pencil me-1"></i> Mode édition
+                  <Pencil className="w-4 h-4" /> Mode édition
                 </button>
               ))}
 
@@ -138,7 +140,7 @@ export default function LessonEditorPage() {
               className="btn btn-sm btn-outline-danger"
               title="Retour au programme"
             >
-              <i className="bi bi-x-lg"></i>
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>

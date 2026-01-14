@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import LessonBuilder from '../components/lesson-builder/LessonBuilder';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import 'bootstrap-icons/font/bootstrap-icons.css';
+import { X } from 'lucide-react';
 
 export default function LessonEditorPage() {
   const { programId, moduleId, lessonId } = useParams();
@@ -30,7 +30,7 @@ export default function LessonEditorPage() {
               className="btn btn-sm btn-outline-danger"
               title="Retour au programme"
             >
-              <i className="bi bi-x-lg"></i>
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>

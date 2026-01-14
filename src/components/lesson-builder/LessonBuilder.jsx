@@ -12,6 +12,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { v4 as uuid } from 'uuid';
+import { FileText, Package } from 'lucide-react';
 import { getLesson, saveLesson } from '../../services/lessonsService';
 import LessonOutlineTab from './LessonOutlineTab';
 import BlocksPaletteTab from './BlocksPaletteTab';
@@ -162,9 +163,20 @@ export default function LessonBuilder({ lessonId, moduleId, onReady }) {
                 e.preventDefault();
                 setActiveTab('lesson');
               }}
-              style={{ fontSize: '13px', cursor: 'pointer' }}
+              style={{ 
+                fontSize: '13px', 
+                cursor: 'pointer', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '6px',
+                color: activeTab === 'lesson' ? '#3b82f6' : '#1f2937',
+                fontWeight: activeTab === 'lesson' ? '600' : '400',
+                borderBottomColor: activeTab === 'lesson' ? '#3b82f6' : 'transparent',
+                borderBottomWidth: '2px',
+                transition: 'all 0.2s'
+              }}
             >
-              <i className="bi bi-file-text me-1"></i> Leçon
+              <FileText className="w-4 h-4" style={{ color: activeTab === 'lesson' ? '#3b82f6' : '#1f2937' }} /> Leçon
             </a>
           </li>
           <li className="nav-item">
@@ -175,9 +187,20 @@ export default function LessonBuilder({ lessonId, moduleId, onReady }) {
                 e.preventDefault();
                 setActiveTab('blocs');
               }}
-              style={{ fontSize: '13px', cursor: 'pointer' }}
+              style={{ 
+                fontSize: '13px', 
+                cursor: 'pointer', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '6px',
+                color: activeTab === 'blocs' ? '#3b82f6' : '#1f2937',
+                fontWeight: activeTab === 'blocs' ? '600' : '400',
+                borderBottomColor: activeTab === 'blocs' ? '#3b82f6' : 'transparent',
+                borderBottomWidth: '2px',
+                transition: 'all 0.2s'
+              }}
             >
-              <i className="bi bi-box me-1"></i> Blocs
+              <Package className="w-4 h-4" style={{ color: activeTab === 'blocs' ? '#3b82f6' : '#1f2937' }} /> Blocs
             </a>
           </li>
         </ul>
