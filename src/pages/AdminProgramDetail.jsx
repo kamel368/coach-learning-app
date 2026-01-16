@@ -13,7 +13,7 @@ import {
   deleteDoc,
   setDoc,
 } from "firebase/firestore";
-import { Plus, FileText, HelpCircle, BrainCircuit, ListTree } from "lucide-react";
+import { Plus, FileText, HelpCircle, BrainCircuit, ListTree, Eye, Edit2, FileEdit, Trash2, GripVertical } from "lucide-react";
 
 export default function AdminProgramDetail() {
   const { programId } = useParams();
@@ -31,7 +31,6 @@ export default function AdminProgramDetail() {
 
   const [activeTab, setActiveTab] = useState("content"); // content | learners
   const [expandedChapters, setExpandedChapters] = useState(new Set());
-  const [openLessonMenuId, setOpenLessonMenuId] = useState(null);
 
   // --------- Chargement initial ---------
   useEffect(() => {
@@ -414,15 +413,48 @@ export default function AdminProgramDetail() {
 
   // --------- Drag & drop ---------
 
-  const allowDrop = (e) => e.preventDefault();
+  const allowDrop = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    
+    // Ajouter classe drop-zone si pas déjà présente
+    if (!e.currentTarget.classList.contains("drop-zone-active")) {
+      e.currentTarget.classList.add("drop-zone-active");
+    }
+  };
+
+  const onDragLeave = (e) => {
+    // Retirer la classe drop-zone quand on quitte l'élément
+    e.currentTarget.classList.remove("drop-zone-active");
+  };
+
+  const onDragEnd = (e) => {
+    // Nettoyer toutes les classes drag à la fin
+    e.target.classList.remove("dragging-chapter", "dragging-lesson");
+    document.querySelectorAll(".drop-zone-active").forEach(el => {
+      el.classList.remove("drop-zone-active");
+    });
+  };
 
   const onChapterDragStart = (e, chapterId) => {
     e.dataTransfer.setData("chapterId", chapterId);
+    e.dataTransfer.effectAllowed = "move";
+    
+    // Ajouter classe dragging
+    setTimeout(() => {
+      e.target.classList.add("dragging-chapter");
+    }, 0);
   };
 
   const onChapterDrop = async (e, targetChapterId) => {
+    e.preventDefault();
     const draggedId = e.dataTransfer.getData("chapterId");
     if (!draggedId || draggedId === targetChapterId) return;
+
+    // Retirer les classes drag
+    document.querySelectorAll(".dragging-chapter, .drop-zone-active").forEach(el => {
+      el.classList.remove("dragging-chapter", "drop-zone-active");
+    });
 
     const ordered = [...chapters];
     const draggedIndex = ordered.findIndex((c) => c.id === draggedId);
@@ -434,6 +466,12 @@ export default function AdminProgramDetail() {
 
     const updated = ordered.map((c, index) => ({ ...c, order: index + 1 }));
     setChapters(updated);
+
+    // Animation succès
+    e.target.classList.add("just-dropped", "drop-success");
+    setTimeout(() => {
+      e.target.classList.remove("just-dropped", "drop-success");
+    }, 600);
 
     try {
       await Promise.all(
@@ -453,12 +491,27 @@ export default function AdminProgramDetail() {
   const onLessonDragStart = (e, lessonId, chapterId) => {
     e.dataTransfer.setData("lessonId", lessonId);
     e.dataTransfer.setData("chapterId", chapterId);
+    e.dataTransfer.effectAllowed = "move";
+    e.stopPropagation(); // Important : empêcher la propagation au chapitre
+    
+    // Ajouter classe dragging
+    setTimeout(() => {
+      e.target.classList.add("dragging-lesson");
+    }, 0);
   };
 
   const onLessonDrop = async (e, targetLessonId, chapterId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     const draggedId = e.dataTransfer.getData("lessonId");
     const draggedChapterId = e.dataTransfer.getData("chapterId");
     if (!draggedId || draggedId === targetLessonId || draggedChapterId !== chapterId) return;
+
+    // Retirer les classes drag
+    document.querySelectorAll(".dragging-lesson, .drop-zone-active").forEach(el => {
+      el.classList.remove("dragging-lesson", "drop-zone-active");
+    });
 
     const lessons = lessonsByChapter[chapterId] || [];
     const ordered = [...lessons];
@@ -471,6 +524,12 @@ export default function AdminProgramDetail() {
 
     const updated = ordered.map((l, index) => ({ ...l, order: index + 1 }));
     setLessonsByChapter((prev) => ({ ...prev, [chapterId]: updated }));
+
+    // Animation succès
+    e.target.classList.add("just-dropped", "drop-success");
+    setTimeout(() => {
+      e.target.classList.remove("just-dropped", "drop-success");
+    }, 600);
 
     try {
       await Promise.all(
@@ -507,10 +566,6 @@ export default function AdminProgramDetail() {
     });
   };
 
-  const handleLessonMenuToggle = (lessonId) => {
-    setOpenLessonMenuId((prev) => (prev === lessonId ? null : lessonId));
-  };
-
   if (loading) {
     return (
       <div style={{ padding: 24, color: "var(--color-muted)" }}>
@@ -537,6 +592,112 @@ export default function AdminProgramDetail() {
         color: "var(--color-text)",
       }}
     >
+      {/* Style global pour drag & drop animations */}
+      <style>
+        {`
+          /* ========================================
+             DRAG & DROP ANIMATIONS
+             ======================================== */
+          
+          /* Curseur pendant le drag */
+          [draggable="true"]:active {
+            cursor: grabbing !important;
+          }
+
+          /* Élément en cours de drag */
+          .dragging-chapter,
+          .dragging-lesson {
+            opacity: 0.6;
+            transform: scale(1.05) rotate(-2deg);
+            box-shadow: 0 20px 40px rgba(79, 127, 255, 0.4) !important;
+            border: 2px dashed #4F7FFF !important;
+            background: #FFFFFF !important;
+            cursor: grabbing !important;
+            z-index: 1000;
+            transition: none !important;
+          }
+
+          /* Animation pulsation sur l'icône drag au hover */
+          @keyframes pulse-drag {
+            0%, 100% {
+              transform: scale(1);
+            }
+            50% {
+              transform: scale(1.1);
+            }
+          }
+
+          .drag-handle:hover {
+            animation: pulse-drag 0.6s ease-in-out infinite;
+          }
+
+          /* Espace qui s'ouvre (drop zone) */
+          .drop-zone-active {
+            position: relative;
+            margin-bottom: 32px !important;
+            transition: margin-bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+
+          .drop-zone-active::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: -20px;
+            height: 4px;
+            background: linear-gradient(90deg, #4F7FFF, #60A5FA);
+            border-radius: 2px;
+            box-shadow: 0 0 12px rgba(79, 127, 255, 0.6);
+            animation: pulse-line 1s ease-in-out infinite;
+          }
+
+          @keyframes pulse-line {
+            0%, 100% {
+              opacity: 1;
+              transform: scaleX(1);
+            }
+            50% {
+              opacity: 0.7;
+              transform: scaleX(0.98);
+            }
+          }
+
+          /* Animation après dépôt (bounce) */
+          @keyframes drop-bounce {
+            0% {
+              transform: translateY(-8px);
+              opacity: 0.8;
+            }
+            60% {
+              transform: translateY(2px);
+            }
+            100% {
+              transform: translateY(0);
+              opacity: 1;
+            }
+          }
+
+          .just-dropped {
+            animation: drop-bounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+          }
+
+          /* Flash vert après succès */
+          @keyframes success-flash {
+            0%, 100% {
+              background: #FFFFFF;
+            }
+            50% {
+              background: rgba(16, 185, 129, 0.1);
+              border-color: #10B981;
+            }
+          }
+
+          .drop-success {
+            animation: success-flash 0.6s ease;
+          }
+        `}
+      </style>
+
       {/* Header programme */}
       <div
         style={{
@@ -570,6 +731,24 @@ export default function AdminProgramDetail() {
           >
             Créé le {formatDate(program.createdAt)} • Dernière mise à jour le{" "}
             {formatDate(program.updatedAt)}
+          </div>
+          
+          {/* Compteur de chapitres */}
+          <div
+            style={{
+              marginTop: 8,
+              fontSize: 12,
+              fontWeight: 700,
+              color: "#6B7280",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <ListTree size={14} color="#6B7280" />
+            Chapitres ({chapters.length})
           </div>
         </div>
 
@@ -718,11 +897,14 @@ export default function AdminProgramDetail() {
                   onDragStart={(e) => onChapterDragStart(e, chapter.id)}
                   onDrop={(e) => onChapterDrop(e, chapter.id)}
                   onDragOver={allowDrop}
+                  onDragLeave={onDragLeave}
+                  onDragEnd={onDragEnd}
                   style={{
                     borderRadius: 10,
                     border: "1px solid #e5e7eb",
                     background: "#ffffff",
                     padding: 12,
+                    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                   }}
                 >
                   {/* Header du chapitre */}
@@ -738,23 +920,64 @@ export default function AdminProgramDetail() {
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: 8,
-                        cursor: "pointer",
+                        gap: 12,
+                        flex: 1,
                       }}
-                      onClick={() => toggleChapter(chapter.id)}
                     >
+                      {/* Icône Drag & Drop */}
+                      <div
+                        className="drag-handle"
+                        style={{
+                          cursor: "grab",
+                          color: "#9CA3AF",
+                          display: "flex",
+                          alignItems: "center",
+                          transition: "color 0.2s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = "#4F7FFF";
+                          e.currentTarget.style.cursor = "grab";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = "#9CA3AF";
+                        }}
+                        title="Glisser pour réordonner"
+                      >
+                        <GripVertical size={20} strokeWidth={2.5} />
+                      </div>
+
+                      {/* Flèche expand/collapse */}
+                      <div
+                        style={{
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                        }}
+                        onClick={() => toggleChapter(chapter.id)}
+                      >
+                        <span
+                          style={{
+                            display: "inline-block",
+                            transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
+                            transition: "transform 0.15s ease",
+                            fontSize: 14,
+                            color: "#6b7280",
+                          }}
+                        >
+                          ▶
+                        </span>
+                      </div>
+
+                      {/* Titre du chapitre */}
                       <span
                         style={{
-                          display: "inline-block",
-                          transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
-                          transition: "transform 0.15s ease",
-                          fontSize: 14,
-                          color: "#6b7280",
+                          fontWeight: 600,
+                          fontSize: 15,
+                          cursor: "pointer",
+                          flex: 1,
                         }}
+                        onClick={() => toggleChapter(chapter.id)}
                       >
-                        ▶
-                      </span>
-                      <span style={{ fontWeight: 600, fontSize: 15 }}>
                         {chapter.title}
                       </span>
                     </div>
@@ -898,12 +1121,19 @@ export default function AdminProgramDetail() {
                         <div style={{ marginBottom: 8 }}>
                           <div
                             style={{
-                              fontSize: 13,
-                              fontWeight: 600,
-                              marginBottom: 4,
+                              fontSize: 12,
+                              fontWeight: 700,
+                              marginBottom: 8,
+                              color: "#6B7280",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.05em",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 6,
                             }}
                           >
-                            Leçons
+                            <FileText size={14} color="#6B7280" />
+                            Leçons ({lessons.length})
                           </div>
                           <ul
                             style={{
@@ -912,7 +1142,7 @@ export default function AdminProgramDetail() {
                               margin: 0,
                               display: "flex",
                               flexDirection: "column",
-                              gap: 4,
+                              gap: 8,
                             }}
                           >
                             {lessons.map((l) => (
@@ -926,152 +1156,258 @@ export default function AdminProgramDetail() {
                                   onLessonDrop(e, l.id, chapter.id)
                                 }
                                 onDragOver={allowDrop}
+                                onDragLeave={onDragLeave}
+                                onDragEnd={onDragEnd}
                                 style={{
-                                  padding: 6,
-                                  borderRadius: 6,
-                                  border: "1px solid #e5e7eb",
-                                  background: "#f9fafb",
+                                  padding: "14px 18px",
+                                  borderRadius: "10px",
+                                  border: "1px solid #E5E7EB",
+                                  background: "#FFFFFF",
                                   display: "flex",
                                   justifyContent: "space-between",
                                   alignItems: "center",
-                                  fontSize: 13,
+                                  fontSize: "14px",
+                                  cursor: "default",
+                                  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                                  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = "linear-gradient(to right, rgba(79, 127, 255, 0.03), rgba(79, 127, 255, 0.01))";
+                                  e.currentTarget.style.border = "1px solid rgba(79, 127, 255, 0.2)";
+                                  e.currentTarget.style.boxShadow = "inset 0 0 0 1px rgba(79, 127, 255, 0.1), 0 4px 12px rgba(79, 127, 255, 0.12)";
+                                  e.currentTarget.style.transform = "translateX(4px)";
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = "#FFFFFF";
+                                  e.currentTarget.style.border = "1px solid #E5E7EB";
+                                  e.currentTarget.style.boxShadow = "0 1px 3px rgba(0, 0, 0, 0.08)";
+                                  e.currentTarget.style.transform = "translateX(0)";
                                 }}
                               >
-                                <span>{l.title}</span>
-
+                                {/* Partie gauche : Icône drag + Titre */}
                                 <div
                                   style={{
                                     display: "flex",
                                     alignItems: "center",
-                                    gap: 6,
+                                    gap: "12px",
+                                    flex: 1,
                                   }}
                                 >
-                                  <div style={{ position: "relative" }}>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        handleLessonMenuToggle(l.id)
-                                      }
-                                      style={{
-                                        width: 26,
-                                        height: 26,
-                                        borderRadius: "999px",
-                                        border: "1px solid #d1d5db",
-                                        background: "#ffffff",
-                                        fontSize: 16,
-                                        lineHeight: "1",
-                                        cursor: "pointer",
-                                      }}
-                                    >
-                                      ⋯
-                                    </button>
-
-                                    {openLessonMenuId === l.id && (
-                                      <div
-                                        style={{
-                                          position: "absolute",
-                                          right: 0,
-                                          marginTop: 4,
-                                          minWidth: 180,
-                                          borderRadius: 8,
-                                          border: "1px solid #e5e7eb",
-                                          background: "#ffffff",
-                                          boxShadow:
-                                            "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)",
-                                          zIndex: 20,
-                                        }}
-                                      >
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            navigate(
-                                              `/admin/programs/${program.id}/modules/${chapter.id}/lessons/${l.id}/edit`
-                                            );
-                                            setOpenLessonMenuId(null);
-                                          }}
-                                          style={{
-                                            display: "block",
-                                            width: "100%",
-                                            padding: "6px 10px",
-                                            border: "none",
-                                            background: "transparent",
-                                            textAlign: "left",
-                                            fontSize: 13,
-                                            cursor: "pointer",
-                                          }}
-                                        >
-                                          Modifier (éditeur)
-                                        </button>
-
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            // À adapter à ta vraie route de preview leçon
-                                            navigate(
-                                              `/programs/${program.id}/modules/${chapter.id}/lessons/${l.id}/preview`
-                                            );
-                                            setOpenLessonMenuId(null);
-                                          }}
-                                          style={{
-                                            display: "block",
-                                            width: "100%",
-                                            padding: "6px 10px",
-                                            border: "none",
-                                            background: "transparent",
-                                            textAlign: "left",
-                                            fontSize: 13,
-                                            cursor: "pointer",
-                                          }}
-                                        >
-                                          Prévisualiser la leçon
-                                        </button>
-
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            handleRenameLesson(chapter.id, l);
-                                            setOpenLessonMenuId(null);
-                                          }}
-                                          style={{
-                                            display: "block",
-                                            width: "100%",
-                                            padding: "6px 10px",
-                                            border: "none",
-                                            background: "transparent",
-                                            textAlign: "left",
-                                            fontSize: 13,
-                                            cursor: "pointer",
-                                          }}
-                                        >
-                                          Renommer
-                                        </button>
-
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            handleDeleteLesson(
-                                              chapter.id,
-                                              l.id
-                                            );
-                                            setOpenLessonMenuId(null);
-                                          }}
-                                          style={{
-                                            display: "block",
-                                            width: "100%",
-                                            padding: "6px 10px",
-                                            border: "none",
-                                            background: "transparent",
-                                            textAlign: "left",
-                                            fontSize: 13,
-                                            color: "#b91c1c",
-                                            cursor: "pointer",
-                                          }}
-                                        >
-                                          Supprimer
-                                        </button>
-                                      </div>
-                                    )}
+                                  {/* Icône Drag & Drop */}
+                                  <div
+                                    className="drag-handle"
+                                    style={{
+                                      cursor: "grab",
+                                      color: "#9CA3AF",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      flexShrink: 0,
+                                      transition: "color 0.2s ease",
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.color = "#4F7FFF";
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.color = "#9CA3AF";
+                                    }}
+                                    title="Glisser pour réordonner"
+                                  >
+                                    <GripVertical size={18} strokeWidth={2.5} />
                                   </div>
+
+                                  {/* Icône FileText + Titre */}
+                                  <div
+                                    style={{
+                                      width: "32px",
+                                      height: "32px",
+                                      borderRadius: "8px",
+                                      background: "linear-gradient(135deg, #3B82F620, #3B82F610)",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      flexShrink: 0,
+                                    }}
+                                  >
+                                    <FileText size={16} color="#3B82F6" />
+                                  </div>
+                                  <span
+                                    style={{
+                                      fontWeight: 600,
+                                      color: "#111827",
+                                      fontSize: "14px",
+                                    }}
+                                  >
+                                    {l.title}
+                                  </span>
+                                </div>
+
+                                {/* ACTIONS - TAILLES CORRIGÉES */}
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    gap: "8px",
+                                    alignItems: "center",
+                                  }}
+                                >
+                                  {/* Bouton Voir/Prévisualiser */}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(
+                                        `/programs/${program.id}/modules/${chapter.id}/lessons/${l.id}/preview`
+                                      );
+                                    }}
+                                    title="Prévisualiser la leçon"
+                                    style={{
+                                      width: "40px",
+                                      height: "40px",
+                                      border: "none",
+                                      background: "#F9FAFB",
+                                      borderRadius: "8px",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      cursor: "pointer",
+                                      transition: "all 0.2s ease",
+                                      color: "#6B7280",
+                                      flexShrink: 0,
+                                      padding: 0,
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.background = "#4F7FFF";
+                                      e.currentTarget.style.color = "#FFFFFF";
+                                      e.currentTarget.style.transform = "translateY(-2px) scale(1.05)";
+                                      e.currentTarget.style.boxShadow = "0 4px 8px rgba(79, 127, 255, 0.3)";
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.background = "#F9FAFB";
+                                      e.currentTarget.style.color = "#6B7280";
+                                      e.currentTarget.style.transform = "translateY(0) scale(1)";
+                                      e.currentTarget.style.boxShadow = "none";
+                                    }}
+                                  >
+                                    <Eye size={20} strokeWidth={2.5} />
+                                  </button>
+
+                                  {/* Bouton Modifier (éditeur) */}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(
+                                        `/admin/programs/${program.id}/modules/${chapter.id}/lessons/${l.id}/edit`
+                                      );
+                                    }}
+                                    title="Modifier (éditeur)"
+                                    style={{
+                                      width: "40px",
+                                      height: "40px",
+                                      border: "none",
+                                      background: "#F9FAFB",
+                                      borderRadius: "8px",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      cursor: "pointer",
+                                      transition: "all 0.2s ease",
+                                      color: "#6B7280",
+                                      flexShrink: 0,
+                                      padding: 0,
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.background = "#10B981";
+                                      e.currentTarget.style.color = "#FFFFFF";
+                                      e.currentTarget.style.transform = "translateY(-2px) scale(1.05)";
+                                      e.currentTarget.style.boxShadow = "0 4px 8px rgba(16, 185, 129, 0.3)";
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.background = "#F9FAFB";
+                                      e.currentTarget.style.color = "#6B7280";
+                                      e.currentTarget.style.transform = "translateY(0) scale(1)";
+                                      e.currentTarget.style.boxShadow = "none";
+                                    }}
+                                  >
+                                    <Edit2 size={20} strokeWidth={2.5} />
+                                  </button>
+
+                                  {/* Bouton Renommer */}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRenameLesson(chapter.id, l);
+                                    }}
+                                    title="Renommer"
+                                    style={{
+                                      width: "40px",
+                                      height: "40px",
+                                      border: "none",
+                                      background: "#F9FAFB",
+                                      borderRadius: "8px",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      cursor: "pointer",
+                                      transition: "all 0.2s ease",
+                                      color: "#6B7280",
+                                      flexShrink: 0,
+                                      padding: 0,
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.background = "#F59E0B";
+                                      e.currentTarget.style.color = "#FFFFFF";
+                                      e.currentTarget.style.transform = "translateY(-2px) scale(1.05)";
+                                      e.currentTarget.style.boxShadow = "0 4px 8px rgba(245, 158, 11, 0.3)";
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.background = "#F9FAFB";
+                                      e.currentTarget.style.color = "#6B7280";
+                                      e.currentTarget.style.transform = "translateY(0) scale(1)";
+                                      e.currentTarget.style.boxShadow = "none";
+                                    }}
+                                  >
+                                    <FileEdit size={20} strokeWidth={2.5} />
+                                  </button>
+
+                                  {/* Bouton Supprimer */}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteLesson(chapter.id, l.id);
+                                    }}
+                                    title="Supprimer"
+                                    style={{
+                                      width: "40px",
+                                      height: "40px",
+                                      border: "none",
+                                      background: "#F9FAFB",
+                                      borderRadius: "8px",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      cursor: "pointer",
+                                      transition: "all 0.2s ease",
+                                      color: "#6B7280",
+                                      flexShrink: 0,
+                                      padding: 0,
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.background = "#EF4444";
+                                      e.currentTarget.style.color = "#FFFFFF";
+                                      e.currentTarget.style.transform = "translateY(-2px) scale(1.05)";
+                                      e.currentTarget.style.boxShadow = "0 4px 8px rgba(239, 68, 68, 0.3)";
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.background = "#F9FAFB";
+                                      e.currentTarget.style.color = "#6B7280";
+                                      e.currentTarget.style.transform = "translateY(0) scale(1)";
+                                      e.currentTarget.style.boxShadow = "none";
+                                    }}
+                                  >
+                                    <Trash2 size={20} strokeWidth={2.5} />
+                                  </button>
                                 </div>
                               </li>
                             ))}

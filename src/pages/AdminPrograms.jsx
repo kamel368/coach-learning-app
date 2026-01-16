@@ -27,6 +27,7 @@ import {
   Award,
   Target,
   Laptop,
+  ListTree,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -60,8 +61,23 @@ export default function AdminPrograms() {
   const [sortDirection, setSortDirection] = useState("asc");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
+  
+  // Compteurs de chapitres
+  const [chaptersCount, setChaptersCount] = useState({}); // { programId: count }
 
-  // Charger programmes + rôles métier
+  // Fonction pour compter les chapitres d'un programme
+  const fetchChaptersCount = async (programId) => {
+    try {
+      const modulesRef = collection(db, "programs", programId, "modules");
+      const modulesSnap = await getDocs(modulesRef);
+      return modulesSnap.size; // Nombre de documents
+    } catch (err) {
+      console.error(`Erreur comptage chapitres pour ${programId}:`, err);
+      return 0;
+    }
+  };
+
+  // Charger programmes + rôles métier + compteurs chapitres
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -80,6 +96,21 @@ export default function AdminPrograms() {
           ...d.data(),
         }));
         setCategories(catList);
+
+        // Charger les compteurs de chapitres
+        const countsPromises = progList.map(async (prog) => {
+          const count = await fetchChaptersCount(prog.id);
+          return { id: prog.id, count };
+        });
+        
+        const countsResults = await Promise.all(countsPromises);
+        const countsMap = countsResults.reduce((acc, { id, count }) => {
+          acc[id] = count;
+          return acc;
+        }, {});
+        
+        setChaptersCount(countsMap);
+
       } catch (err) {
         console.error(err);
         setError("Impossible de charger les programmes ou les rôles métier.");
@@ -241,6 +272,9 @@ export default function AdminPrograms() {
       };
 
       setPrograms((prev) => [...prev, newProgram]);
+      
+      // Initialiser le compteur de chapitres à 0 pour le nouveau programme
+      setChaptersCount((prev) => ({ ...prev, [ref.id]: 0 }));
 
       closeModal();
 
@@ -314,21 +348,48 @@ export default function AdminPrograms() {
   });
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F9FAFB", padding: "32px 24px" }}>
+    <div style={{ minHeight: "100vh", background: "#F9FAFB", padding: "32px 24px", width: "100%", maxWidth: "100%", boxSizing: "border-box", overflowX: "hidden" }}>
       <style>
         {`
+          /* ========================================
+             RESET & BASE - SYSTÈME ADAPTATIF
+             ======================================== */
+
+          * {
+            box-sizing: border-box;
+          }
+
           /* Table Card Container */
           .table-card {
             background: white;
             border-radius: 16px;
-            overflow: hidden;
+            overflow-x: auto; /* ✅ Scroll horizontal par défaut */
+            overflow-y: visible;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            -webkit-overflow-scrolling: touch; /* Smooth scroll iOS */
+            position: relative;
+          }
+          
+          /* ✅ Indicateur de scroll - Ombre à droite */
+          .table-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 10px; /* Éviter de couvrir le scrollbar */
+            width: 30px;
+            background: linear-gradient(to left, rgba(0, 0, 0, 0.1), transparent);
+            pointer-events: none;
+            opacity: 1;
+            transition: opacity 0.3s ease;
           }
 
-          /* Table Base */
+          /* Table Base - ADAPTATIF */
           .programs-table {
             width: 100%;
             border-collapse: collapse;
+            table-layout: auto;
+            min-width: clamp(700px, 80vw, 900px); /* S'adapte à la largeur viewport */
           }
 
           /* En-têtes */
@@ -338,10 +399,10 @@ export default function AdminPrograms() {
           }
 
           .programs-table th {
-            padding: 1.25rem 3rem 1.25rem 1.5rem;
+            padding: clamp(0.75rem, 2vw, 1.25rem) clamp(2rem, 4vw, 3rem) clamp(0.75rem, 2vw, 1.25rem) clamp(1rem, 2.5vw, 1.5rem);
             text-align: left;
             font-weight: 600;
-            font-size: 0.75rem;
+            font-size: clamp(0.7rem, 1.5vw, 0.8rem);
             text-transform: uppercase;
             letter-spacing: 0.05em;
             color: #6B7280;
@@ -408,24 +469,30 @@ export default function AdminPrograms() {
             transform: scale(1.002);
           }
 
-          /* Cellules */
+          /* Cellules - Force sur une ligne - ADAPTATIF */
           .programs-table td {
-            padding: 1.25rem 1.5rem;
-            font-size: 0.9rem;
+            padding: clamp(0.75rem, 2vw, 1.25rem) clamp(1rem, 2.5vw, 1.5rem);
+            font-size: clamp(0.75rem, 1.5vw, 0.9rem);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
             vertical-align: middle;
           }
 
-          /* Programme (nom + icône) */
+          /* Programme (nom + icône) - Une ligne - ADAPTATIF */
           .program-name {
             display: flex;
             align-items: center;
-            gap: 0.875rem;
+            gap: clamp(0.5rem, 1.5vw, 0.875rem);
+            min-width: clamp(150px, 20vw, 250px);
+            max-width: clamp(200px, 30vw, 400px);
           }
 
           .program-icon {
-            width: 42px;
-            height: 42px;
-            border-radius: 10px;
+            width: clamp(28px, 4vw, 42px);
+            height: clamp(28px, 4vw, 42px);
+            min-width: clamp(28px, 4vw, 42px);
+            border-radius: clamp(6px, 1.5vw, 10px);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -433,46 +500,80 @@ export default function AdminPrograms() {
             transition: all 0.3s ease;
           }
 
-          .program-details h3 {
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: #111827;
-            margin: 0 0 0.25rem 0;
+          .program-icon svg {
+            width: clamp(14px, 2.5vw, 22px);
+            height: clamp(14px, 2.5vw, 22px);
           }
 
-          .program-details p {
-            font-size: 0.8rem;
-            color: #6B7280;
-            line-height: 1.4;
-            margin: 0;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
+          .program-details {
+            flex: 1;
+            min-width: 0; /* Important pour text-overflow */
             overflow: hidden;
           }
 
-          /* Métier Tag */
+          .program-details h3 {
+            font-size: clamp(0.75rem, 1.5vw, 0.95rem);
+            font-weight: 600;
+            color: #111827;
+            margin: 0;
+            
+            /* ✅ ELLIPSIS FORCÉ */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
+            
+            /* ✅ LARGEUR MAX PAR DÉFAUT */
+            max-width: 200px;
+          }
+
+          .program-details p {
+            font-size: clamp(0.7rem, 1.2vw, 0.8rem);
+            color: #6B7280;
+            margin: 0.25rem 0 0 0;
+            
+            /* ✅ ELLIPSIS FORCÉ */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
+            
+            /* ✅ LARGEUR MAX PAR DÉFAUT */
+            max-width: 200px;
+          }
+
+          /* Métier Tag - Une ligne - ADAPTATIF */
           .metier-tag {
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 0.875rem;
+            gap: clamp(0.3rem, 1vw, 0.5rem);
+            padding: clamp(0.35rem, 1vw, 0.5rem) clamp(0.5rem, 1.5vw, 0.875rem);
             background: #F9FAFB;
             border: 1px solid #E5E7EB;
             border-radius: 8px;
-            font-size: 0.85rem;
+            font-size: clamp(0.7rem, 1.3vw, 0.85rem);
             color: #374151;
+            white-space: nowrap;
+            min-width: fit-content;
           }
 
-          /* Status Badge */
+          .metier-tag svg {
+            width: clamp(12px, 2vw, 16px);
+            height: clamp(12px, 2vw, 16px);
+            flex-shrink: 0;
+          }
+
+          /* Status Badge - Une ligne - ADAPTATIF */
           .status-badge {
             display: inline-flex;
             align-items: center;
-            gap: 0.375rem;
-            padding: 0.5rem 1rem;
+            gap: clamp(0.25rem, 0.8vw, 0.375rem);
+            padding: clamp(0.35rem, 1vw, 0.5rem) clamp(0.6rem, 1.5vw, 1rem);
             border-radius: 8px;
-            font-size: 0.8rem;
+            font-size: clamp(0.65rem, 1.2vw, 0.8rem);
             font-weight: 600;
+            white-space: nowrap;
+            min-width: fit-content;
           }
 
           .status-badge.published {
@@ -491,17 +592,20 @@ export default function AdminPrograms() {
           }
 
           .status-dot {
-            width: 6px;
-            height: 6px;
+            width: clamp(4px, 1vw, 6px);
+            height: clamp(4px, 1vw, 6px);
             border-radius: 50%;
             background: currentColor;
+            flex-shrink: 0;
           }
 
-          /* Date */
+          /* Date - Une ligne - ADAPTATIF */
           .date-cell {
-            font-size: 0.875rem;
+            font-size: clamp(0.7rem, 1.3vw, 0.875rem);
             color: #374151;
             font-weight: 500;
+            white-space: nowrap;
+            min-width: clamp(70px, 10vw, 90px);
           }
 
           /* ACTIONS - TOUJOURS VISIBLES */
@@ -514,8 +618,9 @@ export default function AdminPrograms() {
           }
 
           .action-btn {
-            width: 40px;
-            height: 40px;
+            width: clamp(28px, 4vw, 40px);
+            height: clamp(28px, 4vw, 40px);
+            min-width: clamp(28px, 4vw, 40px);
             border: none;
             background: #F9FAFB;
             border-radius: 8px;
@@ -528,12 +633,12 @@ export default function AdminPrograms() {
             flex-shrink: 0;
           }
 
-          /* FORCER l'affichage des icônes SVG - TAILLE AUGMENTÉE */
+          /* FORCER l'affichage des icônes SVG - ADAPTATIF */
           .action-btn svg {
-            width: 20px !important;
-            height: 20px !important;
-            min-width: 20px !important;
-            min-height: 20px !important;
+            width: clamp(14px, 2.5vw, 20px) !important;
+            height: clamp(14px, 2.5vw, 20px) !important;
+            min-width: clamp(14px, 2.5vw, 20px) !important;
+            min-height: clamp(14px, 2.5vw, 20px) !important;
             display: block !important;
             stroke: currentColor !important;
             fill: none !important;
@@ -545,6 +650,12 @@ export default function AdminPrograms() {
             color: white;
             transform: translateY(-2px) scale(1.05);
             box-shadow: 0 4px 8px rgba(79, 127, 255, 0.3);
+          }
+
+          .action-btn.edit:hover {
+            background: #10B981;
+            color: white;
+            box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
           }
 
           .action-btn.delete:hover {
@@ -760,38 +871,289 @@ export default function AdminPrograms() {
             cursor: not-allowed;
           }
 
-          /* Responsive */
-          @media (max-width: 1200px) {
+          /* ========================================
+             RESPONSIVE - BREAKPOINTS AJUSTÉS
+             ======================================== */
+
+          /* ========================================
+             MACBOOK PRO 13" - OPTIMISATION ULTRA-COMPACTE
+             Objectif : Tout le tableau visible sans scroll horizontal
+             ======================================== */
+          @media (min-width: 1280px) and (max-width: 1440px) {
+            .admin-programs-container {
+              padding: 1rem; /* ✅ Réduire padding global */
+            }
+            
+            /* ✅ PAS DE SCROLL - TOUT VISIBLE */
+            .table-card {
+              overflow-x: visible;
+            }
+            
+            /* ✅ TABLEAU SANS MIN-WIDTH - S'ADAPTE À L'ÉCRAN */
+            .programs-table {
+              min-width: auto;
+              width: 100%;
+              table-layout: fixed; /* ✅ Colonnes de largeur fixe */
+            }
+            
+            /* ✅ CACHER DESCRIPTIONS PROGRAMME */
             .program-details p {
-              display: none;
+              display: none !important;
+            }
+            
+            /* ✅ COLONNE PROGRAMME - ULTRA COMPACT */
+            .program-name {
+              min-width: 140px;
+              max-width: 140px;
+              gap: 0.5rem;
+            }
+            
+            .program-icon {
+              width: 32px;
+              height: 32px;
+              min-width: 32px;
+            }
+            
+            .program-icon svg {
+              width: 16px;
+              height: 16px;
+            }
+            
+            .program-details h3 {
+              font-size: 0.8rem;
+              max-width: 100px;
+              line-height: 1.3;
+            }
+            
+            /* ✅ COLONNE MÉTIER - COMPACT */
+            .metier-tag {
+              font-size: 0.75rem;
+              padding: 0.35rem 0.6rem;
+              gap: 0.35rem;
+            }
+            
+            .metier-tag svg {
+              width: 13px;
+              height: 13px;
+            }
+            
+            /* ✅ COLONNE STATUT - COMPACT */
+            .status-badge {
+              font-size: 0.7rem;
+              padding: 0.35rem 0.7rem;
+              gap: 0.25rem;
+            }
+            
+            .status-dot {
+              width: 5px;
+              height: 5px;
+            }
+            
+            /* ✅ COLONNE DATE - COMPACT */
+            .date-cell {
+              font-size: 0.75rem;
+              min-width: 85px;
+            }
+            
+            /* ✅ COLONNE CHAPITRES - TRÈS COMPACT */
+            .chapters-cell {
+              font-size: 0.75rem;
+              gap: 4px;
+            }
+            
+            .chapters-icon {
+              width: 22px;
+              height: 22px;
+              min-width: 22px;
+            }
+            
+            .chapters-icon svg {
+              width: 11px;
+              height: 11px;
+            }
+            
+            /* ✅ COLONNE ACTIONS - MINI BOUTONS */
+            .actions {
+              gap: 0.35rem;
+            }
+            
+            .action-btn {
+              width: 30px;
+              height: 30px;
+              min-width: 30px;
+            }
+            
+            .action-btn svg {
+              width: 15px !important;
+              height: 15px !important;
+            }
+            
+            /* ✅ PADDING CELLULES ULTRA-RÉDUIT */
+            .programs-table th,
+            .programs-table td {
+              padding: 0.75rem 0.65rem;
+            }
+            
+            /* ✅ EN-TÊTES PLUS COMPACTS */
+            .programs-table th {
+              font-size: 0.65rem;
+              padding-right: 1.75rem; /* Espace pour icône tri */
+            }
+            
+            /* ✅ LARGEURS FIXES DES COLONNES (table-layout: fixed) */
+            .programs-table th:nth-child(1), /* Programme */
+            .programs-table td:nth-child(1) {
+              width: 28%;
+            }
+            
+            .programs-table th:nth-child(2), /* Métier */
+            .programs-table td:nth-child(2) {
+              width: 18%;
+            }
+            
+            .programs-table th:nth-child(3), /* Statut */
+            .programs-table td:nth-child(3) {
+              width: 13%;
+            }
+            
+            .programs-table th:nth-child(4), /* Créé le */
+            .programs-table td:nth-child(4) {
+              width: 12%;
+            }
+            
+            .programs-table th:nth-child(5), /* Chapitres */
+            .programs-table td:nth-child(5) {
+              width: 14%;
+            }
+            
+            .programs-table th:nth-child(6), /* Actions */
+            .programs-table td:nth-child(6) {
+              width: 15%;
+            }
+            
+            /* ✅ HEADER PLUS COMPACT */
+            .header-title {
+              font-size: 1.5rem;
+            }
+            
+            .header-subtitle {
+              font-size: 0.8rem;
+            }
+            
+            .add-button {
+              padding: 0.65rem 1rem;
+              font-size: 0.85rem;
+            }
+            
+            .add-button svg {
+              width: 18px;
+              height: 18px;
+            }
+            
+            /* ✅ FILTRES PLUS COMPACTS */
+            .filters-container {
+              padding: 1rem;
+              gap: 0.75rem;
+            }
+            
+            .filter-label {
+              font-size: 0.65rem;
+            }
+            
+            .filter-select {
+              font-size: 0.8rem;
+              padding: 0.5rem 0.75rem;
             }
           }
 
-          /* ========================================
-             RESPONSIVE DESIGN
-             ======================================== */
-
-          /* Tablettes (< 1200px) */
-          @media (max-width: 1200px) {
-            /* Cacher les descriptions des programmes */
+          /* Large Desktop (> 1600px) - Tailles maximales */
+          @media (min-width: 1600px) {
+            .admin-programs-container {
+              padding: 3rem;
+              max-width: 1800px;
+              margin: 0 auto;
+            }
+            
+            .programs-table {
+              min-width: 100%;
+            }
+            
+            /* ✅ LARGEURS AJUSTÉES POUR GRAND ÉCRAN */
+            .program-name {
+              min-width: 220px;
+              max-width: 380px;
+            }
+            
+            .program-details h3 {
+              max-width: 300px;
+              font-size: 1rem;
+            }
+            
             .program-details p {
-              display: none;
+              max-width: 300px;
+              font-size: 0.85rem;
+            }
+          }
+
+          /* Desktop Standard (1200px - 1599px) - Tailles standards */
+          @media (min-width: 1200px) and (max-width: 1599px) {
+            .admin-programs-container {
+              padding: 2.5rem;
+            }
+            
+            /* ✅ LARGEURS MOYENNES */
+            .program-name {
+              min-width: 200px;
+              max-width: 300px;
+            }
+            
+            .program-details h3 {
+              max-width: 220px;
+              font-size: 0.9rem;
+            }
+            
+            .program-details p {
+              max-width: 220px;
+              font-size: 0.8rem;
+            }
+          }
+
+          /* Tablette Paysage (992px - 1199px) */
+          @media (min-width: 992px) and (max-width: 1199px) {
+            .admin-programs-container {
+              padding: 2rem;
+            }
+            
+            /* ✅ CACHER DESCRIPTIONS */
+            .program-details p {
+              display: none !important;
+            }
+            
+            /* ✅ LARGEURS RÉDUITES */
+            .program-name {
+              min-width: 180px;
+              max-width: 250px;
+            }
+            
+            .program-details h3 {
+              max-width: 180px;
+              font-size: 0.85rem;
+            }
+            
+            .programs-table {
+              min-width: 900px;
             }
             
             /* Réduire taille icône programme */
             .program-icon {
               width: 38px;
               height: 38px;
+              min-width: 38px;
             }
             
             /* Ajuster padding cellules */
             .programs-table th, .programs-table td {
               padding: 1rem 1.25rem;
-            }
-            
-            /* Réduire taille texte */
-            .program-details h3 {
-              font-size: 0.9rem;
             }
             
             .metier-tag {
@@ -809,45 +1171,15 @@ export default function AdminPrograms() {
             }
           }
 
-          /* Tablettes petites (< 992px) */
-          @media (max-width: 992px) {
-            /* Passer en scroll horizontal */
-            .table-card {
-              overflow-x: auto;
+          /* Tablette Portrait (768px - 991px) */
+          @media (min-width: 768px) and (max-width: 991px) {
+            .admin-programs-container {
+              padding: 1.5rem;
             }
             
-            .programs-table {
-              min-width: 900px;
-            }
-            
-            /* Réduire espacements */
-            .programs-table th, .programs-table td {
-              padding: 0.875rem 1rem;
-            }
-            
-            /* Filtres en colonne */
-            .filters-container {
-              flex-direction: column;
-              align-items: stretch;
-            }
-          }
-
-          /* Mobile (< 768px) */
-          @media (max-width: 768px) {
-            /* Header en colonne */
             .header {
               flex-direction: column;
-              gap: 1rem;
               align-items: stretch;
-              margin-bottom: 1.5rem;
-            }
-            
-            .header-title {
-              font-size: 1.5rem;
-            }
-            
-            .header-subtitle {
-              font-size: 0.85rem;
             }
             
             .add-button {
@@ -855,9 +1187,23 @@ export default function AdminPrograms() {
               justify-content: center;
             }
             
-            /* Filtres compacts */
+            /* ✅ CACHER DESCRIPTIONS */
+            .program-details p {
+              display: none !important;
+            }
+            
+            /* ✅ LARGEURS COMPACTES */
+            .program-name {
+              min-width: 160px;
+              max-width: 220px;
+            }
+            
+            .program-details h3 {
+              max-width: 150px;
+              font-size: 0.8rem;
+            }
+            
             .filters-container {
-              padding: 1rem;
               flex-direction: column;
             }
             
@@ -865,19 +1211,191 @@ export default function AdminPrograms() {
               width: 100%;
             }
             
-            .filter-select {
-              font-size: 0.8rem;
-              padding: 0.5rem 0.875rem;
+            .programs-table {
+              min-width: 800px;
             }
             
-            /* Tableau scroll horizontal obligatoire */
+            /* Forcer scroll horizontal */
             .table-card {
               overflow-x: auto;
-              border-radius: 12px;
+              -webkit-overflow-scrolling: touch;
+            }
+            
+            /* Réduire espacements */
+            .programs-table th, .programs-table td {
+              padding: 0.875rem 1rem;
+            }
+          }
+
+          /* Mobile Paysage (576px - 767px) */
+          @media (min-width: 576px) and (max-width: 767px) {
+            .admin-programs-container {
+              padding: 1rem;
+            }
+            
+            .header {
+              flex-direction: column;
+              align-items: stretch;
+            }
+            
+            .add-button {
+              width: 100%;
+              justify-content: center;
+            }
+            
+            /* ✅ CACHER DESCRIPTIONS */
+            .program-details p {
+              display: none !important;
+            }
+            
+            /* ✅ LARGEURS MINIMALES */
+            .program-name {
+              min-width: 140px;
+              max-width: 180px;
+            }
+            
+            .program-details h3 {
+              max-width: 120px;
+              font-size: 0.75rem;
+            }
+            
+            .filters-container {
+              flex-direction: column;
+              padding: 1rem;
+            }
+            
+            .filter-group {
+              width: 100%;
             }
             
             .programs-table {
-              min-width: 800px;
+              min-width: 750px;
+            }
+            
+            /* Cacher colonne "Créé le" */
+            .programs-table th:nth-child(4),
+            .programs-table td:nth-child(4) {
+              display: none;
+            }
+            
+            /* Forcer scroll horizontal */
+            .table-card {
+              overflow-x: auto;
+              -webkit-overflow-scrolling: touch;
+            }
+            
+            .programs-table th {
+              font-size: 0.7rem;
+              padding: 1rem 0.75rem;
+              padding-right: 2rem;
+            }
+            
+            .programs-table td {
+              padding: 1rem 0.75rem;
+            }
+            
+            /* Programme mobile */
+            .program-icon {
+              width: 32px;
+              height: 32px;
+              min-width: 32px;
+            }
+            
+            .program-icon svg {
+              width: 18px;
+              height: 18px;
+            }
+            
+            /* Actions mobile */
+            .action-btn {
+              width: 32px;
+              height: 32px;
+              min-width: 32px;
+            }
+            
+            .action-btn svg {
+              width: 16px !important;
+              height: 16px !important;
+            }
+          }
+
+          /* Mobile Portrait (< 576px) */
+          @media (max-width: 575px) {
+            .admin-programs-container {
+              padding: 1rem;
+            }
+            
+            .header {
+              flex-direction: column;
+              align-items: stretch;
+              gap: 1rem;
+            }
+            
+            .header-title {
+              font-size: 1.5rem;
+            }
+            
+            .add-button {
+              width: 100%;
+              justify-content: center;
+              font-size: 0.875rem;
+            }
+            
+            /* ✅ CACHER DESCRIPTIONS */
+            .program-details p {
+              display: none !important;
+            }
+            
+            /* ✅ LARGEURS ULTRA-COMPACTES */
+            .program-name {
+              min-width: 120px;
+              max-width: 160px;
+            }
+            
+            .program-details h3 {
+              max-width: 100px;
+              font-size: 0.7rem;
+            }
+            
+            .filters-container {
+              flex-direction: column;
+              padding: 1rem;
+              gap: 0.75rem;
+            }
+            
+            .filter-group {
+              width: 100%;
+              flex-direction: column;
+              align-items: stretch;
+            }
+            
+            .filter-select {
+              width: 100%;
+            }
+            
+            .programs-table {
+              min-width: 700px;
+            }
+            
+            /* Cacher colonnes non essentielles */
+            .programs-table th:nth-child(4),
+            .programs-table td:nth-child(4) {
+              display: none;
+            }
+            
+            /* Cacher bouton supprimer */
+            .action-btn.delete {
+              display: none;
+            }
+            
+            /* Forcer scroll horizontal */
+            .table-card {
+              overflow-x: auto;
+              border-radius: 12px;
+              -webkit-overflow-scrolling: touch;
+            }
+            
+            .programs-table {
               font-size: 0.85rem;
             }
             
@@ -891,80 +1409,97 @@ export default function AdminPrograms() {
               padding: 1rem 0.75rem;
             }
             
-            /* Programme */
+            /* Programme mobile */
             .program-icon {
               width: 32px;
               height: 32px;
+              min-width: 32px;
             }
             
-            .program-details h3 {
-              font-size: 0.85rem;
+            .program-icon svg {
+              width: 18px;
+              height: 18px;
             }
             
-            /* Actions plus petites sur mobile */
+            /* Métier mobile */
+            .metier-tag {
+              font-size: 0.75rem;
+              padding: 0.35rem 0.65rem;
+              gap: 0.4rem;
+            }
+            
+            .metier-tag svg {
+              width: 14px;
+              height: 14px;
+            }
+            
+            /* Status mobile */
+            .status-badge {
+              font-size: 0.7rem;
+              padding: 0.35rem 0.75rem;
+            }
+            
+            .status-dot {
+              width: 5px;
+              height: 5px;
+            }
+            
+            /* Date mobile */
+            .date-cell {
+              font-size: 0.75rem;
+              min-width: 80px;
+            }
+            
+            /* Actions mobile */
             .action-btn {
-              width: 36px;
-              height: 36px;
+              width: 32px;
+              height: 32px;
+              min-width: 32px;
             }
             
             .action-btn svg {
-              width: 18px !important;
-              height: 18px !important;
-              min-width: 18px !important;
-              min-height: 18px !important;
+              width: 16px !important;
+              height: 16px !important;
             }
             
-            /* Ajustement hauteur lignes sur mobile */
-            tbody tr {
+            /* Ajustement hauteur lignes mobile */
+            .programs-table tbody tr {
               min-height: 60px;
             }
             
-            tbody tr:hover {
-              transform: scale(1);
+            .programs-table tbody tr:hover {
+              transform: scale(1); /* Désactiver zoom sur mobile */
             }
           }
 
-          /* Très petit mobile (< 480px) */
-          @media (max-width: 480px) {
-            .header-title {
-              font-size: 1.25rem;
-            }
-            
-            .programs-table {
-              min-width: 700px;
-            }
-            
-            .programs-table th, .programs-table td {
-              padding: 0.75rem 0.5rem;
-            }
-            
-            .filters-container {
-              padding: 0.75rem;
-            }
-            
-            .filter-select {
-              font-size: 0.75rem;
-              padding: 0.4rem 0.75rem;
-            }
-          }
 
-          /* Scroll horizontal visible sur mobile */
+          /* ========================================
+             SCROLLBAR PERSONNALISÉE - VISIBLE ET ÉLÉGANTE
+             ======================================== */
           .table-card::-webkit-scrollbar {
-            height: 8px;
+            height: 10px; /* ✅ Plus haut pour meilleure visibilité */
           }
 
           .table-card::-webkit-scrollbar-track {
             background: #F3F4F6;
-            border-radius: 4px;
+            border-radius: 6px;
+            margin: 0 12px; /* Espacement sur les côtés */
           }
 
           .table-card::-webkit-scrollbar-thumb {
-            background: #D1D5DB;
-            border-radius: 4px;
+            background: #3B82F6; /* ✅ Bleu pour meilleure visibilité */
+            border-radius: 6px;
+            border: 2px solid #F3F4F6; /* Bordure pour contraste */
           }
 
           .table-card::-webkit-scrollbar-thumb:hover {
-            background: #9CA3AF;
+            background: #2563EB; /* Bleu foncé au hover */
+          }
+
+          /* Pour Firefox */
+          .table-card {
+            scrollbar-width: thin;
+            scrollbar-color: #3B82F6 #F3F4F6; /* ✅ Bleu pour Firefox */
           }
 
           /* Empty state */
@@ -994,6 +1529,185 @@ export default function AdminPrograms() {
             font-size: 14px;
             color: #6B7280;
             margin-bottom: 24px;
+          }
+
+          /* Actions - Une ligne */
+          .actions {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            justify-content: flex-end;
+            white-space: nowrap;
+            min-width: fit-content;
+          }
+
+          .action-btn {
+            width: 40px;
+            height: 40px;
+            min-width: 40px; /* ✅ Empêcher rétrécissement */
+            border: none;
+            background: #F9FAFB;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #6B7280;
+            flex-shrink: 0;
+          }
+
+          .action-btn svg {
+            width: 20px !important;
+            height: 20px !important;
+            min-width: 20px !important;
+            min-height: 20px !important;
+            display: block !important;
+            stroke: currentColor !important;
+            fill: none !important;
+            stroke-width: 2 !important;
+          }
+
+          .action-btn:hover {
+            background: #4F7FFF;
+            color: white;
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 4px 8px rgba(79, 127, 255, 0.3);
+          }
+
+          .action-btn.edit:hover {
+            background: #10B981;
+            color: white;
+            box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+          }
+
+          .action-btn.delete:hover {
+            background: #EF4444;
+            color: white;
+            box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+          }
+
+          /* ========================================
+             CELLULE CHAPITRES
+             ======================================== */
+          .chapters-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            white-space: nowrap;
+            min-width: fit-content;
+          }
+
+          .chapters-icon {
+            width: 28px;
+            height: 28px;
+            min-width: 28px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, #8B5CF620, #8B5CF610);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+          }
+
+          .chapters-text {
+            white-space: nowrap;
+          }
+
+          /* ========================================
+             RESPONSIVE CHAPITRES
+             ======================================== */
+
+          /* Tablettes (< 1200px) */
+          @media (max-width: 1200px) {
+            .chapters-cell {
+              font-size: 0.8rem;
+              gap: 6px;
+            }
+            
+            .chapters-icon {
+              width: 24px;
+              height: 24px;
+              min-width: 24px;
+            }
+            
+            .chapters-icon svg {
+              width: 12px;
+              height: 12px;
+            }
+          }
+
+          /* Tablettes petites (< 992px) */
+          @media (max-width: 992px) {
+            /* Forcer l'affichage du tableau en scroll horizontal */
+            .programs-table {
+              min-width: 900px;
+            }
+            
+            .chapters-cell {
+              font-size: 0.75rem;
+            }
+          }
+
+          /* Mobile (< 768px) */
+          @media (max-width: 768px) {
+            /* Tableau scroll horizontal obligatoire */
+            .programs-table {
+              min-width: 800px;
+              font-size: 0.85rem;
+            }
+            
+            /* Réduire taille cellule chapitres */
+            .chapters-cell {
+              font-size: 0.7rem;
+              gap: 4px;
+            }
+            
+            .chapters-icon {
+              width: 20px;
+              height: 20px;
+              min-width: 20px;
+            }
+            
+            .chapters-icon svg {
+              width: 10px;
+              height: 10px;
+            }
+            
+            /* Texte compact */
+            .chapters-text {
+              max-width: 60px;
+            }
+          }
+
+          /* Très petit mobile (< 480px) */
+          @media (max-width: 480px) {
+            .programs-table {
+              min-width: 700px;
+            }
+            
+            .chapters-cell {
+              font-size: 0.65rem;
+              gap: 3px;
+            }
+            
+            .chapters-icon {
+              width: 18px;
+              height: 18px;
+              min-width: 18px;
+            }
+            
+            .chapters-icon svg {
+              width: 9px;
+              height: 9px;
+            }
+            
+            .chapters-text {
+              max-width: 50px;
+            }
           }
         `}
       </style>
@@ -1094,11 +1808,8 @@ export default function AdminPrograms() {
                 >
                   Créé le
                 </th>
-                <th
-                  className={`sortable ${sortBy === "updatedAt" ? "active" : ""} ${sortDirection === "desc" ? "desc" : ""}`}
-                  onClick={() => handleSort("updatedAt")}
-                >
-                  Modifié le
+                <th style={{ paddingRight: "1.5rem" }}>
+                  Chapitres
                 </th>
                 <th style={{ width: "140px" }}>Actions</th>
               </tr>
@@ -1108,6 +1819,7 @@ export default function AdminPrograms() {
                 const categoryLabel = getCategoryLabel(program.categoryId);
                 const IconComponent = getMetierIcon(categoryLabel);
                 const metierColor = getMetierColor(categoryLabel);
+                const chaptersNumber = chaptersCount[program.id] || 0;
 
                 return (
                   <tr key={program.id} onClick={() => handleEditRedirect(program)}>
@@ -1143,8 +1855,13 @@ export default function AdminPrograms() {
                       <div className="date-cell">{formatDate(program.createdAt)}</div>
                     </td>
                     <td>
-                      <div className="date-cell">
-                        {formatDate(program.updatedAt || program.createdAt)}
+                      <div className="chapters-cell">
+                        <div className="chapters-icon">
+                          <ListTree size={14} color="#8B5CF6" />
+                        </div>
+                        <span className="chapters-text">
+                          {chaptersNumber} {chaptersNumber > 1 ? "chapitres" : "chapitre"}
+                        </span>
                       </div>
                     </td>
                     <td>
@@ -1163,7 +1880,7 @@ export default function AdminPrograms() {
                           </svg>
                         </button>
                         <button
-                          className="action-btn"
+                          className="action-btn edit"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleEditRedirect(program);

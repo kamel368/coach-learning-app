@@ -3,10 +3,11 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "r
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Sidebar, { SIDEBAR_WIDTH, SIDEBAR_WIDTH_COLLAPSED } from "./components/Sidebar";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 // Pages Auth
 import Login from "./pages/login";
+import { Menu } from "lucide-react";
 
 // Pages Admin
 import Dashboard from "./pages/Dashboard";
@@ -34,6 +35,7 @@ import LearnerAIExerciseSession from "./pages/LearnerAIExerciseSession";
 function AppContent() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
   
   // Pages en plein écran (sans sidebar principale)
   const isFullScreen = 
@@ -41,13 +43,77 @@ function AppContent() {
   location.pathname === '/login' ||
   location.pathname === '/';
 
+  // Détecter la taille d'écran et ajuster le comportement
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 1024;
+      setIsMobile(mobile);
+      
+      // Fermer la sidebar automatiquement sur mobile/tablette
+      if (mobile && sidebarOpen) {
+        setSidebarOpen(false);
+      }
+    };
+
+    // Initialiser
+    handleResize();
+
+    // Écouter les changements de taille
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Fonction pour calculer le marginLeft en fonction de la taille d'écran
+  const getMarginLeft = () => {
+    if (isFullScreen) return 0;
+    // Sur mobile/tablette (< 1024px), pas de margin car sidebar en overlay
+    if (isMobile) return 0;
+    return sidebarOpen ? SIDEBAR_WIDTH : SIDEBAR_WIDTH_COLLAPSED;
+  };
+
   return (
-    <div>
+    <div className="app-layout">
       {!isFullScreen && <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />}
 
+      {/* Bouton toggle mobile - Visible uniquement sur tablette/mobile */}
+      {!isFullScreen && isMobile && (
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          style={{
+            position: 'fixed',
+            top: '1rem',
+            left: '1rem',
+            zIndex: 1110,
+            width: '44px',
+            height: '44px',
+            border: 'none',
+            background: 'white',
+            borderRadius: '8px',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+            cursor: 'pointer',
+            color: '#374151',
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#F9FAFB';
+            e.currentTarget.style.transform = 'scale(1.05)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'white';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+        >
+          <Menu size={24} />
+        </button>
+      )}
+
       <div
+        className="main-content"
         style={{
-          marginLeft: isFullScreen ? 0 : (sidebarOpen ? SIDEBAR_WIDTH : SIDEBAR_WIDTH_COLLAPSED),
+          marginLeft: getMarginLeft(),
           minHeight: "100vh",
           background: "var(--color-bg)",
           transition: "margin-left 0.3s ease",

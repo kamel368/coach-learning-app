@@ -66,6 +66,13 @@ const handleLogout = async () => {
 
   return (
     <aside
+      className={isOpen ? 'sidebar-open' : ''}
+      onClick={(e) => {
+        // Fermer la sidebar si on clique sur l'overlay (< 1024px)
+        if (e.target === e.currentTarget && window.innerWidth < 1024) {
+          setIsOpen(false);
+        }
+      }}
       style={{
         position: 'fixed',
         top: 0,
@@ -79,7 +86,7 @@ const handleLogout = async () => {
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
-        transition: 'width 0.3s ease, padding 0.3s ease',
+        transition: 'width 0.3s ease, padding 0.3s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         overflowX: 'hidden',
         borderRight: '1px solid #e5e7eb',
         zIndex: 1000,

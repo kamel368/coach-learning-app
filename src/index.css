@@ -80,3 +80,81 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+/* ========================================
+   LAYOUT PRINCIPAL RESPONSIVE
+   ======================================== */
+
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ========================================
+   MAIN CONTENT - ADAPTÉ À LA SIDEBAR
+   ======================================== */
+
+.main-content {
+  flex: 1;
+  min-width: 0; /* Important pour éviter débordement */
+  width: 100%;
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ========================================
+   RESPONSIVE BREAKPOINTS - SIDEBAR
+   ======================================== */
+
+/* MacBook Pro 13" et Tablettes Paysage (< 1440px) */
+@media (max-width: 1440px) {
+  /* Sidebar déjà gérée dans Sidebar.jsx avec width: 220px */
+}
+
+/* Petit MacBook / Tablette Paysage (< 1280px) */
+@media (max-width: 1280px) {
+  /* Sidebar déjà gérée dans Sidebar.jsx avec width: 220px */
+  /* Le main-content s'adapte automatiquement */
+}
+
+/* Tablette (< 1024px) - Sidebar devient drawer */
+@media (max-width: 1024px) {
+  aside {
+    transform: translateX(-100%);
+    box-shadow: none;
+    z-index: 1100 !important;
+  }
+  
+  aside.sidebar-open {
+    transform: translateX(0);
+    box-shadow: 4px 0 12px rgba(0, 0, 0, 0.15);
+  }
+  
+  /* Overlay pour fermer sidebar sur mobile */
+  aside.sidebar-open::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: -1;
+  }
+}
+
+/* Tablette Portrait (< 768px) */
+@media (max-width: 768px) {
+  aside {
+    width: 280px !important;
+  }
+}
+
+/* Mobile (< 576px) */
+@media (max-width: 576px) {
+  aside {
+    width: 100% !important;
+    max-width: 300px !important;
+  }
+}
