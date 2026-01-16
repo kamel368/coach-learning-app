@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import toast from 'react-hot-toast';
 import { 
   DndContext, 
   closestCenter,
@@ -130,21 +131,81 @@ export default function LessonBuilder({ lessonId, moduleId, programId, onReady }
   const handleSave = useCallback(async () => {
     if (!lesson) return;
     
-    if (hasUnsavedBlock) {
-      alert('❌ Vous avez des blocs non sauvegardés. Veuillez les finaliser avant de sauvegarder la leçon.');
-      return;
-    }
+    const toastId = toast.loading('Sauvegarde en cours...');
     
-    await saveLesson(lesson, programId, moduleId);
-    alert('✅ Leçon sauvegardée !');
+    try {
+      // ✅ Finaliser automatiquement les blocs non sauvegardés
+      if (hasUnsavedBlock) {
+        console.log('🔄 Finalisation automatique des blocs en cours...');
+        setHasUnsavedBlock(false);
+        
+        // Attendre un court instant pour que l'état se propage
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      // ✅ Nettoyer les blocs vides avant sauvegarde
+      const validLesson = {
+        ...lesson,
+        blocks: (lesson.blocks || []).filter(block => {
+          // Valider chaque type de bloc
+          if (block.type === 'text') {
+            return block.data?.html && 
+                   block.data.html.trim() !== '' && 
+                   block.data.html !== '<p></p>' &&
+                   block.data.html !== '<p><br></p>';
+          }
+          if (block.type === 'image') {
+            return block.data?.url && block.data.url.trim() !== '';
+          }
+          if (block.type === 'video') {
+            return block.data?.url && block.data.url.trim() !== '';
+          }
+          if (block.type === 'quote') {
+            return block.data?.content && block.data.content.trim() !== '';
+          }
+          if (block.type === 'list') {
+            return block.data?.items && block.data.items.length > 0;
+          }
+          if (block.type === 'info') {
+            return block.data?.body && block.data.body.trim() !== '';
+          }
+          if (block.type === 'toggle') {
+            return block.data?.body && block.data.body.trim() !== '';
+          }
+          // Divider, separator, timeline, lessonLink sont toujours valides
+          if (block.type === 'divider' || block.type === 'separator' || 
+              block.type === 'timeline' || block.type === 'lessonLink') {
+            return true;
+          }
+          return true; // Par défaut, garder le bloc
+        })
+      };
+      
+      await saveLesson(validLesson, programId, moduleId);
+      
+      // Mettre à jour l'état local avec la version nettoyée
+      setLesson(validLesson);
+      setHasUnsavedBlock(false);
+      
+      toast.success('Leçon sauvegardée avec succès !', {
+        id: toastId,
+      });
+      
+    } catch (error) {
+      console.error('❌ Erreur sauvegarde:', error);
+      toast.error('Erreur lors de la sauvegarde', {
+        id: toastId,
+      });
+    }
   }, [lesson, hasUnsavedBlock, programId, moduleId]);
 
   // ============================================
   // 5. useEffect - EXPOSITION AU PARENT (onReady)
   // ============================================
+  // ✅ Appeler onReady seulement quand lesson change ou les callbacks changent
   useEffect(() => {
     if (lesson && onReady) {
-      onReady({
+      const dataToExpose = {
         lesson,
         setLesson,
         viewMode,
@@ -154,131 +215,211 @@ export default function LessonBuilder({ lessonId, moduleId, programId, onReady }
         handleRedo,
         history,
         future,
-      });
+        hasUnsavedChanges: history.length > 0,
+        requestExit: (callback) => {
+          if (history.length > 0) {
+            const confirmed = window.confirm('Vous avez des modifications non sauvegardées. Voulez-vous vraiment quitter ?');
+            if (confirmed && callback) callback();
+            return confirmed;
+          }
+          if (callback) callback();
+          return true;
+        }
+      };
+      console.log('🔗 LessonBuilder: Appel de onReady avec:', dataToExpose);
+      onReady(dataToExpose);
     }
-  }, [lesson, viewMode, history, future, onReady, handleSave, handleUndo, handleRedo]);
+  }, [lesson, viewMode, history, future, onReady, handleSave, handleUndo, handleRedo, setLesson, setViewMode]);
+
 
   // ============================================
-  // 6. JSX RETURN
+  // 9. JSX RETURN
   // ============================================
   if (!lesson) return <div style={{ padding: '16px' }}>Chargement de la leçon...</div>;
   
-  // ✅ GUARD: S'assurer que blocks existe
   const blocks = lesson.blocks || [];
   
   return (
-    <div style={{ display: 'flex', height: '100%', backgroundColor: '#ffffff' }}>
-      {/* Sidebar fixe 30% */}
-      <div
-        style={{
-          width: '30%',
-          minWidth: '320px',
-          maxWidth: '400px',
-          height: '100%',
+    <div style={{
+      display: 'flex',
+      height: '100%',
+      overflow: 'hidden',
+      backgroundColor: '#f8fafc'
+    }}>
+      
+      {/* ===================================== 
+          COLONNE GAUCHE - SIDEBAR (360px)
+          ===================================== */}
+      <div style={{
+        width: '360px',
+        minWidth: '320px',
+        maxWidth: '400px',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: '#ffffff',
+        borderRight: '1px solid #e2e8f0',
+        boxShadow: '4px 0 12px rgba(0, 0, 0, 0.03)'
+      }}>
+        
+        {/* Header Sidebar avec onglets */}
+        <div style={{
+          padding: '20px 24px',
+          borderBottom: '1px solid #e2e8f0',
+          backgroundColor: '#ffffff'
+        }}>
+          {/* Onglets Leçon / Blocs */}
+          <div style={{
+            display: 'flex',
+            gap: 8,
+            background: '#f1f5f9',
+            padding: 4,
+            borderRadius: 10
+          }}>
+            <button
+              onClick={() => setActiveTab('lesson')}
+              style={{
+                flex: 1,
+                padding: '10px 16px',
+                background: activeTab === 'lesson' 
+                  ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' 
+                  : 'transparent',
+                color: activeTab === 'lesson' ? '#ffffff' : '#64748b',
+                border: 'none',
+                borderRadius: 8,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                boxShadow: activeTab === 'lesson' 
+                  ? '0 4px 12px rgba(59, 130, 246, 0.25)' 
+                  : 'none'
+              }}
+            >
+              <FileText size={16} />
+              Leçon
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('blocs')}
+              style={{
+                flex: 1,
+                padding: '10px 16px',
+                background: activeTab === 'blocs' 
+                  ? 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)' 
+                  : 'transparent',
+                color: activeTab === 'blocs' ? '#ffffff' : '#64748b',
+                border: 'none',
+                borderRadius: 8,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                boxShadow: activeTab === 'blocs' 
+                  ? '0 4px 12px rgba(139, 92, 246, 0.25)' 
+                  : 'none'
+              }}
+            >
+              <Package size={16} />
+              Blocs
+            </button>
+          </div>
+        </div>
+
+        {/* Zone scrollable INDÉPENDANTE */}
+        <div style={{
+          flex: 1,
           overflowY: 'auto',
-          borderRight: '1px solid #e5e7eb',
-          backgroundColor: '#f9fafb',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        {/* Onglets Leçon / Blocs */}
-        <ul className="nav nav-underline px-3 pt-3">
-          <li className="nav-item">
-            <a
-              className={`nav-link ${activeTab === 'lesson' ? 'active' : ''}`}
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                setActiveTab('lesson');
-              }}
-              style={{ 
-                fontSize: '13px', 
-                cursor: 'pointer', 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '6px',
-                color: activeTab === 'lesson' ? '#3b82f6' : '#1f2937',
-                fontWeight: activeTab === 'lesson' ? '600' : '400',
-                borderBottomColor: activeTab === 'lesson' ? '#3b82f6' : 'transparent',
-                borderBottomWidth: '2px',
-                transition: 'all 0.2s'
-              }}
-            >
-              <FileText className="w-4 h-4" style={{ color: activeTab === 'lesson' ? '#3b82f6' : '#1f2937' }} /> Leçon
-            </a>
-          </li>
-          <li className="nav-item">
-            <a
-              className={`nav-link ${activeTab === 'blocs' ? 'active' : ''}`}
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                setActiveTab('blocs');
-              }}
-              style={{ 
-                fontSize: '13px', 
-                cursor: 'pointer', 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '6px',
-                color: activeTab === 'blocs' ? '#3b82f6' : '#1f2937',
-                fontWeight: activeTab === 'blocs' ? '600' : '400',
-                borderBottomColor: activeTab === 'blocs' ? '#3b82f6' : 'transparent',
-                borderBottomWidth: '2px',
-                transition: 'all 0.2s'
-              }}
-            >
-              <Package className="w-4 h-4" style={{ color: activeTab === 'blocs' ? '#3b82f6' : '#1f2937' }} /> Blocs
-            </a>
-          </li>
-        </ul>
-
-        {/* Contenu des tabs */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+          overflowX: 'hidden',
+          padding: '24px',
+          scrollbarWidth: 'thin',
+          scrollbarColor: '#cbd5e1 #f1f5f9'
+        }}>
           {activeTab === 'lesson' ? (
-            <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '12px' }}>
-                Renseignez le titre de cette leçon
-              </p>
-              <input
-                type="text"
-                value={lesson.title}
-                onChange={(e) => setLesson((prev) => ({ ...prev, title: e.target.value }))}
-                placeholder="Titre de la leçon"
-                className="form-control form-control-sm mb-3"
-                style={{ fontSize: '12px' }}
-              />
-              <select
-                value={lesson.status}
-                onChange={(e) => setLesson((prev) => ({ ...prev, status: e.target.value }))}
-                className="form-select form-select-sm mb-3"
-                style={{ fontSize: '12px' }}
-              >
-                <option value="draft">Brouillon</option>
-                <option value="published">Publié</option>
-                <option value="disabled">Désactivé</option>
-              </select>
+            <div>
+              {/* Titre de la leçon */}
+              <div style={{ marginBottom: 32 }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: '#94a3b8',
+                  marginBottom: 10,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.8px'
+                }}>
+                  Titre de la leçon
+                </label>
+                <input
+                  type="text"
+                  value={lesson.title}
+                  onChange={(e) => setLesson((prev) => ({ ...prev, title: e.target.value }))}
+                  placeholder="Ex: Introduction à la prospection"
+                  style={{
+                    width: '100%',
+                    padding: '14px 16px',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 10,
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: '#1e293b',
+                    transition: 'all 0.2s',
+                    outline: 'none',
+                    backgroundColor: '#ffffff'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#3b82f6';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(59, 130, 246, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#e2e8f0';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                />
+              </div>
 
-              {/* DndContext avec sensors */}
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={({ active, over }) => {
-                  if (over) handleReorder(active.id, over.id);
-                }}
-              >
-                <SortableContext
-                  items={blocks.map((b) => b.id)}
-                  strategy={verticalListSortingStrategy}
+              {/* Plan de la leçon */}
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: '#94a3b8',
+                  marginBottom: 12,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.8px'
+                }}>
+                  Plan de la leçon ({blocks.length})
+                </label>
+
+                {/* DndContext pour réorganiser */}
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={({ active, over }) => {
+                    if (over) handleReorder(active.id, over.id);
+                  }}
                 >
-                  <LessonOutlineTab
-                    blocks={blocks}
-                    selectedBlockId={selectedBlockId}
-                    onSelect={setSelectedBlockId}
-                  />
-                </SortableContext>
-              </DndContext>
+                  <SortableContext
+                    items={blocks.map((b) => b.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <LessonOutlineTab
+                      blocks={blocks}
+                      selectedBlockId={selectedBlockId}
+                      onSelect={setSelectedBlockId}
+                    />
+                  </SortableContext>
+                </DndContext>
+              </div>
             </div>
           ) : (
             <BlocksPaletteTab onAddBlock={handleAddBlock} />
@@ -286,10 +427,24 @@ export default function LessonBuilder({ lessonId, moduleId, programId, onReady }
         </div>
       </div>
 
-      {/* Zone de contenu 70% */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {/* Zone d'édition ou preview - SANS header en doublon */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px', backgroundColor: '#f9fafb' }}>
+      {/* ===================================== 
+          COLONNE DROITE - ÉDITEUR (flex: 1)
+          ===================================== */}
+      <div style={{
+        flex: 1,
+        height: '100%',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        padding: '32px',
+        scrollbarWidth: 'thin',
+        scrollbarColor: '#cbd5e1 #f1f5f9',
+        backgroundColor: '#f8fafc'
+      }}>
+        {/* Wrapper pour centrer le contenu */}
+        <div style={{
+          maxWidth: '900px',
+          margin: '0 auto'
+        }}>
           {viewMode === 'edit' ? (
             <LessonEditorView
               lesson={lesson}

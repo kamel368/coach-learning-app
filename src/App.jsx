@@ -18,8 +18,7 @@ import AdminQuiz from "./pages/AdminQuiz";
 import AdminAIExercises from "./pages/AdminAIExercises";
 import AdminUsers from "./pages/AdminUsers";
 
-// ✅ Nouvelles pages Teachizy-like
-import LessonsListPage from "./pages/LessonsListPage";
+// ✅ Nouvelle page Teachizy-like
 import LessonEditorPage from "./pages/LessonEditorPage";
 
 // ✅ Page temporaire de nettoyage Firebase
@@ -163,16 +162,6 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <AdminProgramDetail />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* ✅ Nouvelle liste de leçons par module */}
-          <Route
-            path="/admin/programs/:programId/modules/:moduleId/lessons"
-            element={
-              <ProtectedRoute>
-                <LessonsListPage />
               </ProtectedRoute>
             }
           />
