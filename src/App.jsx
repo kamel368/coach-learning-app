@@ -14,8 +14,6 @@ import Dashboard from "./pages/Dashboard";
 import AdminCategories from "./pages/AdminCategories";
 import AdminPrograms from "./pages/AdminPrograms";
 import AdminProgramDetail from "./pages/AdminProgramDetail";
-import AdminModules from "./pages/AdminModules";
-import AdminLessons from "./pages/AdminLessons";
 import AdminQuiz from "./pages/AdminQuiz";
 import AdminAIExercises from "./pages/AdminAIExercises";
 import AdminUsers from "./pages/AdminUsers";
@@ -162,24 +160,6 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <AdminProgramDetail />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/modules"
-            element={
-              <ProtectedRoute>
-                <AdminModules />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Vue globale historique des leçons */}
-          <Route
-            path="/admin/lessons"
-            element={
-              <ProtectedRoute>
-                <AdminLessons />
               </ProtectedRoute>
             }
           />
