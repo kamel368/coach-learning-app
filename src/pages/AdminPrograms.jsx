@@ -1,5 +1,6 @@
 // src/pages/AdminPrograms.jsx
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { db } from "../firebase";
 import {
@@ -764,6 +765,8 @@ export default function AdminPrograms() {
           }
 
           .modal {
+            position: relative;
+            z-index: 51;
             width: 100%;
             max-width: 500px;
             background-color: white;
@@ -1718,7 +1721,15 @@ export default function AdminPrograms() {
           <h1 className="header-title">Programmes</h1>
           <p className="header-subtitle">Gérez vos programmes de formation</p>
         </div>
-        <button type="button" onClick={handleAdd} className="add-button">
+        <button 
+          type="button" 
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleAdd();
+          }} 
+          className="add-button"
+        >
           <Plus size={18} />
           Ajouter un programme
         </button>
@@ -1915,9 +1926,54 @@ export default function AdminPrograms() {
       )}
 
       {/* Popup création programme */}
-      {isModalOpen && (
-        <div className="modal-backdrop" onClick={closeModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+      {isModalOpen && (() => {
+        const modalRoot = document.getElementById('modal-root');
+        if (!modalRoot) return null;
+        return createPortal(
+        <div 
+          className="modal-backdrop" 
+          onClick={(e) => {
+            if (e.target.className === 'modal-backdrop') {
+              closeModal();
+            }
+          }}
+          style={{
+            position: 'fixed',
+            inset: '0px',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.5)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex !important',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999999,
+            padding: '20px',
+            visibility: 'visible',
+            opacity: 1
+          }}
+        >
+          <div 
+            className="modal" 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'relative',
+              zIndex: 1000000,
+              width: '100%',
+              maxWidth: '500px',
+              backgroundColor: '#FFFFFF',
+              borderRadius: '16px',
+              padding: '24px',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              display: 'block',
+              visibility: 'visible',
+              opacity: 1
+            }}
+          >
             <h3 className="modal-title">Nouveau programme</h3>
             <p className="modal-subtitle">
               Créez un nouveau programme de formation et associez-le à un rôle métier.
@@ -1988,13 +2044,18 @@ export default function AdminPrograms() {
               </div>
             </form>
           </div>
-        </div>
-      )}
+        </div>,
+        modalRoot
+        );
+      })()}
 
       {/* Popup vue programme (métadonnées) */}
-      {isViewOpen && viewProgram && (
-        <div className="modal-backdrop" onClick={closeView}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+      {isViewOpen && viewProgram && (() => {
+        const modalRoot = document.getElementById('modal-root');
+        if (!modalRoot) return null;
+        return createPortal(
+        <div className="modal-backdrop" onClick={closeView} style={{ zIndex: 9999 }}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ zIndex: 10000 }}>
             <h3 className="modal-title">{viewProgram.name}</h3>
 
             <div className="form-group">
@@ -2044,8 +2105,10 @@ export default function AdminPrograms() {
               </button>
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+        modalRoot
+        );
+      })()}
     </div>
   );
 }

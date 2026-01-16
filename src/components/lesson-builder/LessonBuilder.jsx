@@ -19,7 +19,10 @@ import BlocksPaletteTab from './BlocksPaletteTab';
 import LessonEditorView from './LessonEditorView';
 import LessonPreview from './LessonPreview';
 
-export default function LessonBuilder({ lessonId, moduleId, onReady }) {
+export default function LessonBuilder({ lessonId, moduleId, programId, onReady }) {
+  // ============================================
+  // 1. ÉTATS (useState)
+  // ============================================
   const [lesson, setLesson] = useState(null);
   const [selectedBlockId, setSelectedBlockId] = useState(null);
   const [activeTab, setActiveTab] = useState('lesson');
@@ -28,7 +31,9 @@ export default function LessonBuilder({ lessonId, moduleId, onReady }) {
   const [future, setFuture] = useState([]);
   const [hasUnsavedBlock, setHasUnsavedBlock] = useState(false);
 
-  // Configuration des sensors pour le drag & drop
+  // ============================================
+  // 2. SENSORS (drag & drop)
+  // ============================================
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -37,15 +42,19 @@ export default function LessonBuilder({ lessonId, moduleId, onReady }) {
     })
   );
 
+  // ============================================
+  // 3. useEffect - CHARGEMENT INITIAL
+  // ============================================
   useEffect(() => {
     async function load() {
-      const existing = await getLesson(lessonId);
+      const existing = await getLesson(lessonId, programId, moduleId);
       if (existing) {
         setLesson(existing);
       } else {
         const empty = {
           id: lessonId,
           moduleId,
+          programId,
           title: 'Nouvelle leçon',
           status: 'draft',
           blocks: [],
@@ -54,9 +63,85 @@ export default function LessonBuilder({ lessonId, moduleId, onReady }) {
       }
     }
     load();
-  }, [lessonId, moduleId]);
+  }, [lessonId, moduleId, programId]);
 
-  // Exposer les méthodes et états au parent via onReady
+  // ============================================
+  // 4. FONCTIONS MÉTIER (useCallback)
+  // ============================================
+  
+  const pushHistory = useCallback((nextLesson) => {
+    setHistory((prev) => (lesson ? [...prev, lesson] : prev));
+    setFuture([]);
+    setLesson(nextLesson);
+  }, [lesson]);
+
+  const handleAddBlock = useCallback(
+    (type) => {
+      if (!lesson) return;
+      console.log('➕ Adding block of type:', type);
+      console.log('📦 Current lesson:', lesson);
+      console.log('📦 Current lesson.blocks:', lesson.blocks);
+      
+      const newBlock = createBlock(type);
+      console.log('✨ New block created:', newBlock);
+      
+      const nextLesson = {
+        ...lesson,
+        blocks: [...(lesson.blocks || []), newBlock], // ✅ GUARD pour blocks
+      };
+      console.log('📝 Next lesson:', nextLesson);
+      
+      pushHistory(nextLesson);
+      setSelectedBlockId(newBlock.id);
+      setActiveTab('lesson');
+    },
+    [lesson, pushHistory]
+  );
+
+  const handleReorder = useCallback((activeId, overId) => {
+    if (!lesson || activeId === overId) return;
+    if (!lesson.blocks || lesson.blocks.length === 0) return; // ✅ GUARD pour blocks
+    
+    const oldIndex = lesson.blocks.findIndex((b) => b.id === activeId);
+    const newIndex = lesson.blocks.findIndex((b) => b.id === overId);
+    
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const newBlocks = arrayMove(lesson.blocks, oldIndex, newIndex);
+    pushHistory({ ...lesson, blocks: newBlocks });
+  }, [lesson, pushHistory]);
+
+  const handleUndo = useCallback(() => {
+    if (history.length === 0) return;
+    const prev = history[history.length - 1];
+    setHistory((h) => h.slice(0, -1));
+    setFuture((f) => (lesson ? [lesson, ...f] : f));
+    setLesson(prev);
+  }, [history, lesson]);
+
+  const handleRedo = useCallback(() => {
+    if (future.length === 0) return;
+    const next = future[0];
+    setFuture((f) => f.slice(1));
+    setHistory((h) => (lesson ? [...h, lesson] : h));
+    setLesson(next);
+  }, [future, lesson]);
+
+  const handleSave = useCallback(async () => {
+    if (!lesson) return;
+    
+    if (hasUnsavedBlock) {
+      alert('❌ Vous avez des blocs non sauvegardés. Veuillez les finaliser avant de sauvegarder la leçon.');
+      return;
+    }
+    
+    await saveLesson(lesson, programId, moduleId);
+    alert('✅ Leçon sauvegardée !');
+  }, [lesson, hasUnsavedBlock, programId, moduleId]);
+
+  // ============================================
+  // 5. useEffect - EXPOSITION AU PARENT (onReady)
+  // ============================================
   useEffect(() => {
     if (lesson && onReady) {
       onReady({
@@ -71,71 +156,15 @@ export default function LessonBuilder({ lessonId, moduleId, onReady }) {
         future,
       });
     }
-  }, [lesson, viewMode, history, future]);
+  }, [lesson, viewMode, history, future, onReady, handleSave, handleUndo, handleRedo]);
 
-  const pushHistory = (nextLesson) => {
-    setHistory((prev) => (lesson ? [...prev, lesson] : prev));
-    setFuture([]);
-    setLesson(nextLesson);
-  };
-
-  const handleAddBlock = useCallback(
-    (type) => {
-      if (!lesson) return;
-      const newBlock = createBlock(type);
-      const nextLesson = {
-        ...lesson,
-        blocks: [...lesson.blocks, newBlock],
-      };
-      pushHistory(nextLesson);
-      setSelectedBlockId(newBlock.id);
-      setActiveTab('lesson');
-    },
-    [lesson]
-  );
-
-  const handleReorder = (activeId, overId) => {
-    if (!lesson || activeId === overId) return;
-    
-    const oldIndex = lesson.blocks.findIndex((b) => b.id === activeId);
-    const newIndex = lesson.blocks.findIndex((b) => b.id === overId);
-    
-    if (oldIndex === -1 || newIndex === -1) return;
-
-    const newBlocks = arrayMove(lesson.blocks, oldIndex, newIndex);
-    pushHistory({ ...lesson, blocks: newBlocks });
-  };
-
-  const handleUndo = () => {
-    if (history.length === 0) return;
-    const prev = history[history.length - 1];
-    setHistory((h) => h.slice(0, -1));
-    setFuture((f) => (lesson ? [lesson, ...f] : f));
-    setLesson(prev);
-  };
-
-  const handleRedo = () => {
-    if (future.length === 0) return;
-    const next = future[0];
-    setFuture((f) => f.slice(1));
-    setHistory((h) => (lesson ? [...h, lesson] : h));
-    setLesson(next);
-  };
-
-  const handleSave = async () => {
-    if (!lesson) return;
-    
-    // Bloquer si un bloc est en édition
-    if (hasUnsavedBlock) {
-      alert('❌ Vous avez des blocs non sauvegardés. Veuillez les finaliser avant de sauvegarder la leçon.');
-      return;
-    }
-    
-    await saveLesson(lesson);
-    alert('Leçon sauvegardée !');
-  };
-
+  // ============================================
+  // 6. JSX RETURN
+  // ============================================
   if (!lesson) return <div style={{ padding: '16px' }}>Chargement de la leçon...</div>;
+  
+  // ✅ GUARD: S'assurer que blocks existe
+  const blocks = lesson.blocks || [];
   
   return (
     <div style={{ display: 'flex', height: '100%', backgroundColor: '#ffffff' }}>
@@ -240,11 +269,11 @@ export default function LessonBuilder({ lessonId, moduleId, onReady }) {
                 }}
               >
                 <SortableContext
-                  items={lesson.blocks.map((b) => b.id)}
+                  items={blocks.map((b) => b.id)}
                   strategy={verticalListSortingStrategy}
                 >
                   <LessonOutlineTab
-                    blocks={lesson.blocks}
+                    blocks={blocks}
                     selectedBlockId={selectedBlockId}
                     onSelect={setSelectedBlockId}
                   />
@@ -283,6 +312,10 @@ export default function LessonBuilder({ lessonId, moduleId, onReady }) {
     </div>
   );
 }
+
+// ============================================
+// FONCTIONS UTILITAIRES (hors composant)
+// ============================================
 
 function getStatusColor(status) {
   if (status === 'published') return '#22c55e';

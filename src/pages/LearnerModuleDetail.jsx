@@ -14,7 +14,7 @@ import {
 import Breadcrumb from "../components/Breadcrumb";
 
 export default function LearnerModuleDetail() {
-  const { moduleId } = useParams();
+  const { moduleId, programId } = useParams(); // ✅ Ajout de programId
   const navigate = useNavigate();
 
   const [moduleData, setModuleData] = useState(null);
@@ -71,8 +71,15 @@ export default function LearnerModuleDetail() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Module
-        const modRef = doc(db, "modules", moduleId);
+        // ✅ VALIDATION : Vérifier programId
+        if (!programId) {
+          setError("programId manquant dans l'URL");
+          setLoading(false);
+          return;
+        }
+
+        // ✅ NOUVEAU : Module depuis subcollection
+        const modRef = doc(db, `programs/${programId}/modules`, moduleId);
         const modSnap = await getDoc(modRef);
         if (!modSnap.exists()) {
           setError("Module introuvable.");
@@ -83,29 +90,22 @@ export default function LearnerModuleDetail() {
         setModuleData(modData);
 
         // Programme parent
-        const progRef = doc(db, "programs", modData.programId);
+        const progRef = doc(db, "programs", programId);
         const progSnap = await getDoc(progRef);
         if (progSnap.exists()) {
           setProgram({ id: progSnap.id, ...progSnap.data() });
         }
 
-        // Leçons (TinyMCE HTML)
-        const qLessons = query(
-          collection(db, "lessons"),
-          where("moduleId", "==", moduleId)
-        );
+        // ✅ NOUVEAU : Leçons depuis subcollection
+        const lessonsRef = collection(db, `programs/${programId}/modules/${moduleId}/lessons`);
+        const qLessons = query(lessonsRef, orderBy("order", "asc"));
         const lessonSnap = await getDocs(qLessons);
-        const lessonList = lessonSnap.docs
-          .map((d) => ({ id: d.id, ...d.data() }))
-          .sort((a, b) => (a.order || 0) - (b.order || 0));
+        const lessonList = lessonSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
         setLessons(lessonList);
 
-        // QCM
-        const qQuiz = query(
-          collection(db, "quizzes"),
-          where("moduleId", "==", moduleId)
-        );
-        const quizSnap = await getDocs(qQuiz);
+        // ✅ NOUVEAU : QCM depuis subcollection
+        const quizzesRef = collection(db, `programs/${programId}/modules/${moduleId}/quizzes`);
+        const quizSnap = await getDocs(quizzesRef);
         if (!quizSnap.empty) {
           const qDoc = quizSnap.docs[0];
           setQuiz({ id: qDoc.id, ...qDoc.data() });
@@ -118,10 +118,10 @@ export default function LearnerModuleDetail() {
       }
     };
 
-    if (moduleId) {
+    if (moduleId && programId) {
       fetchData();
     }
-  }, [moduleId]);
+  }, [moduleId, programId]); // ✅ Ajout de programId dans les dépendances
 
   if (loading) return <div style={{ padding: 24 }}>Chargement...</div>;
   if (error) return <div style={{ padding: 24, color: "red" }}>{error}</div>;
@@ -187,39 +187,40 @@ export default function LearnerModuleDetail() {
             </p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {lessons.map((lesson) => (
-                <div
+              {lessons.map((lesson, index) => (
+                <Link
                   key={lesson.id}
+                  to={`/learner/programs/${programId}/modules/${moduleId}/lessons/${lesson.id}`}
                   style={{
                     background: "#ffffff",
                     borderRadius: "var(--radius-md)",
-                    padding: 12,
+                    padding: 16,
                     border: "1px solid #e5e7eb",
+                    textDecoration: "none",
+                    color: "inherit",
+                    display: "block",
+                    transition: "all 0.2s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "#3b82f6";
+                    e.currentTarget.style.boxShadow = "0 4px 12px rgba(59, 130, 246, 0.1)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "#e5e7eb";
+                    e.currentTarget.style.boxShadow = "none";
                   }}
                 >
-                  <div
-                    style={{
-                      fontSize: 13,
-                      color: "var(--color-muted)",
-                      marginBottom: 4,
-                    }}
-                  >
-                    Leçon {lesson.order || 0}
+                  <div style={{ fontSize: 13, color: "var(--color-muted)", marginBottom: 4 }}>
+                    Leçon {index + 1}
                   </div>
-                  <h3 style={{ fontSize: 16, marginBottom: 6 }}>
-                    {lesson.title}
+                  <h3 style={{ fontSize: 16, marginBottom: 6, fontWeight: 600 }}>
+                    {lesson.title || "Sans titre"}
                   </h3>
-                  <div
-                    style={{
-                      color: "var(--color-muted)",
-                      fontSize: 14,
-                      lineHeight: 1.6,
-                    }}
-                    dangerouslySetInnerHTML={{
-                      __html: lesson.content || "",
-                    }}
-                  />
-                </div>
+                  <div style={{ color: "var(--color-muted)", fontSize: 14, display: "flex", alignItems: "center", gap: 8 }}>
+                    <span>📄</span>
+                    <span>{lesson.blocks?.length || 0} blocs</span>
+                  </div>
+                </Link>
               ))}
             </div>
           )}

@@ -22,6 +22,9 @@ import AdminUsers from "./pages/AdminUsers";
 import LessonsListPage from "./pages/LessonsListPage";
 import LessonEditorPage from "./pages/LessonEditorPage";
 
+// ✅ Page temporaire de nettoyage Firebase
+import CleanupPage from "./pages/CleanupPage";
+
 // Pages Apprenant
 import LearnerPrograms from "./pages/LearnerPrograms";
 import LearnerProgramDetail from "./pages/LearnerProgramDetail";
@@ -184,6 +187,16 @@ function AppContent() {
             }
           />
 
+          {/* ✅ Page temporaire de nettoyage Firebase */}
+          <Route
+            path="/admin/cleanup"
+            element={
+              <ProtectedRoute>
+                <CleanupPage />
+              </ProtectedRoute>
+            }
+          />
+
           <Route
             path="/admin/quizzes"
             element={
@@ -227,7 +240,7 @@ function AppContent() {
             }
           />
           <Route
-            path="/learner/modules/:moduleId"
+            path="/learner/programs/:programId/modules/:moduleId"
             element={
               <ProtectedRoute>
                 <LearnerModuleDetail />

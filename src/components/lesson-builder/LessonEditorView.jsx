@@ -26,7 +26,16 @@ export default function LessonEditorView({
   const [validationError, setValidationError] = useState('');
   const [originalBlockData, setOriginalBlockData] = useState(null);
 
+  // ✅ GUARD: Vérifier que lesson existe
+  if (!lesson) {
+    return <div style={{ padding: '16px', color: '#999' }}>Chargement de la leçon...</div>;
+  }
+
+  // ✅ GUARD: S'assurer que blocks existe
+  const blocks = lesson.blocks || [];
+
   const handleBlockChange = (blockId, updater) => {
+    if (!lesson.blocks) return;
     const next = {
       ...lesson,
       blocks: lesson.blocks.map((b) => (b.id === blockId ? updater(b) : b)),
@@ -88,6 +97,7 @@ export default function LessonEditorView({
 
   // Bouton "Ajouter" ou "Modifier"
   const handleSaveBlock = (blockId) => {
+    if (!lesson.blocks) return;
     const block = lesson.blocks.find((b) => b.id === blockId);
     if (!block) return;
 
@@ -113,6 +123,7 @@ export default function LessonEditorView({
 
   // Bouton "Annuler"
   const handleCancelBlock = (blockId) => {
+    if (!lesson.blocks) return;
     const block = lesson.blocks.find((b) => b.id === blockId);
     if (!block) return;
 
@@ -142,6 +153,7 @@ export default function LessonEditorView({
 
   // Sauvegarder l'état original quand on sélectionne un bloc
   const handleSelectBlock = (blockId) => {
+    if (!lesson.blocks) return;
     const block = lesson.blocks.find((b) => b.id === blockId);
     if (block && block.isSaved) {
       setOriginalBlockData({ ...block });
@@ -169,11 +181,11 @@ export default function LessonEditorView({
           placeholder="Titre de la leçon"
         />
         <p style={{ fontSize: '13px', color: '#6b7280' }}>
-          {lesson.blocks.length} blocs • statut : {lesson.status}
+          {blocks.length} blocs • statut : {lesson.status}
         </p>
       </div>
       {/* Liste de blocs */}
-      {lesson.blocks.map((block) => {
+      {blocks.map((block) => {
         const isSelected = block.id === selectedBlockId;
 
         return (
@@ -212,7 +224,7 @@ export default function LessonEditorView({
                     if (window.confirm('Supprimer ce bloc ?')) {
                       const next = {
                         ...lesson,
-                        blocks: lesson.blocks.filter((b) => b.id !== block.id),
+                        blocks: blocks.filter((b) => b.id !== block.id),
                       };
                       pushHistory(next);
                       setHasUnsavedBlock(false);
@@ -306,7 +318,7 @@ export default function LessonEditorView({
         );
       })}
 
-      {lesson.blocks.length === 0 && (
+      {blocks.length === 0 && (
         <div
           style={{
             textAlign: 'center',
@@ -325,13 +337,28 @@ export default function LessonEditorView({
 }
 // ÉDITION du bloc sélectionné
 function renderBlockEditor(block, handleBlockChange) {
+  // ✅ GUARD: Vérifier que block existe
+  if (!block) {
+    return <div style={{padding: 16, color: '#999', border: '1px dashed #ccc'}}>Bloc invalide</div>;
+  }
+  
+  // ✅ GUARD: Vérifier que block.type existe
+  if (!block.type) {
+    return <div style={{padding: 16, color: '#999', border: '1px dashed #ccc'}}>Type de bloc manquant</div>;
+  }
+
+  // ✅ GUARD: Vérifier que block.data existe, sinon créer un objet vide
+  if (!block.data) {
+    block.data = {};
+  }
+
   switch (block.type) {
     case 'text':
       return (
         <ReactQuill
           theme="snow"
           modules={quillModules}
-          value={block.data.html}
+          value={block.data.html || ''}
           onChange={(value) =>
             handleBlockChange(block.id, (b) => ({
               ...b,
@@ -353,7 +380,7 @@ function renderBlockEditor(block, handleBlockChange) {
               padding: '10px 12px',
               fontSize: '14px',
             }}
-            value={block.data.title}
+            value={block.data.title || ''}
             onChange={(e) =>
               handleBlockChange(block.id, (b) => ({
                 ...b,
@@ -371,7 +398,7 @@ function renderBlockEditor(block, handleBlockChange) {
               fontSize: '14px',
               minHeight: '80px',
             }}
-            value={block.data.body}
+            value={block.data.body || ''}
             onChange={(e) =>
               handleBlockChange(block.id, (b) => ({
                 ...b,
@@ -387,7 +414,7 @@ function renderBlockEditor(block, handleBlockChange) {
               padding: '8px 10px',
               fontSize: '14px',
             }}
-            value={block.data.variant}
+            value={block.data.variant || 'info'}
             onChange={(e) =>
               handleBlockChange(block.id, (b) => ({
                 ...b,
@@ -413,7 +440,7 @@ function renderBlockEditor(block, handleBlockChange) {
               padding: '10px 12px',
               fontSize: '14px',
             }}
-            value={block.data.url}
+            value={block.data.url || ''}
             onChange={(e) =>
               handleBlockChange(block.id, (b) => ({
                 ...b,
@@ -430,7 +457,7 @@ function renderBlockEditor(block, handleBlockChange) {
               padding: '10px 12px',
               fontSize: '14px',
             }}
-            value={block.data.alt}
+            value={block.data.alt || ''}
             onChange={(e) =>
               handleBlockChange(block.id, (b) => ({
                 ...b,
@@ -447,7 +474,7 @@ function renderBlockEditor(block, handleBlockChange) {
               padding: '10px 12px',
               fontSize: '14px',
             }}
-            value={block.data.caption}
+            value={block.data.caption || ''}
             onChange={(e) =>
               handleBlockChange(block.id, (b) => ({
                 ...b,
@@ -470,7 +497,7 @@ function renderBlockEditor(block, handleBlockChange) {
               padding: '10px 12px',
               fontSize: '14px',
             }}
-            value={block.data.title}
+            value={block.data.title || ''}
             onChange={(e) =>
               handleBlockChange(block.id, (b) => ({
                 ...b,
@@ -488,7 +515,7 @@ function renderBlockEditor(block, handleBlockChange) {
               fontSize: '14px',
               minHeight: '80px',
             }}
-            value={block.data.body}
+            value={block.data.body || ''}
             onChange={(e) =>
               handleBlockChange(block.id, (b) => ({
                 ...b,
@@ -500,7 +527,7 @@ function renderBlockEditor(block, handleBlockChange) {
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
             <input
               type="checkbox"
-              checked={block.data.defaultOpen}
+              checked={!!block.data.defaultOpen}
               onChange={(e) =>
                 handleBlockChange(block.id, (b) => ({
                   ...b,
@@ -514,9 +541,11 @@ function renderBlockEditor(block, handleBlockChange) {
       );
 
     case 'timeline':
+      // ✅ GUARD: Vérifier que items existe et est un array
+      const timelineItems = Array.isArray(block.data.items) ? block.data.items : [];
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {block.data.items.map((item, idx) => (
+          {timelineItems.map((item, idx) => (
             <div
               key={idx}
               style={{
@@ -537,9 +566,9 @@ function renderBlockEditor(block, handleBlockChange) {
                   padding: '8px 10px',
                   fontSize: '14px',
                 }}
-                value={item.label}
+                value={item?.label || ''}
                 onChange={(e) => {
-                  const nextItems = [...block.data.items];
+                  const nextItems = [...timelineItems];
                   nextItems[idx] = { ...nextItems[idx], label: e.target.value };
                   handleBlockChange(block.id, (b) => ({
                     ...b,
@@ -557,9 +586,9 @@ function renderBlockEditor(block, handleBlockChange) {
                   fontSize: '14px',
                   minHeight: '60px',
                 }}
-                value={item.description}
+                value={item?.description || ''}
                 onChange={(e) => {
-                  const nextItems = [...block.data.items];
+                  const nextItems = [...timelineItems];
                   nextItems[idx] = { ...nextItems[idx], description: e.target.value };
                   handleBlockChange(block.id, (b) => ({
                     ...b,
@@ -571,7 +600,7 @@ function renderBlockEditor(block, handleBlockChange) {
               <button
                 type="button"
                 onClick={() => {
-                  const nextItems = block.data.items.filter((_, i) => i !== idx);
+                  const nextItems = timelineItems.filter((_, i) => i !== idx);
                   handleBlockChange(block.id, (b) => ({
                     ...b,
                     data: { ...b.data, items: nextItems },
@@ -593,7 +622,7 @@ function renderBlockEditor(block, handleBlockChange) {
           <button
             type="button"
             onClick={() => {
-              const nextItems = [...block.data.items, { label: 'Nouvelle étape', description: '' }];
+              const nextItems = [...timelineItems, { label: 'Nouvelle étape', description: '' }];
               handleBlockChange(block.id, (b) => ({
                 ...b,
                 data: { ...b.data, items: nextItems },
@@ -624,7 +653,7 @@ function renderBlockEditor(block, handleBlockChange) {
               padding: '10px 12px',
               fontSize: '14px',
             }}
-            value={block.data.url}
+            value={block.data.url || ''}
             onChange={(e) =>
               handleBlockChange(block.id, (b) => ({
                 ...b,
@@ -641,7 +670,7 @@ function renderBlockEditor(block, handleBlockChange) {
               padding: '10px 12px',
               fontSize: '14px',
             }}
-            value={block.data.title}
+            value={block.data.title || ''}
             onChange={(e) =>
               handleBlockChange(block.id, (b) => ({
                 ...b,
@@ -659,7 +688,7 @@ function renderBlockEditor(block, handleBlockChange) {
               fontSize: '14px',
               minHeight: '60px',
             }}
-            value={block.data.description}
+            value={block.data.description || ''}
             onChange={(e) =>
               handleBlockChange(block.id, (b) => ({
                 ...b,
@@ -682,7 +711,7 @@ function renderBlockEditor(block, handleBlockChange) {
               padding: '10px 12px',
               fontSize: '14px',
             }}
-            value={block.data.lessonId}
+            value={block.data.lessonId || ''}
             onChange={(e) =>
               handleBlockChange(block.id, (b) => ({
                 ...b,
@@ -699,7 +728,7 @@ function renderBlockEditor(block, handleBlockChange) {
               padding: '10px 12px',
               fontSize: '14px',
             }}
-            value={block.data.lessonTitle}
+            value={block.data.lessonTitle || ''}
             onChange={(e) =>
               handleBlockChange(block.id, (b) => ({
                 ...b,
@@ -716,7 +745,7 @@ function renderBlockEditor(block, handleBlockChange) {
               padding: '10px 12px',
               fontSize: '14px',
             }}
-            value={block.data.moduleTitle}
+            value={block.data.moduleTitle || ''}
             onChange={(e) =>
               handleBlockChange(block.id, (b) => ({
                 ...b,
@@ -738,6 +767,21 @@ function renderBlockEditor(block, handleBlockChange) {
 
 // APERÇU des blocs non sélectionnés
 function renderBlockPreview(block) {
+  // ✅ GUARD: Vérifier que block existe
+  if (!block) {
+    return <div style={{padding: 12, color: '#999', border: '1px dashed #ccc'}}>Bloc invalide</div>;
+  }
+  
+  // ✅ GUARD: Vérifier que block.type existe
+  if (!block.type) {
+    return <div style={{padding: 12, color: '#999', border: '1px dashed #ccc'}}>Type de bloc manquant</div>;
+  }
+
+  // ✅ GUARD: Vérifier que block.data existe
+  if (!block.data) {
+    return <div style={{padding: 12, color: '#999', border: '1px dashed #ccc'}}>Données de bloc manquantes</div>;
+  }
+
   switch (block.type) {
     case 'text':
       return (
@@ -753,6 +797,8 @@ function renderBlockPreview(block) {
       );
 
     case 'info':
+      // ✅ Utiliser une valeur par défaut pour variant
+      const infoVariant = block.data.variant || 'info';
       return (
         <div
           style={{
@@ -760,22 +806,22 @@ function renderBlockPreview(block) {
             borderRadius: '8px',
             fontSize: '14px',
             border:
-              block.data.variant === 'warning'
+              infoVariant === 'warning'
                 ? '1px solid #fca5a5'
-                : block.data.variant === 'success'
+                : infoVariant === 'success'
                 ? '1px solid #86efac'
                 : '1px solid #93c5fd',
             backgroundColor:
-              block.data.variant === 'warning'
+              infoVariant === 'warning'
                 ? '#fee2e2'
-                : block.data.variant === 'success'
+                : infoVariant === 'success'
                 ? '#dcfce7'
                 : '#dbeafe',
           }}
         >
-          <div style={{ fontWeight: '600', marginBottom: '4px' }}>{block.data.title}</div>
+          <div style={{ fontWeight: '600', marginBottom: '4px' }}>{block.data.title || 'Information'}</div>
           <div style={{ color: '#6b7280', fontSize: '13px', lineHeight: '1.5' }}>
-            {block.data.body}
+            {block.data.body || ''}
           </div>
         </div>
       );
@@ -790,14 +836,16 @@ function renderBlockPreview(block) {
      case 'toggle':
       return (
         <div style={{ fontSize: '14px', color: '#4b5563' }}>
-          Section "{block.data.title}" ({block.data.defaultOpen ? 'ouverte' : 'fermée'} par défaut)
+          Section "{block.data.title || 'Sans titre'}" ({block.data.defaultOpen ? 'ouverte' : 'fermée'} par défaut)
         </div>
       );
 
     case 'timeline':
+      // ✅ GUARD: Vérifier que items existe et est un array
+      const timelineItems = Array.isArray(block.data.items) ? block.data.items : [];
       return (
         <div style={{ fontSize: '14px', color: '#4b5563' }}>
-          {block.data.items.length} étape(s) dans le fil chronologique.
+          {timelineItems.length} étape(s) dans le fil chronologique.
         </div>
       );
 
@@ -819,7 +867,11 @@ function renderBlockPreview(block) {
       return <hr style={{ borderTop: '1px solid #e5e7eb', margin: '8px 0' }} />;
 
     default:
-      return null;
+      return (
+        <div style={{ padding: 12, color: '#999', border: '1px dashed #ccc' }}>
+          Type de bloc inconnu : {block.type}
+        </div>
+      );
   }
 }
 

@@ -86,7 +86,7 @@ export default function LearnerProgramDetail() {
           {modules.map((mod) => (
             <Link
               key={mod.id}
-              to={`/learner/modules/${mod.id}`}
+              to={`/learner/programs/${programId}/modules/${mod.id}`}
               style={{ textDecoration: "none", color: "inherit" }}
             >
               <div

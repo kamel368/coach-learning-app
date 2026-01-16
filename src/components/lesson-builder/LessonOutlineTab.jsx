@@ -39,18 +39,21 @@ function SortableBlockItem({ block, selectedBlockId, onSelect }) {
   };
 
   const isSelected = selectedBlockId === block.id;
+  
+  // 🔍 DEBUG: Vérifier la sélection
+  console.log('🎯 Block:', block.id, '| Selected:', selectedBlockId, '| isSelected:', isSelected);
 
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
     >
       <div
         onClick={(e) => {
           e.stopPropagation();
-          console.log('🖱️ Click on block:', block.id);
+          console.log('🖱️ Click on block:', block.id, '| Current selected:', selectedBlockId);
+          console.log('🔄 Calling onSelect with:', block.id);
           onSelect(block.id);
         }}
         style={{
@@ -61,13 +64,24 @@ function SortableBlockItem({ block, selectedBlockId, onSelect }) {
           borderRadius: '6px',
           border: isSelected ? '2px solid #3b82f6' : '1px solid #e5e7eb',
           backgroundColor: isSelected ? '#eff6ff' : '#ffffff',
-          cursor: 'grab',
+          cursor: 'pointer',
           fontSize: '12px',
           userSelect: 'none',
           WebkitUserSelect: 'none',
         }}
       >
-        <GripVertical className="w-4 h-4" style={{ color: '#9ca3af' }} />
+        <div 
+          {...listeners}
+          style={{
+            cursor: 'grab',
+            display: 'flex',
+            alignItems: 'center',
+            padding: '4px',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripVertical className="w-4 h-4" style={{ color: '#9ca3af' }} />
+        </div>
 
         <span
           style={{

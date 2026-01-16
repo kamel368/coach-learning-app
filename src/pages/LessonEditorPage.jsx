@@ -151,6 +151,7 @@ export default function LessonEditorPage() {
         <LessonBuilder
           lessonId={lessonId}
           moduleId={moduleId}
+          programId={programId}
           initialTitle={initialTitle}
           onReady={setBuilderRef}
         />
