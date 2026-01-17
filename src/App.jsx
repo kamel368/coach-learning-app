@@ -29,6 +29,7 @@ import ApprenantLayout from './components/apprenant/ApprenantLayout';
 import ApprenantDashboard from './pages/apprenant/ApprenantDashboard';
 import ApprenantProgramDetail from './pages/apprenant/ApprenantProgramDetail';
 import ApprenantModuleDetail from './pages/apprenant/ApprenantModuleDetail';
+import ApprenantLessonViewer from './pages/apprenant/ApprenantLessonViewer';
 
 function AppContent() {
   const location = useLocation();
@@ -234,6 +235,13 @@ function AppContent() {
             <Route path="programs/:programId/modules/:moduleId" element={
               <ProtectedRoute>
                 <ApprenantModuleDetail />
+              </ProtectedRoute>
+            } />
+            
+            {/* ✅ Lecteur de leçon */}
+            <Route path="programs/:programId/modules/:moduleId/lessons/:lessonId" element={
+              <ProtectedRoute>
+                <ApprenantLessonViewer />
               </ProtectedRoute>
             } />
             
