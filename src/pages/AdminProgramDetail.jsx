@@ -13,7 +13,7 @@ import {
   deleteDoc,
   setDoc,
 } from "firebase/firestore";
-import { Plus, FileText, HelpCircle, BrainCircuit, ListTree, Eye, Edit2, FileEdit, Trash2, GripVertical } from "lucide-react";
+import { Plus, FileText, HelpCircle, BrainCircuit, ListTree, Eye, Edit2, FileEdit, Trash2, GripVertical, Pencil, MoreVertical, ChevronDown, Layers } from "lucide-react";
 
 export default function AdminProgramDetail() {
   const { programId } = useParams();
@@ -31,6 +31,7 @@ export default function AdminProgramDetail() {
 
   const [activeTab, setActiveTab] = useState("content"); // content | learners
   const [expandedChapters, setExpandedChapters] = useState(new Set());
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(null);
 
   // --------- Chargement initial ---------
   useEffect(() => {
@@ -98,6 +99,16 @@ export default function AdminProgramDetail() {
 
     load();
   }, [programId]);
+
+  // Fermer le menu mobile au clic outside
+  useEffect(() => {
+    const handleClickOutside = () => setMobileMenuOpen(null);
+    
+    if (mobileMenuOpen) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [mobileMenuOpen]);
 
   const formatDate = (ts) => {
     if (!ts) return "—";
@@ -907,210 +918,508 @@ export default function AdminProgramDetail() {
                     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                   }}
                 >
-                  {/* Header du chapitre */}
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
+                  {/* ✅ HEADER MODERNISÉ DU CHAPITRE */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px 16px',
+                    gap: 16,
+                    position: 'relative'
+                  }}>
+                    
+                    {/* Partie gauche : Drag + Nom du module */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
                       gap: 12,
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 12,
-                        flex: 1,
-                      }}
-                    >
+                      flex: 1,
+                      minWidth: 0
+                    }}>
                       {/* Icône Drag & Drop */}
                       <div
                         className="drag-handle"
                         style={{
-                          cursor: "grab",
-                          color: "#9CA3AF",
-                          display: "flex",
-                          alignItems: "center",
-                          transition: "color 0.2s ease",
+                          cursor: 'grab',
+                          color: '#9CA3AF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          transition: 'color 0.2s ease',
+                          flexShrink: 0
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.color = "#4F7FFF";
-                          e.currentTarget.style.cursor = "grab";
+                          e.currentTarget.style.color = '#4F7FFF';
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.color = "#9CA3AF";
+                          e.currentTarget.style.color = '#9CA3AF';
                         }}
                         title="Glisser pour réordonner"
                       >
                         <GripVertical size={20} strokeWidth={2.5} />
                       </div>
 
-                      {/* Flèche expand/collapse */}
-                      <div
-                        style={{
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
+                      {/* Bouton nom du module avec chevron */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleChapter(chapter.id);
                         }}
-                        onClick={() => toggleChapter(chapter.id)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 12,
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: 16,
+                          fontWeight: 600,
+                          color: '#1e293b',
+                          padding: 0,
+                          minWidth: 0,
+                          flex: 1,
+                          textAlign: 'left'
+                        }}
                       >
-                        <span
+                        {/* Icône du module */}
+                        <div style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 8,
+                          background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}>
+                          <Layers size={18} color="#ffffff" />
+                        </div>
+                        
+                        {/* Nom */}
+                        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {chapter.title}
+                        </span>
+                        
+                        {/* Nombre de leçons */}
+                        <span style={{ 
+                          fontSize: 14, 
+                          color: '#94a3b8',
+                          fontWeight: 400,
+                          flexShrink: 0
+                        }}>
+                          ({lessons.length})
+                        </span>
+                        
+                        {/* Chevron */}
+                        <ChevronDown 
+                          size={16}
                           style={{
-                            display: "inline-block",
-                            transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
-                            transition: "transform 0.15s ease",
+                            color: '#94a3b8',
+                            transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.2s',
+                            flexShrink: 0
+                          }}
+                        />
+                      </button>
+                    </div>
+
+                    {/* Partie droite : Actions */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      flexShrink: 0
+                    }}>
+                      
+                      {/* Boutons d'ajout - Desktop uniquement */}
+                      <div 
+                        className="desktop-only"
+                        style={{
+                          display: 'flex',
+                          gap: 8,
+                          flexShrink: 0
+                        }}
+                      >
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddLessonForChapter(chapter.id);
+                          }}
+                          style={{
+                            padding: '8px 16px',
+                            background: '#eff6ff',
+                            color: '#3b82f6',
+                            border: '1px solid #bfdbfe',
+                            borderRadius: 8,
                             fontSize: 14,
-                            color: "#6b7280",
+                            fontWeight: 500,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = '#dbeafe';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = '#eff6ff';
                           }}
                         >
-                          ▶
-                        </span>
+                          <FileText size={14} />
+                          Leçon
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddQuizForChapter(chapter.id);
+                          }}
+                          style={{
+                            padding: '8px 16px',
+                            background: '#f0fdf4',
+                            color: '#10b981',
+                            border: '1px solid #bbf7d0',
+                            borderRadius: 8,
+                            fontSize: 14,
+                            fontWeight: 500,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = '#dcfce7';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = '#f0fdf4';
+                          }}
+                        >
+                          <HelpCircle size={14} />
+                          QCM
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddAIExerciseForChapter(chapter.id);
+                          }}
+                          style={{
+                            padding: '8px 16px',
+                            background: '#faf5ff',
+                            color: '#a855f7',
+                            border: '1px solid #e9d5ff',
+                            borderRadius: 8,
+                            fontSize: 14,
+                            fontWeight: 500,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = '#f3e8ff';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = '#faf5ff';
+                          }}
+                        >
+                          <BrainCircuit size={14} />
+                          Exercice IA
+                        </button>
                       </div>
 
-                      {/* Titre du chapitre */}
-                      <span
+                      {/* Divider vertical - Desktop uniquement */}
+                      <div 
+                        className="desktop-only"
                         style={{
-                          fontWeight: 600,
-                          fontSize: 15,
-                          cursor: "pointer",
-                          flex: 1,
+                          display: 'flex',
+                          width: 1,
+                          height: 24,
+                          background: '#e2e8f0',
+                          flexShrink: 0
                         }}
-                        onClick={() => toggleChapter(chapter.id)}
-                      >
-                        {chapter.title}
-                      </span>
-                    </div>
+                      />
 
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button
-                        type="button"
-                        onClick={() => handleRenameChapter(chapter)}
+                      {/* Icônes actions - Desktop */}
+                      <div 
+                        className="desktop-only"
                         style={{
-                          padding: "4px 8px",
-                          borderRadius: 999,
-                          border: "1px solid #d1d5db",
-                          background: "#f9fafb",
-                          fontSize: 11,
-                          cursor: "pointer",
+                          display: 'flex',
+                          gap: 4,
+                          flexShrink: 0
                         }}
                       >
-                        Renommer
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteChapter(chapter.id)}
-                        style={{
-                          padding: "4px 8px",
-                          borderRadius: 999,
-                          border: "1px solid #fecaca",
-                          background: "#fef2f2",
-                          fontSize: 11,
-                          color: "#b91c1c",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Supprimer
-                      </button>
-                    </div>
-                  </div>
+                        {/* Renommer */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRenameChapter(chapter);
+                          }}
+                          style={{
+                            width: 36,
+                            height: 36,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: 8,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+                            fontSize: 18
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)';
+                            e.currentTarget.style.borderColor = '#3b82f6';
+                            e.currentTarget.style.boxShadow = '0 2px 4px rgba(59, 130, 246, 0.1)';
+                            e.currentTarget.style.transform = 'translateY(-1px)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)';
+                            e.currentTarget.style.borderColor = '#e2e8f0';
+                            e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                          }}
+                          title="Renommer le module"
+                        >
+                          ✏️
+                        </button>
 
-                  {/* Actions chapitre */}
-                  <div
-                    style={{
-                      marginTop: 8,
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: 8,
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => handleAddLessonForChapter(chapter.id)}
-                      style={{
-                        padding: "6px 12px",
-                        borderRadius: 999,
-                        border: "1px solid #3b82f6",
-                        background: "#eff6ff",
-                        color: "#1e40af",
-                        fontSize: 12,
-                        fontWeight: 500,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px",
-                        transition: "all 0.2s",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "#dbeafe";
-                        e.currentTarget.style.transform = "translateY(-1px)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "#eff6ff";
-                        e.currentTarget.style.transform = "translateY(0)";
-                      }}
-                    >
-                      <FileText className="w-3 h-3" />
-                      Leçon
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleAddQuizForChapter(chapter.id)}
-                      style={{
-                        padding: "6px 12px",
-                        borderRadius: 999,
-                        border: "1px solid #10b981",
-                        background: "#d1fae5",
-                        color: "#065f46",
-                        fontSize: 12,
-                        fontWeight: 500,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px",
-                        transition: "all 0.2s",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "#a7f3d0";
-                        e.currentTarget.style.transform = "translateY(-1px)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "#d1fae5";
-                        e.currentTarget.style.transform = "translateY(0)";
-                      }}
-                    >
-                      <HelpCircle className="w-3 h-3" />
-                      QCM
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleAddAIExerciseForChapter(chapter.id)}
-                      style={{
-                        padding: "6px 12px",
-                        borderRadius: 999,
-                        border: "1px solid #8b5cf6",
-                        background: "#ede9fe",
-                        color: "#5b21b6",
-                        fontSize: 12,
-                        fontWeight: 500,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px",
-                        transition: "all 0.2s",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "#ddd6fe";
-                        e.currentTarget.style.transform = "translateY(-1px)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "#ede9fe";
-                        e.currentTarget.style.transform = "translateY(0)";
-                      }}
-                    >
-                      <BrainCircuit className="w-3 h-3" />
-                      Exercice IA
-                    </button>
+                        {/* Supprimer */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteChapter(chapter.id);
+                          }}
+                          style={{
+                            width: 36,
+                            height: 36,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: 'linear-gradient(135deg, #fef2f2 0%, #ffffff 100%)',
+                            border: '1px solid #fecaca',
+                            borderRadius: 8,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+                            fontSize: 18
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)';
+                            e.currentTarget.style.borderColor = '#ef4444';
+                            e.currentTarget.style.boxShadow = '0 2px 4px rgba(239, 68, 68, 0.15)';
+                            e.currentTarget.style.transform = 'translateY(-1px)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'linear-gradient(135deg, #fef2f2 0%, #ffffff 100%)';
+                            e.currentTarget.style.borderColor = '#fecaca';
+                            e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                          }}
+                          title="Supprimer le module"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+
+                      {/* Menu hamburger - Mobile uniquement */}
+                      <div className="mobile-only" style={{ position: 'relative' }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMobileMenuOpen(mobileMenuOpen === chapter.id ? null : chapter.id);
+                          }}
+                          style={{
+                            width: 36,
+                            height: 36,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: '#ffffff',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: 6,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <MoreVertical size={20} color="#64748b" />
+                        </button>
+
+                        {/* Menu dropdown mobile */}
+                        {mobileMenuOpen === chapter.id && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            right: 0,
+                            marginTop: 8,
+                            zIndex: 1000,
+                            background: '#ffffff',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: 8,
+                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                            padding: 8,
+                            minWidth: 200
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              onClick={() => {
+                                handleAddLessonForChapter(chapter.id);
+                                setMobileMenuOpen(null);
+                              }}
+                              style={{
+                                width: '100%',
+                                padding: '10px 12px',
+                                background: 'none',
+                                border: 'none',
+                                textAlign: 'left',
+                                cursor: 'pointer',
+                                borderRadius: 6,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                fontSize: 14
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#f8fafc';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'none';
+                              }}
+                            >
+                              <FileText size={16} color="#64748b" />
+                              Ajouter une leçon
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                handleAddQuizForChapter(chapter.id);
+                                setMobileMenuOpen(null);
+                              }}
+                              style={{
+                                width: '100%',
+                                padding: '10px 12px',
+                                background: 'none',
+                                border: 'none',
+                                textAlign: 'left',
+                                cursor: 'pointer',
+                                borderRadius: 6,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                fontSize: 14
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#f8fafc';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'none';
+                              }}
+                            >
+                              <HelpCircle size={16} color="#64748b" />
+                              Ajouter un QCM
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                handleAddAIExerciseForChapter(chapter.id);
+                                setMobileMenuOpen(null);
+                              }}
+                              style={{
+                                width: '100%',
+                                padding: '10px 12px',
+                                background: 'none',
+                                border: 'none',
+                                textAlign: 'left',
+                                cursor: 'pointer',
+                                borderRadius: 6,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                fontSize: 14
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#f8fafc';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'none';
+                              }}
+                            >
+                              <BrainCircuit size={16} color="#64748b" />
+                              Ajouter Exercice IA
+                            </button>
+
+                            <div style={{
+                              height: 1,
+                              background: '#e2e8f0',
+                              margin: '8px 0'
+                            }} />
+
+                            <button
+                              onClick={() => {
+                                handleRenameChapter(chapter);
+                                setMobileMenuOpen(null);
+                              }}
+                              style={{
+                                width: '100%',
+                                padding: '10px 12px',
+                                background: 'none',
+                                border: 'none',
+                                textAlign: 'left',
+                                cursor: 'pointer',
+                                borderRadius: 6,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                fontSize: 14
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#f8fafc';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'none';
+                              }}
+                            >
+                              <Pencil size={16} color="#64748b" />
+                              Renommer
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                handleDeleteChapter(chapter.id);
+                                setMobileMenuOpen(null);
+                              }}
+                              style={{
+                                width: '100%',
+                                padding: '10px 12px',
+                                background: 'none',
+                                border: 'none',
+                                textAlign: 'left',
+                                cursor: 'pointer',
+                                borderRadius: 6,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                fontSize: 14,
+                                color: '#ef4444'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#fef2f2';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'none';
+                              }}
+                            >
+                              <Trash2 size={16} color="#ef4444" />
+                              Supprimer
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Contenus du chapitre */}

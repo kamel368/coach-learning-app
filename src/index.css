@@ -219,3 +219,27 @@ body, html {
     transform: translateX(-50%) scale(1);
   }
 }
+
+/* ============================================
+   RESPONSIVE : DESKTOP / MOBILE
+   ============================================ */
+
+/* Desktop: afficher les éléments desktop */
+.desktop-only {
+  display: flex !important;
+}
+
+.mobile-only {
+  display: none !important;
+}
+
+/* Mobile: masquer desktop, afficher mobile */
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none !important;
+  }
+  
+  .mobile-only {
+    display: flex !important;
+  }
+}
