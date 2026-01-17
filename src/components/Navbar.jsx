@@ -41,7 +41,7 @@ export default function Navbar() {
     >
       {/* Logo */}
       <Link
-        to={isAdmin ? "/admin" : "/learner/programs"}
+        to={isAdmin ? "/admin" : "/apprenant/dashboard"}
         style={{
           fontSize: 18,
           fontWeight: 700,
@@ -82,7 +82,7 @@ export default function Navbar() {
             </Link>
           </>
         ) : (
-          <Link to="/learner/programs" style={{ color: "white", textDecoration: "none", fontSize: 14, fontWeight: 500 }}>
+          <Link to="/apprenant/dashboard" style={{ color: "white", textDecoration: "none", fontSize: 14, fontWeight: 500 }}>
             📚 Mes Programmes
           </Link>
         )}

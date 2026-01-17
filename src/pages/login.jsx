@@ -29,9 +29,12 @@ export default function Login() {
       const userRole = userDoc.exists() ? userDoc.data().role : "learner";
 
       // 3. Rediriger selon le rôle
+      console.log("🔄 Redirection utilisateur - Rôle:", userRole);
       if (userRole === "admin") {
+        console.log("→ Redirection vers /admin");
         navigate("/admin");
       } else {
+        console.log("→ Redirection vers /apprenant/dashboard");
         navigate("/apprenant/dashboard");
       }
     } catch (err) {
