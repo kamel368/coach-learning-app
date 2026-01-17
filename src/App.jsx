@@ -28,6 +28,7 @@ import CleanupPage from "./pages/CleanupPage";
 import ApprenantLayout from './components/apprenant/ApprenantLayout';
 import ApprenantDashboard from './pages/apprenant/ApprenantDashboard';
 import ApprenantProgramDetail from './pages/apprenant/ApprenantProgramDetail';
+import ApprenantModuleDetail from './pages/apprenant/ApprenantModuleDetail';
 
 function AppContent() {
   const location = useLocation();
@@ -226,6 +227,13 @@ function AppContent() {
             <Route path="programs/:programId" element={
               <ProtectedRoute>
                 <ApprenantProgramDetail />
+              </ProtectedRoute>
+            } />
+            
+            {/* ✅ Détail d'un module */}
+            <Route path="programs/:programId/modules/:moduleId" element={
+              <ProtectedRoute>
+                <ApprenantModuleDetail />
               </ProtectedRoute>
             } />
             
