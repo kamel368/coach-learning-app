@@ -1,5 +1,6 @@
 // src/pages/AdminCategories.jsx
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { db } from "../firebase";
 import {
   collection,
@@ -9,8 +10,10 @@ import {
   doc,
   updateDoc,
 } from "firebase/firestore";
+import { ArrowLeft, Plus, Edit2, Trash2, Briefcase } from "lucide-react";
 
 export default function AdminCategories() {
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loadingList, setLoadingList] = useState(false);
   const [error, setError] = useState("");
@@ -127,241 +130,487 @@ export default function AdminCategories() {
   return (
     <div
       style={{
-        minHeight: "100vh",
-        background: "var(--color-bg)",
-        color: "var(--color-text)",
-        padding: 24,
-        position: "relative",
+        height: "100vh",
+        overflow: "hidden",
+        background: "#f8fafc",
+        padding: "20px",
+        maxWidth: "1200px",
+        margin: "0 auto",
+        display: "flex",
+        flexDirection: "column"
       }}
     >
-      {/* En-tête + bouton Ajouter */}
+      {/* Bouton retour */}
+      <div style={{ marginBottom: "12px" }}>
+        <button
+          onClick={() => navigate('/admin/dashboard')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 12px',
+            background: '#ffffff',
+            border: '1px solid #e5e7eb',
+            borderRadius: '8px',
+            fontSize: '13px',
+            fontWeight: '500',
+            color: '#6b7280',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            outline: 'none'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#f9fafb';
+            e.currentTarget.style.color = '#1f2937';
+            e.currentTarget.style.borderColor = '#d1d5db';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = '#ffffff';
+            e.currentTarget.style.color = '#6b7280';
+            e.currentTarget.style.borderColor = '#e5e7eb';
+          }}
+        >
+          <ArrowLeft size={14} />
+          Retour au dashboard
+        </button>
+      </div>
+
+      {/* Header avec titre et bouton */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          marginBottom: 16,
+          marginBottom: "16px",
         }}
       >
-        <h1 style={{ fontSize: 24 }}>Rôles Métier</h1>
+        <div>
+          <h1 style={{ 
+            fontSize: "24px", 
+            fontWeight: "700", 
+            color: "#1e293b",
+            marginBottom: "4px",
+            letterSpacing: "-0.5px"
+          }}>
+            Rôles Métier
+          </h1>
+          <p style={{
+            fontSize: "13px",
+            color: "#64748b",
+            margin: 0
+          }}>
+            Gérez les différents métiers et rôles de votre organisation
+          </p>
+        </div>
 
         <button
           type="button"
           onClick={handleAdd}
           style={{
-            padding: "8px 14px",
-            background:
-              "linear-gradient(135deg, var(--color-primary), var(--color-primary-light))",
+            padding: "10px 16px",
+            background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
             color: "white",
             border: "none",
-            borderRadius: 999,
+            borderRadius: "8px",
             cursor: "pointer",
-            fontWeight: 600,
-            fontSize: 14,
+            fontWeight: "600",
+            fontSize: "13px",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            boxShadow: "0 4px 12px rgba(99, 102, 241, 0.3)",
+            transition: "all 0.2s"
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-2px)";
+            e.currentTarget.style.boxShadow = "0 6px 16px rgba(99, 102, 241, 0.4)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = "0 4px 12px rgba(99, 102, 241, 0.3)";
           }}
         >
-          + Ajouter un métier
+          <Plus size={16} />
+          Ajouter un métier
         </button>
       </div>
 
       {error && (
-        <p style={{ color: "#dc2626", marginBottom: 10, fontSize: 13 }}>
-          {error}
-        </p>
+        <div style={{ 
+          padding: "10px 12px",
+          background: "#fef2f2",
+          border: "1px solid #fecaca",
+          borderRadius: "8px",
+          marginBottom: "12px"
+        }}>
+          <p style={{ 
+            color: "#dc2626", 
+            margin: 0, 
+            fontSize: "13px",
+            fontWeight: "500"
+          }}>
+            {error}
+          </p>
+        </div>
       )}
 
       {/* Liste des rôles métier */}
       <div
         style={{
-          background: "var(--color-surface)",
-          borderRadius: "var(--radius-md)",
-          padding: 16,
-          boxShadow: "var(--shadow-soft)",
+          background: "#ffffff",
+          borderRadius: "12px",
+          padding: "16px",
+          boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
           border: "1px solid #e5e7eb",
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden"
         }}
       >
-        <div
-          style={{
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          marginBottom: "12px",
+          paddingBottom: "12px",
+          borderBottom: "1px solid #e5e7eb"
+        }}>
+          <div style={{
+            width: "36px",
+            height: "36px",
+            borderRadius: "8px",
+            background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)",
             display: "flex",
             alignItems: "center",
-            marginBottom: 12,
-          }}
-        >
-          <h2 style={{ fontSize: 18, margin: 0 }}>Liste des rôles métier</h2>
+            justifyContent: "center"
+          }}>
+            <Briefcase size={18} color="#6366f1" strokeWidth={2} />
+          </div>
+          <div>
+            <h2 style={{ 
+              fontSize: "16px", 
+              fontWeight: "700",
+              color: "#1e293b",
+              margin: 0,
+              marginBottom: "2px"
+            }}>
+              Liste des rôles métier
+            </h2>
+            <p style={{
+              fontSize: "12px",
+              color: "#64748b",
+              margin: 0
+            }}>
+              {items.length} {items.length > 1 ? "métiers" : "métier"} enregistré{items.length > 1 ? "s" : ""}
+            </p>
+          </div>
         </div>
 
-        {loadingList ? (
-          <p style={{ color: "var(--color-muted)", fontSize: 14 }}>
-            Chargement des rôles métier...
-          </p>
-        ) : items.length === 0 ? (
-          <p style={{ color: "var(--color-muted)", fontSize: 14 }}>
-            Aucun rôle métier pour l’instant.
-          </p>
-        ) : (
-          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {items.map((item) => (
-              <li
-                key={item.id}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: 8,
-                  padding: 10,
-                  borderRadius: 8,
-                  border: "1px solid #e5e7eb",
-                  background: "#ffffff",
-                }}
-              >
-                {/* Libellé du métier */}
-                <span
+        <div style={{
+          flex: 1,
+          overflowY: "auto",
+          overflowX: "hidden",
+          paddingRight: "4px"
+        }}>
+          {loadingList ? (
+            <div style={{
+              textAlign: "center",
+              padding: "30px 20px",
+              color: "#64748b"
+            }}>
+              <p style={{ fontSize: "13px", margin: 0 }}>
+                Chargement des rôles métier...
+              </p>
+            </div>
+          ) : items.length === 0 ? (
+            <div style={{
+              textAlign: "center",
+              padding: "30px 20px",
+              color: "#64748b"
+            }}>
+              <Briefcase size={40} color="#cbd5e1" strokeWidth={1.5} style={{ marginBottom: "12px" }} />
+              <p style={{ 
+                fontSize: "14px", 
+                fontWeight: "600",
+                color: "#1e293b",
+                marginBottom: "6px"
+              }}>
+                Aucun rôle métier
+              </p>
+              <p style={{ fontSize: "13px", margin: 0 }}>
+                Commencez par ajouter votre premier métier
+              </p>
+            </div>
+          ) : (
+            <div style={{ 
+              display: "grid",
+              gap: "8px"
+            }}>
+              {items.map((item) => (
+                <div
+                  key={item.id}
                   style={{
-                    fontSize: 14,
-                    color: "var(--color-text)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "12px 14px",
+                    borderRadius: "10px",
+                    border: "1px solid #e5e7eb",
+                    background: "#ffffff",
+                    transition: "all 0.2s"
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "#cbd5e1";
+                    e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.05)";
+                    e.currentTarget.style.transform = "translateY(-1px)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "#e5e7eb";
+                    e.currentTarget.style.boxShadow = "none";
+                    e.currentTarget.style.transform = "translateY(0)";
                   }}
                 >
-                  {item.label}
-                </span>
+                  {/* Libellé du métier */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <div style={{
+                      width: "6px",
+                      height: "6px",
+                      borderRadius: "50%",
+                      background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)"
+                    }} />
+                    <span
+                      style={{
+                        fontSize: "14px",
+                        fontWeight: "500",
+                        color: "#1e293b",
+                      }}
+                    >
+                      {item.label}
+                    </span>
+                  </div>
 
-                {/* Icônes modifier / supprimer */}
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <button
-                    type="button"
-                    onClick={() => handleEdit(item)}
-                    title="Modifier"
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: "999px",
-                      border: "1px solid #D1D5DB",
-                      backgroundColor: "#F9FAFB",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      cursor: "pointer",
-                      fontSize: 14,
-                    }}
-                  >
-                    ✏️
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(item)}
-                    title="Supprimer"
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: "999px",
-                      border: "1px solid #FCA5A5",
-                      backgroundColor: "#FEE2E2",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      cursor: "pointer",
-                      fontSize: 14,
-                    }}
-                  >
-                    🗑️
-                  </button>
+                  {/* Boutons modifier / supprimer */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <button
+                      type="button"
+                      onClick={() => handleEdit(item)}
+                      title="Modifier"
+                      style={{
+                        width: "32px",
+                        height: "32px",
+                        borderRadius: "7px",
+                        border: "1px solid #e5e7eb",
+                        backgroundColor: "#ffffff",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        transition: "all 0.2s"
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "#f0f9ff";
+                        e.currentTarget.style.borderColor = "#3b82f6";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "#ffffff";
+                        e.currentTarget.style.borderColor = "#e5e7eb";
+                      }}
+                    >
+                      <Edit2 size={14} color="#3b82f6" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(item)}
+                      title="Supprimer"
+                      style={{
+                        width: "32px",
+                        height: "32px",
+                        borderRadius: "7px",
+                        border: "1px solid #fecaca",
+                        backgroundColor: "#fef2f2",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        transition: "all 0.2s"
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "#fee2e2";
+                        e.currentTarget.style.borderColor = "#ef4444";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "#fef2f2";
+                        e.currentTarget.style.borderColor = "#fecaca";
+                      }}
+                    >
+                      <Trash2 size={14} color="#ef4444" />
+                    </button>
+                  </div>
                 </div>
-              </li>
-            ))}
-          </ul>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Popup ajout / édition */}
+      {/* Modal ajout / édition */}
       {isModalOpen && (
         <div
           style={{
             position: "fixed",
             inset: 0,
-            backgroundColor: "rgba(15,23,42,0.45)",
+            backgroundColor: "rgba(15,23,42,0.6)",
+            backdropFilter: "blur(4px)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             zIndex: 50,
+            animation: "fadeIn 0.2s ease"
           }}
+          onClick={closeModal}
         >
           <div
             style={{
               width: "100%",
-              maxWidth: 420,
+              maxWidth: "480px",
               backgroundColor: "white",
-              borderRadius: 12,
-              padding: 20,
-              boxShadow: "0 10px 40px rgba(15,23,42,0.3)",
+              borderRadius: "16px",
+              padding: "28px",
+              boxShadow: "0 20px 60px rgba(15,23,42,0.3)",
+              animation: "modalScaleIn 0.3s ease"
             }}
+            onClick={(e) => e.stopPropagation()}
           >
-            <h3 style={{ fontSize: 18, marginBottom: 12 }}>
-              {editingItem ? "Modifier le métier" : "Nouveau métier"}
-            </h3>
-            <p
-              style={{
-                fontSize: 13,
-                color: "#6B7280",
-                marginBottom: 12,
-              }}
-            >
-              {editingItem
-                ? "Modifiez le nom du métier."
-                : "Ajoutez un nouveau rôle métier (ex : Moniteur, Assistant, Gestionnaire...)."}
-            </p>
-
-            <form onSubmit={handleSave}>
-              <label
-                style={{
-                  fontSize: 13,
-                  display: "block",
-                  marginBottom: 4,
-                }}
-              >
-                Nom du métier
-              </label>
-              <input
-                type="text"
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: 8,
-                  marginBottom: 10,
-                  borderRadius: 6,
-                  border: "1px solid #d1d5db",
-                }}
-              />
-
-              {formError && (
+            <div style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "16px",
+              marginBottom: "24px"
+            }}>
+              <div style={{
+                width: "48px",
+                height: "48px",
+                borderRadius: "12px",
+                background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0
+              }}>
+                <Briefcase size={24} color="#6366f1" strokeWidth={2} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ 
+                  fontSize: "20px", 
+                  fontWeight: "700",
+                  color: "#1e293b",
+                  marginBottom: "6px"
+                }}>
+                  {editingItem ? "Modifier le métier" : "Nouveau métier"}
+                </h3>
                 <p
                   style={{
-                    color: "#dc2626",
-                    marginBottom: 8,
-                    fontSize: 13,
+                    fontSize: "14px",
+                    color: "#64748b",
+                    margin: 0,
+                    lineHeight: "1.5"
                   }}
                 >
-                  {formError}
+                  {editingItem
+                    ? "Modifiez le nom du métier ci-dessous."
+                    : "Ajoutez un nouveau rôle métier (ex : Moniteur, Assistant, Gestionnaire...)."}
                 </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSave}>
+              <div style={{ marginBottom: "20px" }}>
+                <label
+                  style={{
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    color: "#1e293b",
+                    display: "block",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Nom du métier
+                </label>
+                <input
+                  type="text"
+                  value={label}
+                  onChange={(e) => setLabel(e.target.value)}
+                  placeholder="Ex: Moniteur d'auto-école"
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    borderRadius: "10px",
+                    border: "1px solid #e5e7eb",
+                    fontSize: "14px",
+                    outline: "none",
+                    transition: "all 0.2s"
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = "#6366f1";
+                    e.target.style.boxShadow = "0 0 0 3px rgba(99, 102, 241, 0.1)";
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = "#e5e7eb";
+                    e.target.style.boxShadow = "none";
+                  }}
+                />
+              </div>
+
+              {formError && (
+                <div style={{
+                  padding: "12px 16px",
+                  background: "#fef2f2",
+                  border: "1px solid #fecaca",
+                  borderRadius: "8px",
+                  marginBottom: "16px"
+                }}>
+                  <p
+                    style={{
+                      color: "#dc2626",
+                      margin: 0,
+                      fontSize: "13px",
+                      fontWeight: "500"
+                    }}
+                  >
+                    {formError}
+                  </p>
+                </div>
               )}
 
               <div
                 style={{
-                  marginTop: 8,
                   display: "flex",
                   justifyContent: "flex-end",
-                  gap: 8,
+                  gap: "12px",
                 }}
               >
                 <button
                   type="button"
                   onClick={closeModal}
                   style={{
-                    padding: "8px 12px",
-                    borderRadius: 999,
-                    border: "1px solid #d1d5db",
-                    backgroundColor: "#F9FAFB",
-                    fontSize: 13,
+                    padding: "10px 20px",
+                    borderRadius: "10px",
+                    border: "1px solid #e5e7eb",
+                    backgroundColor: "#ffffff",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    color: "#64748b",
                     cursor: "pointer",
+                    transition: "all 0.2s"
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "#f9fafb";
+                    e.currentTarget.style.borderColor = "#cbd5e1";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "#ffffff";
+                    e.currentTarget.style.borderColor = "#e5e7eb";
                   }}
                 >
                   Annuler
@@ -370,16 +619,29 @@ export default function AdminCategories() {
                   type="submit"
                   disabled={saving}
                   style={{
-                    padding: "8px 14px",
-                    borderRadius: 999,
+                    padding: "10px 20px",
+                    borderRadius: "10px",
                     border: "none",
-                    background:
-                      "linear-gradient(135deg, var(--color-primary), var(--color-primary-light))",
+                    background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
                     color: "white",
-                    fontSize: 13,
-                    fontWeight: 600,
-                    cursor: "pointer",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    cursor: saving ? "not-allowed" : "pointer",
                     opacity: saving ? 0.7 : 1,
+                    boxShadow: "0 4px 12px rgba(99, 102, 241, 0.3)",
+                    transition: "all 0.2s"
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!saving) {
+                      e.currentTarget.style.transform = "translateY(-2px)";
+                      e.currentTarget.style.boxShadow = "0 6px 16px rgba(99, 102, 241, 0.4)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!saving) {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow = "0 4px 12px rgba(99, 102, 241, 0.3)";
+                    }
                   }}
                 >
                   {saving
