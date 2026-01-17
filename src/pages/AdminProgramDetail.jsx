@@ -890,7 +890,15 @@ export default function AdminProgramDetail() {
           </div>
 
           {/* Liste des chapitres avec drag & drop */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ 
+            display: "flex", 
+            flexDirection: "column", 
+            gap: 12,
+            maxHeight: 'calc(100vh - 280px)',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            paddingRight: 4
+          }}>
             {chapters.map((chapter) => {
               const lessons = lessonsByChapter[chapter.id] || [];
               const quizzesForChapter = quizzes.filter(
