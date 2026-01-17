@@ -977,7 +977,9 @@ export default function AdminProgramDetail() {
                           padding: 0,
                           minWidth: 0,
                           flex: 1,
-                          textAlign: 'left'
+                          textAlign: 'left',
+                          outline: 'none',
+                          WebkitTapHighlightColor: 'transparent'
                         }}
                       >
                         {/* Icône du module */}
