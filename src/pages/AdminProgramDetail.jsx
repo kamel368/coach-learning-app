@@ -13,7 +13,7 @@ import {
   deleteDoc,
   setDoc,
 } from "firebase/firestore";
-import { Plus, FileText, HelpCircle, BrainCircuit, ListTree, Eye, Edit2, FileEdit, Trash2, GripVertical, Pencil, MoreVertical, ChevronDown, Layers } from "lucide-react";
+import { Plus, FileText, HelpCircle, BrainCircuit, ListTree, Eye, Edit2, FileEdit, Trash2, GripVertical, Pencil, MoreVertical, ChevronDown, Layers, ArrowLeft } from "lucide-react";
 
 export default function AdminProgramDetail() {
   const { programId } = useParams();
@@ -708,6 +708,41 @@ export default function AdminProgramDetail() {
           }
         `}
       </style>
+
+      {/* Bouton retour */}
+      <div style={{ marginBottom: 16 }}>
+        <button
+          onClick={() => navigate('/admin/programs')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '8px 16px',
+            background: '#ffffff',
+            border: '1px solid #e5e7eb',
+            borderRadius: 8,
+            fontSize: 14,
+            fontWeight: 500,
+            color: '#6b7280',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            outline: 'none'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#f9fafb';
+            e.currentTarget.style.color = '#1f2937';
+            e.currentTarget.style.borderColor = '#d1d5db';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = '#ffffff';
+            e.currentTarget.style.color = '#6b7280';
+            e.currentTarget.style.borderColor = '#e5e7eb';
+          }}
+        >
+          <ArrowLeft size={16} />
+          Retour aux programmes
+        </button>
+      </div>
 
       {/* Header programme */}
       <div
