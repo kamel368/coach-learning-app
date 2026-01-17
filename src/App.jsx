@@ -222,6 +222,9 @@ function AppContent() {
             } />
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
+
+          {/* ✅ REDIRECTION : Anciennes routes /learner vers nouvelles routes /apprenant */}
+          <Route path="/learner/*" element={<Navigate to="/apprenant/dashboard" replace />} />
         </Routes>
       </div>
     </div>
