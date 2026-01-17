@@ -1,191 +1,631 @@
-import { signOut } from "firebase/auth";
-import { auth } from "../firebase";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase';
+import { BookOpen, CheckCircle, Bot, Users, Briefcase } from 'lucide-react';
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  
+  const [stats, setStats] = useState({
+    programs: 0,
+    lessons: 0,
+    users: 0
+  });
+  const [loading, setLoading] = useState(true);
 
-  const handleLogout = async () => {
-    await signOut(auth);
-    navigate("/login");
-  };
+  // Charger les statistiques
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const programsSnap = await getDocs(collection(db, 'programs'));
+        const programsCount = programsSnap.size;
+
+        let lessonsCount = 0;
+        for (const programDoc of programsSnap.docs) {
+          const modulesSnap = await getDocs(
+            collection(db, `programs/${programDoc.id}/modules`)
+          );
+          for (const moduleDoc of modulesSnap.docs) {
+            const lessonsSnap = await getDocs(
+              collection(db, `programs/${programDoc.id}/modules/${moduleDoc.id}/lessons`)
+            );
+            lessonsCount += lessonsSnap.size;
+          }
+        }
+
+        const usersSnap = await getDocs(collection(db, 'users'));
+        const usersCount = usersSnap.size;
+
+        setStats({
+          programs: programsCount,
+          lessons: lessonsCount,
+          users: usersCount
+        });
+      } catch (error) {
+        console.error('Erreur chargement stats:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadStats();
+  }, []);
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--color-bg)", color: "var(--color-text)" }}>
-
-
-      <main style={{ padding: "24px 24px 40px" }}>
-        <h1 style={{ fontSize: 26, marginBottom: 6 }}>Bienvenue sur Coach Learning</h1>
-        <p style={{ color: "var(--color-muted)", marginBottom: 24, fontSize: 14 }}>
+    <div style={{
+      padding: '24px',
+      maxWidth: '1400px',
+      margin: '0 auto',
+      minHeight: 'calc(100vh - 80px)',
+      background: '#f8fafc'
+    }}>
+      
+      {/* Header */}
+      <div style={{ marginBottom: '20px' }}>
+        <h1 style={{
+          fontSize: '26px',
+          fontWeight: '700',
+          color: '#1e293b',
+          marginBottom: '6px',
+          letterSpacing: '-0.5px'
+        }}>
+          Bienvenue sur Coach Learning 👋
+        </h1>
+        <p style={{
+          fontSize: '14px',
+          color: '#64748b',
+          fontWeight: '400'
+        }}>
           Visualisez vos formations, catégories et simulations IA.
         </p>
+      </div>
 
+      {/* Statistiques - Cards colorées avec gradients */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+        gap: '16px',
+        marginBottom: '24px'
+      }}>
+        
+        {/* Stat Programmes - Violet */}
+        <div style={{
+          background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+          borderRadius: '16px',
+          padding: '20px',
+          color: '#ffffff',
+          position: 'relative',
+          overflow: 'hidden',
+          boxShadow: '0 8px 24px rgba(139, 92, 246, 0.3)',
+          transition: 'transform 0.3s, box-shadow 0.3s',
+          cursor: 'pointer'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'translateY(-3px)';
+          e.currentTarget.style.boxShadow = '0 12px 32px rgba(139, 92, 246, 0.4)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.boxShadow = '0 8px 24px rgba(139, 92, 246, 0.3)';
+        }}
+        onClick={() => navigate('/admin/programs')}
+        >
+          {/* Icône en fond (watermark) */}
+          <div style={{
+            position: 'absolute',
+            right: -15,
+            bottom: -15,
+            opacity: 0.15
+          }}>
+            <BookOpen size={90} color="#ffffff" strokeWidth={1.5} />
+          </div>
+          
+          {/* Contenu */}
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <div style={{
+              fontSize: '38px',
+              fontWeight: '700',
+              marginBottom: '6px',
+              letterSpacing: '-1px'
+            }}>
+              {loading ? '...' : stats.programs}
+            </div>
+            <div style={{
+              fontSize: '15px',
+              fontWeight: '600',
+              opacity: 0.95,
+              marginBottom: '3px'
+            }}>
+              Programmes actifs
+            </div>
+            <div style={{
+              fontSize: '13px',
+              opacity: 0.8
+            }}>
+              Parcours de formation créés
+            </div>
+          </div>
+        </div>
+
+        {/* Stat Leçons - Bleu */}
+        <div style={{
+          background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+          borderRadius: '16px',
+          padding: '20px',
+          color: '#ffffff',
+          position: 'relative',
+          overflow: 'hidden',
+          boxShadow: '0 8px 24px rgba(59, 130, 246, 0.3)',
+          transition: 'transform 0.3s, box-shadow 0.3s',
+          cursor: 'pointer'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'translateY(-3px)';
+          e.currentTarget.style.boxShadow = '0 12px 32px rgba(59, 130, 246, 0.4)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.boxShadow = '0 8px 24px rgba(59, 130, 246, 0.3)';
+        }}
+        >
+          <div style={{
+            position: 'absolute',
+            right: -15,
+            bottom: -15,
+            opacity: 0.15
+          }}>
+            <BookOpen size={90} color="#ffffff" strokeWidth={1.5} />
+          </div>
+          
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <div style={{
+              fontSize: '38px',
+              fontWeight: '700',
+              marginBottom: '6px',
+              letterSpacing: '-1px'
+            }}>
+              {loading ? '...' : stats.lessons}
+            </div>
+            <div style={{
+              fontSize: '15px',
+              fontWeight: '600',
+              opacity: 0.95,
+              marginBottom: '3px'
+            }}>
+              Leçons créées
+            </div>
+            <div style={{
+              fontSize: '13px',
+              opacity: 0.8
+            }}>
+              Contenu pédagogique disponible
+            </div>
+          </div>
+        </div>
+
+        {/* Stat Utilisateurs - Rose */}
+        <div style={{
+          background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
+          borderRadius: '16px',
+          padding: '20px',
+          color: '#ffffff',
+          position: 'relative',
+          overflow: 'hidden',
+          boxShadow: '0 8px 24px rgba(236, 72, 153, 0.3)',
+          transition: 'transform 0.3s, box-shadow 0.3s',
+          cursor: 'pointer'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'translateY(-3px)';
+          e.currentTarget.style.boxShadow = '0 12px 32px rgba(236, 72, 153, 0.4)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.boxShadow = '0 8px 24px rgba(236, 72, 153, 0.3)';
+        }}
+        onClick={() => navigate('/admin/users')}
+        >
+          <div style={{
+            position: 'absolute',
+            right: -15,
+            bottom: -15,
+            opacity: 0.15
+          }}>
+            <Users size={90} color="#ffffff" strokeWidth={1.5} />
+          </div>
+          
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <div style={{
+              fontSize: '38px',
+              fontWeight: '700',
+              marginBottom: '6px',
+              letterSpacing: '-1px'
+            }}>
+              {loading ? '...' : stats.users}
+            </div>
+            <div style={{
+              fontSize: '15px',
+              fontWeight: '600',
+              opacity: 0.95,
+              marginBottom: '3px'
+            }}>
+              Apprenants inscrits
+            </div>
+            <div style={{
+              fontSize: '13px',
+              opacity: 0.8
+            }}>
+              Utilisateurs actifs
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Actions rapides - Section titre */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '16px'
+      }}>
+        <h2 style={{
+          fontSize: '20px',
+          fontWeight: '700',
+          color: '#1e293b',
+          letterSpacing: '-0.5px'
+        }}>
+          Actions rapides
+        </h2>
+      </div>
+
+      {/* Cards actions - Grid moderne */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+        gap: '16px'
+      }}>
+        
+        {/* Card Programmes */}
         <div
+          onClick={() => navigate('/admin/programs')}
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-            gap: 16,
+            background: '#ffffff',
+            borderRadius: '14px',
+            padding: '20px',
+            cursor: 'pointer',
+            border: '1px solid #e2e8f0',
+            transition: 'all 0.3s ease',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)';
+            e.currentTarget.style.boxShadow = '0 10px 32px rgba(0, 0, 0, 0.08)';
+            e.currentTarget.style.borderColor = '#cbd5e1';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
+            e.currentTarget.style.borderColor = '#e2e8f0';
           }}
         >
-          <div
-            style={{
-              background: "#ffffff",
-              borderRadius: "var(--radius-md)",
-              padding: 16,
-              boxShadow: "var(--shadow-soft)",
-              border: "1px solid #e5e7eb",
-            }}
-          >
-            <h2 style={{ fontSize: 18, marginBottom: 8 }}>Catégories</h2>
-            <p style={{ color: "var(--color-muted)", fontSize: 14, marginBottom: 12 }}>
-              Créez des familles de contenus pour vos formations.
-            </p>
-            <Link
-              to="/admin/categories"
-              style={{
-                fontSize: 14,
-                color: "var(--color-primary)",
-                textDecoration: "none",
-                fontWeight: 500,
-              }}
-            >
-              Gérer les catégories →
-            </Link>
-            
+          <div style={{
+            width: '48px',
+            height: '48px',
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '14px'
+          }}>
+            <BookOpen size={24} color="#8b5cf6" strokeWidth={2} />
           </div>
-          <div
-  style={{
-    background: "#ffffff",
-    borderRadius: "var(--radius-md)",
-    padding: 16,
-    boxShadow: "var(--shadow-soft)",
-    border: "1px solid #e5e7eb",
-  }}
->
-  <h2 style={{ fontSize: 18, marginBottom: 8 }}>Programmes</h2>
-  <p style={{ color: "var(--color-muted)", fontSize: 14, marginBottom: 12 }}>
-    Créez des parcours de formation par thématique.
-  </p>
-  <Link
-    to="/admin/programs"
-    style={{
-      fontSize: 14,
-      color: "var(--color-primary)",
-      textDecoration: "none",
-      fontWeight: 500,
-    }}
-  >
-    Gérer les programmes →
-  </Link>
-  
-</div>
-<div
-  style={{
-    background: "#ffffff",
-    borderRadius: "var(--radius-md)",
-    padding: 16,
-    boxShadow: "var(--shadow-soft)",
-    border: "1px solid #e5e7eb",
-  }}
->
-  <h2 style={{ fontSize: 18, marginBottom: 8 }}>Modules</h2>
-  <p style={{ color: "var(--color-muted)", fontSize: 14, marginBottom: 12 }}>
-    Définissez les modules à l’intérieur de vos programmes.
-  </p>
-  <Link
-    to="/admin/modules"
-    style={{
-      fontSize: 14,
-      color: "var(--color-primary)",
-      textDecoration: "none",
-      fontWeight: 500,
-    }}
-  >
-    Gérer les modules →
-  </Link>
-</div>
-
-<div
-  style={{
-    background: "#ffffff",
-    borderRadius: "var(--radius-md)",
-    padding: 16,
-    boxShadow: "var(--shadow-soft)",
-    border: "1px solid #e5e7eb",
-  }}
->
-  <h2 style={{ fontSize: 18, marginBottom: 8 }}>Leçons</h2>
-  <p style={{ color: "var(--color-muted)", fontSize: 14, marginBottom: 12 }}>
-    Ajoutez le contenu pédagogique à vos modules.
-  </p>
-  <Link
-    to="/admin/lessons"
-    style={{
-      fontSize: 14,
-      color: "var(--color-primary)",
-      textDecoration: "none",
-      fontWeight: 500,
-    }}
-  >
-    Gérer les leçons →
-  </Link>
-</div>
-
-<div
-  style={{
-    background: "#ffffff",
-    borderRadius: "var(--radius-md)",
-    padding: 16,
-    boxShadow: "var(--shadow-soft)",
-    border: "1px solid #e5e7eb",
-  }}
->
-  <h2 style={{ fontSize: 18, marginBottom: 8 }}>QCM</h2>
-  <p style={{ color: "var(--color-muted)", fontSize: 14, marginBottom: 12 }}>
-    Créez des QCM pour valider les connaissances avant les simulations IA.
-  </p>
-  <Link
-    to="/admin/quizzes"
-    style={{
-      fontSize: 14,
-      color: "var(--color-primary)",
-      textDecoration: "none",
-      fontWeight: 500,
-    }}
-  >
-    Gérer les QCM →
-  </Link>
-</div>
-
-<div
-  style={{
-    background: "#ffffff",
-    borderRadius: "var(--radius-md)",
-    padding: 16,
-    boxShadow: "var(--shadow-soft)",
-    border: "1px solid #e5e7eb",
-  }}
->
-  <h2 style={{ fontSize: 18, marginBottom: 8 }}>Mes programmes</h2>
-  <p style={{ color: "var(--color-muted)", fontSize: 14, marginBottom: 12 }}>
-    Accédez aux programmes de formation disponibles.
-  </p>
-  <Link
-    to="/learner/programs"
-    style={{
-      fontSize: 14,
-      color: "var(--color-primary)",
-      textDecoration: "none",
-      fontWeight: 500,
-    }}
-  >
-    Voir les programmes →
-  </Link>
-</div>
-
-
+          
+          <h3 style={{
+            fontSize: '17px',
+            fontWeight: '700',
+            color: '#1e293b',
+            marginBottom: '6px',
+            letterSpacing: '-0.3px'
+          }}>
+            Programmes
+          </h3>
+          
+          <p style={{
+            fontSize: '13px',
+            color: '#64748b',
+            lineHeight: '1.5',
+            marginBottom: '12px'
+          }}>
+            Créez des parcours de formation par thématique.
+          </p>
+          
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: '13px',
+            color: '#8b5cf6',
+            fontWeight: '600'
+          }}>
+            <span>Gérer les programmes</span>
+            <span style={{ fontSize: '16px' }}>→</span>
+          </div>
         </div>
-      </main>
+
+        {/* Card QCM */}
+        <div
+          onClick={() => navigate('/admin/quizzes')}
+          style={{
+            background: '#ffffff',
+            borderRadius: '14px',
+            padding: '20px',
+            cursor: 'pointer',
+            border: '1px solid #e2e8f0',
+            transition: 'all 0.3s ease',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)';
+            e.currentTarget.style.boxShadow = '0 10px 32px rgba(0, 0, 0, 0.08)';
+            e.currentTarget.style.borderColor = '#cbd5e1';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
+            e.currentTarget.style.borderColor = '#e2e8f0';
+          }}
+        >
+          <div style={{
+            width: '48px',
+            height: '48px',
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '14px'
+          }}>
+            <CheckCircle size={24} color="#10b981" strokeWidth={2} />
+          </div>
+          
+          <h3 style={{
+            fontSize: '17px',
+            fontWeight: '700',
+            color: '#1e293b',
+            marginBottom: '6px',
+            letterSpacing: '-0.3px'
+          }}>
+            QCM
+          </h3>
+          
+          <p style={{
+            fontSize: '13px',
+            color: '#64748b',
+            lineHeight: '1.5',
+            marginBottom: '12px'
+          }}>
+            Créez des QCM pour valider les connaissances.
+          </p>
+          
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: '13px',
+            color: '#10b981',
+            fontWeight: '600'
+          }}>
+            <span>Gérer les QCM</span>
+            <span style={{ fontSize: '16px' }}>→</span>
+          </div>
+        </div>
+
+        {/* Card Exercices IA */}
+        <div
+          onClick={() => navigate('/admin/ai-exercises')}
+          style={{
+            background: '#ffffff',
+            borderRadius: '14px',
+            padding: '20px',
+            cursor: 'pointer',
+            border: '1px solid #e2e8f0',
+            transition: 'all 0.3s ease',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)';
+            e.currentTarget.style.boxShadow = '0 10px 32px rgba(0, 0, 0, 0.08)';
+            e.currentTarget.style.borderColor = '#cbd5e1';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
+            e.currentTarget.style.borderColor = '#e2e8f0';
+          }}
+        >
+          <div style={{
+            width: '48px',
+            height: '48px',
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '14px'
+          }}>
+            <Bot size={24} color="#f59e0b" strokeWidth={2} />
+          </div>
+          
+          <h3 style={{
+            fontSize: '17px',
+            fontWeight: '700',
+            color: '#1e293b',
+            marginBottom: '6px',
+            letterSpacing: '-0.3px'
+          }}>
+            Exercices IA
+          </h3>
+          
+          <p style={{
+            fontSize: '13px',
+            color: '#64748b',
+            lineHeight: '1.5',
+            marginBottom: '12px'
+          }}>
+            Configurez des simulations vocales avec Gemini 2.0.
+          </p>
+          
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: '13px',
+            color: '#f59e0b',
+            fontWeight: '600'
+          }}>
+            <span>Gérer les exercices IA</span>
+            <span style={{ fontSize: '16px' }}>→</span>
+          </div>
+        </div>
+
+        {/* Card Utilisateurs */}
+        <div
+          onClick={() => navigate('/admin/users')}
+          style={{
+            background: '#ffffff',
+            borderRadius: '14px',
+            padding: '20px',
+            cursor: 'pointer',
+            border: '1px solid #e2e8f0',
+            transition: 'all 0.3s ease',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)';
+            e.currentTarget.style.boxShadow = '0 10px 32px rgba(0, 0, 0, 0.08)';
+            e.currentTarget.style.borderColor = '#cbd5e1';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
+            e.currentTarget.style.borderColor = '#e2e8f0';
+          }}
+        >
+          <div style={{
+            width: '48px',
+            height: '48px',
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '14px'
+          }}>
+            <Users size={24} color="#ec4899" strokeWidth={2} />
+          </div>
+          
+          <h3 style={{
+            fontSize: '17px',
+            fontWeight: '700',
+            color: '#1e293b',
+            marginBottom: '6px',
+            letterSpacing: '-0.3px'
+          }}>
+            Utilisateurs
+          </h3>
+          
+          <p style={{
+            fontSize: '13px',
+            color: '#64748b',
+            lineHeight: '1.5',
+            marginBottom: '12px'
+          }}>
+            Gérez les apprenants et leurs accès.
+          </p>
+          
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: '13px',
+            color: '#ec4899',
+            fontWeight: '600'
+          }}>
+            <span>Gérer les utilisateurs</span>
+            <span style={{ fontSize: '16px' }}>→</span>
+          </div>
+        </div>
+
+        {/* Card Rôles Métier */}
+        <div
+          onClick={() => navigate('/admin/categories')}
+          style={{
+            background: '#ffffff',
+            borderRadius: '14px',
+            padding: '20px',
+            cursor: 'pointer',
+            border: '1px solid #e2e8f0',
+            transition: 'all 0.3s ease',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)';
+            e.currentTarget.style.boxShadow = '0 10px 32px rgba(0, 0, 0, 0.08)';
+            e.currentTarget.style.borderColor = '#cbd5e1';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
+            e.currentTarget.style.borderColor = '#e2e8f0';
+          }}
+        >
+          <div style={{
+            width: '48px',
+            height: '48px',
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '14px'
+          }}>
+            <Briefcase size={24} color="#6366f1" strokeWidth={2} />
+          </div>
+          
+          <h3 style={{
+            fontSize: '17px',
+            fontWeight: '700',
+            color: '#1e293b',
+            marginBottom: '6px',
+            letterSpacing: '-0.3px'
+          }}>
+            Rôles Métier
+          </h3>
+          
+          <p style={{
+            fontSize: '13px',
+            color: '#64748b',
+            lineHeight: '1.5',
+            marginBottom: '12px'
+          }}>
+            Configurez les métiers et leurs permissions.
+          </p>
+          
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: '13px',
+            color: '#6366f1',
+            fontWeight: '600'
+          }}>
+            <span>Gérer les rôles métier</span>
+            <span style={{ fontSize: '16px' }}>→</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
