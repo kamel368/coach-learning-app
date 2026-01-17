@@ -8,6 +8,7 @@ export default function LessonEditorPage() {
   const navigate = useNavigate();
   
   const [lessonData, setLessonData] = useState(null);
+  const [showQuitModal, setShowQuitModal] = useState(false);
 
   // ✅ Mémoriser handleReady pour éviter la boucle infinie
   const handleReady = useCallback((data) => {
@@ -20,19 +21,254 @@ export default function LessonEditorPage() {
     console.log('📊 LessonEditorPage: lessonData a changé:', lessonData);
   }, [lessonData]);
 
-  const handleBack = useCallback(() => {
-    console.log('🚪 LessonEditorPage: handleBack appelé');
-    if (lessonData?.requestExit) {
-      const canExit = lessonData.requestExit(() => {
-        navigate(`/admin/programs/${programId}`);
-      });
-      if (canExit) {
-        navigate(`/admin/programs/${programId}`);
+  // ============================================
+  // FONCTIONS DE GESTION DU MODAL DE QUITTER
+  // ============================================
+  
+  const handleBack = () => {
+    console.log('🖱️ Clic sur Quitter - Affichage du modal');
+    setShowQuitModal(true);
+  };
+
+  const handleQuitWithSave = async () => {
+    console.log('💾 Quitter avec sauvegarde');
+    
+    const hasChanges = lessonData?.hasUnsavedChanges || false;
+    
+    if (hasChanges) {
+      try {
+        if (lessonData?.handleSave) {
+          await lessonData.handleSave();
+          console.log('✅ Sauvegarde réussie');
+        }
+      } catch (error) {
+        console.error('❌ Erreur sauvegarde:', error);
       }
-    } else {
-      navigate(`/admin/programs/${programId}`);
     }
-  }, [lessonData, navigate, programId]);
+    
+    setShowQuitModal(false);
+    navigate(`/admin/programs/${programId}`);
+  };
+
+  const handleQuitWithoutSave = () => {
+    console.log('🚪 Quitter sans sauvegarder');
+    setShowQuitModal(false);
+    navigate(`/admin/programs/${programId}`);
+  };
+
+  const handleCancelQuit = () => {
+    console.log('❌ Annulation - Rester sur la page');
+    setShowQuitModal(false);
+  };
+
+  // ============================================
+  // COMPOSANT MODAL DE CONFIRMATION QUITTER
+  // ============================================
+  
+  const QuitConfirmModal = () => {
+    if (!showQuitModal) return null;
+
+    return (
+      <>
+        {/* Overlay avec blur */}
+        <div
+          onClick={handleCancelQuit}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.4)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            zIndex: 9998,
+            animation: 'fadeIn 0.2s ease-out'
+          }}
+        />
+
+        {/* Modal */}
+        <div
+          style={{
+            position: 'fixed',
+            top: '120px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 9999,
+            animation: 'modalScaleIn 0.3s ease-out'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#ffffff',
+              borderRadius: 16,
+              padding: '32px 40px',
+              width: '480px',
+              maxWidth: '90vw',
+              boxShadow: '0 24px 48px rgba(0, 0, 0, 0.2), 0 8px 16px rgba(0, 0, 0, 0.1)',
+              border: '1px solid #e2e8f0'
+            }}
+          >
+            {/* Icône d'avertissement */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              marginBottom: 20
+            }}>
+              <div style={{
+                width: 64,
+                height: 64,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 32
+              }}>
+                ⚠️
+              </div>
+            </div>
+
+            {/* Titre */}
+            <h3 style={{
+              fontSize: 22,
+              fontWeight: 700,
+              color: '#1e293b',
+              textAlign: 'center',
+              marginBottom: 12,
+              margin: 0
+            }}>
+              Attention
+            </h3>
+
+            {/* Sous-titre */}
+            <p style={{
+              fontSize: 16,
+              fontWeight: 600,
+              color: '#64748b',
+              textAlign: 'center',
+              marginBottom: 20,
+              margin: '12px 0 20px 0'
+            }}>
+              Modifications non sauvegardées
+            </p>
+
+            {/* Description */}
+            <p style={{
+              fontSize: 14,
+              color: '#64748b',
+              textAlign: 'center',
+              lineHeight: 1.6,
+              marginBottom: 32
+            }}>
+              Vous avez des modifications en cours. Que souhaitez-vous faire ?
+            </p>
+
+            {/* Boutons */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10
+            }}>
+              {/* Bouton Sauvegarder et quitter (principal) */}
+              <button
+                onClick={handleQuitWithSave}
+                style={{
+                  padding: '14px 24px',
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: 10,
+                  fontSize: 15,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 10,
+                  boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
+                }}
+              >
+                <span style={{ fontSize: 18 }}>💾</span>
+                Sauvegarder et quitter
+              </button>
+
+              {/* Bouton Quitter sans sauvegarder (danger) */}
+              <button
+                onClick={handleQuitWithoutSave}
+                style={{
+                  padding: '14px 24px',
+                  background: '#ffffff',
+                  color: '#ef4444',
+                  border: '2px solid #fecaca',
+                  borderRadius: 10,
+                  fontSize: 15,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 10,
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#fef2f2';
+                  e.currentTarget.style.borderColor = '#ef4444';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#ffffff';
+                  e.currentTarget.style.borderColor = '#fecaca';
+                }}
+              >
+                <span style={{ fontSize: 18 }}>🚪</span>
+                Quitter sans sauvegarder
+              </button>
+
+              {/* Bouton Annuler (neutre) */}
+              <button
+                onClick={handleCancelQuit}
+                style={{
+                  padding: '14px 24px',
+                  background: '#f8fafc',
+                  color: '#64748b',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 10,
+                  fontSize: 15,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 10,
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#f1f5f9';
+                  e.currentTarget.style.color = '#475569';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#f8fafc';
+                  e.currentTarget.style.color = '#64748b';
+                }}
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  };
 
   return (
     <div style={{
@@ -353,6 +589,11 @@ export default function LessonEditorPage() {
           onReady={handleReady}
         />
       </div>
+
+      {/* ====================================
+          MODAL DE CONFIRMATION QUITTER
+          ==================================== */}
+      <QuitConfirmModal />
     </div>
   );
 }

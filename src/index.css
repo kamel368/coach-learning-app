@@ -193,3 +193,29 @@ body, html {
 #root {
   height: 100%;
 }
+
+/* ============================================
+   ANIMATIONS POUR MODAL DE CONFIRMATION
+   ============================================ */
+
+/* Animation fade in pour l'overlay */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Animation scale + fade pour le modal */
+@keyframes modalScaleIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+}
