@@ -24,7 +24,9 @@ import LessonEditorPage from "./pages/LessonEditorPage";
 // ✅ Page temporaire de nettoyage Firebase
 import CleanupPage from "./pages/CleanupPage";
 
-// Pages Apprenant - V2 à venir
+// Pages Apprenant - V2
+import ApprenantLayout from './components/apprenant/ApprenantLayout';
+import ApprenantDashboard from './pages/apprenant/ApprenantDashboard';
 
 function AppContent() {
   const location = useLocation();
@@ -210,7 +212,15 @@ function AppContent() {
             }
           />
 
-          {/* Routes Apprenant - V2 à venir */}
+          {/* Routes Apprenant - V2 */}
+          <Route path="/apprenant" element={<ApprenantLayout />}>
+            <Route path="dashboard" element={
+              <ProtectedRoute>
+                <ApprenantDashboard />
+              </ProtectedRoute>
+            } />
+            <Route index element={<Navigate to="dashboard" replace />} />
+          </Route>
         </Routes>
       </div>
     </div>
