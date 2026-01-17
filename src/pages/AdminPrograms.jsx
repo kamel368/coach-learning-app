@@ -349,7 +349,16 @@ export default function AdminPrograms() {
   });
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F9FAFB", padding: "32px 24px", width: "100%", maxWidth: "100%", boxSizing: "border-box", overflowX: "hidden" }}>
+    <div style={{ 
+      display: "flex", 
+      flexDirection: "column", 
+      height: "100vh", 
+      background: "#F9FAFB", 
+      width: "100%", 
+      maxWidth: "100%", 
+      boxSizing: "border-box", 
+      overflow: "hidden" 
+    }}>
       <style>
         {`
           /* ========================================
@@ -1715,62 +1724,77 @@ export default function AdminPrograms() {
         `}
       </style>
 
-      {/* En-tête */}
-      <div className="header">
-        <div>
-          <h1 className="header-title">Programmes</h1>
-          <p className="header-subtitle">Gérez vos programmes de formation</p>
+      {/* ✅ ZONE FIXE : Header + Filtres */}
+      <div style={{ 
+        flexShrink: 0, 
+        padding: "32px 24px 16px", 
+        backgroundColor: "#F9FAFB",
+        borderBottom: "1px solid #E5E7EB"
+      }}>
+        {/* En-tête */}
+        <div className="header">
+          <div>
+            <h1 className="header-title">Programmes</h1>
+            <p className="header-subtitle">Gérez vos programmes de formation</p>
+          </div>
+          <button 
+            type="button" 
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleAdd();
+            }} 
+            className="add-button"
+          >
+            <Plus size={18} />
+            Ajouter un programme
+          </button>
         </div>
-        <button 
-          type="button" 
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleAdd();
-          }} 
-          className="add-button"
-        >
-          <Plus size={18} />
-          Ajouter un programme
-        </button>
+
+        {error && <div className="error-message">{error}</div>}
+
+        {/* Filtres */}
+        <div className="filters-container">
+          <div className="filter-group">
+            <label className="filter-label">Statut</label>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="filter-select"
+            >
+              <option value="all">Tous</option>
+              <option value="draft">En brouillon</option>
+              <option value="published">Publié</option>
+              <option value="disabled">Désactivé</option>
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label className="filter-label">Métier</label>
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className="filter-select"
+            >
+              <option value="all">Tous</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
-      {error && <div className="error-message">{error}</div>}
-
-      {/* Filtres */}
-      <div className="filters-container">
-        <div className="filter-group">
-          <label className="filter-label">Statut</label>
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="filter-select"
-          >
-            <option value="all">Tous</option>
-            <option value="draft">En brouillon</option>
-            <option value="published">Publié</option>
-            <option value="disabled">Désactivé</option>
-          </select>
-        </div>
-
-        <div className="filter-group">
-          <label className="filter-label">Métier</label>
-          <select
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-            className="filter-select"
-          >
-            <option value="all">Tous</option>
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Tableau des programmes */}
+      {/* ✅ ZONE SCROLLABLE : Tableau des programmes */}
+      <div style={{ 
+        flex: 1, 
+        overflowY: "auto", 
+        overflowX: "hidden", 
+        padding: "24px",
+        backgroundColor: "#F9FAFB"
+      }}>
       {loadingList ? (
         <div style={{ textAlign: "center", padding: 40, color: "#6B7280" }}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>⏳</div>
@@ -1924,6 +1948,7 @@ export default function AdminPrograms() {
           </table>
         </div>
       )}
+      </div>
 
       {/* Popup création programme */}
       {isModalOpen && (() => {
