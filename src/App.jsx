@@ -27,6 +27,7 @@ import CleanupPage from "./pages/CleanupPage";
 // Pages Apprenant - V2
 import ApprenantLayout from './components/apprenant/ApprenantLayout';
 import ApprenantDashboard from './pages/apprenant/ApprenantDashboard';
+import ApprenantProgramDetail from './pages/apprenant/ApprenantProgramDetail';
 
 function AppContent() {
   const location = useLocation();
@@ -220,6 +221,14 @@ function AppContent() {
                 <ApprenantDashboard />
               </ProtectedRoute>
             } />
+            
+            {/* ✅ Détail d'un programme */}
+            <Route path="programs/:programId" element={
+              <ProtectedRoute>
+                <ApprenantProgramDetail />
+              </ProtectedRoute>
+            } />
+            
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
 
