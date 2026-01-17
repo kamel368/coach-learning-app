@@ -32,7 +32,7 @@ export default function Login() {
       if (userRole === "admin") {
         navigate("/admin");
       } else {
-        navigate("/learner/programs");
+        navigate("/apprenant/dashboard");
       }
     } catch (err) {
       console.error(err);

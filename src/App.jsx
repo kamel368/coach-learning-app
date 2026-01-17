@@ -36,6 +36,7 @@ function AppContent() {
   // Pages en plein écran (sans sidebar principale)
   const isFullScreen = 
   (location.pathname.includes('/lessons/') && location.pathname.includes('/edit')) ||
+  location.pathname.startsWith('/apprenant') || // ✅ Masquer sidebar sur pages apprenant
   location.pathname === '/login' ||
   location.pathname === '/';
 
