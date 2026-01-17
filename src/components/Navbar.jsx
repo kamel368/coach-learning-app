@@ -59,8 +59,8 @@ export default function Navbar() {
             <Link to="/admin" style={{ color: "white", textDecoration: "none", fontSize: 14, fontWeight: 500 }}>
               🏠 Dashboard
             </Link>
-            <Link to="/admin/categories" style={{ color: "white", textDecoration: "none", fontSize: 14, fontWeight: 500 }}>
-              Catégories
+            <Link to="/admin/roles-metier" style={{ color: "white", textDecoration: "none", fontSize: 14, fontWeight: 500 }}>
+              Rôles Métier
             </Link>
             <Link to="/admin/programs" style={{ color: "white", textDecoration: "none", fontSize: 14, fontWeight: 500 }}>
               Programmes

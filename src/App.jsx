@@ -11,7 +11,7 @@ import { Menu } from "lucide-react";
 
 // Pages Admin
 import Dashboard from "./pages/Dashboard";
-import AdminCategories from "./pages/AdminCategories";
+import AdminRolesMetier from "./pages/AdminRolesMetier";
 import AdminPrograms from "./pages/AdminPrograms";
 import AdminProgramDetail from "./pages/AdminProgramDetail";
 import AdminQuiz from "./pages/AdminQuiz";
@@ -141,11 +141,16 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
+          {/* Redirection pour rétrocompatibilité */}
           <Route
             path="/admin/categories"
+            element={<Navigate to="/admin/roles-metier" replace />}
+          />
+          <Route
+            path="/admin/roles-metier"
             element={
               <ProtectedRoute>
-                <AdminCategories />
+                <AdminRolesMetier />
               </ProtectedRoute>
             }
           />

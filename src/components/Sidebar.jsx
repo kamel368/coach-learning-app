@@ -46,7 +46,7 @@ const handleLogout = async () => {
 
   const menuItems = [
     { path: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/admin/categories', icon: Users, label: 'Rôles Métier' },
+    { path: '/admin/roles-metier', icon: Users, label: 'Rôles Métier' },
     { path: '/admin/programs', icon: BookOpen, label: 'Programmes' },
     { path: '/admin/quizzes', icon: HelpCircle, label: 'QCM' },
     { path: '/admin/ai-exercises', icon: BrainCircuit, label: 'Exercices IA' },

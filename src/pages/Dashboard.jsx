@@ -560,7 +560,7 @@ export default function Dashboard() {
 
         {/* Card Rôles Métier */}
         <div
-          onClick={() => navigate('/admin/categories')}
+          onClick={() => navigate('/admin/roles-metier')}
           style={{
             background: '#ffffff',
             borderRadius: '14px',

@@ -1,4 +1,4 @@
-// src/pages/AdminCategories.jsx
+// src/pages/AdminRolesMetier.jsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { db } from "../firebase";
@@ -12,7 +12,11 @@ import {
 } from "firebase/firestore";
 import { ArrowLeft, Plus, Edit2, Trash2, Briefcase } from "lucide-react";
 
-export default function AdminCategories() {
+// 📝 Note: Collection nommée "categories" en DB pour des raisons historiques
+// Elle correspond aux "rôles métier" dans l'interface utilisateur
+// (Laveur de voiture, Secrétaire, Moniteur, etc.)
+
+export default function AdminRolesMetier() {
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loadingList, setLoadingList] = useState(false);
@@ -231,7 +235,7 @@ export default function AdminCategories() {
           }}
         >
           <Plus size={16} />
-          Ajouter un métier
+          Ajouter un rôle métier
         </button>
       </div>
 
@@ -507,7 +511,7 @@ export default function AdminCategories() {
                   color: "#1e293b",
                   marginBottom: "6px"
                 }}>
-                  {editingItem ? "Modifier le métier" : "Nouveau métier"}
+                  {editingItem ? "Modifier le métier" : "Nouveau rôle métier"}
                 </h3>
                 <p
                   style={{
@@ -648,7 +652,7 @@ export default function AdminCategories() {
                     ? "Enregistrement..."
                     : editingItem
                     ? "Enregistrer"
-                    : "Créer le métier"}
+                    : "Créer le rôle métier"}
                 </button>
               </div>
             </form>
