@@ -24,13 +24,7 @@ import LessonEditorPage from "./pages/LessonEditorPage";
 // ✅ Page temporaire de nettoyage Firebase
 import CleanupPage from "./pages/CleanupPage";
 
-// Pages Apprenant
-import LearnerPrograms from "./pages/LearnerPrograms";
-import LearnerProgramDetail from "./pages/LearnerProgramDetail";
-import LearnerModuleDetail from "./pages/LearnerModuleDetail";
-import LearnerQuiz from "./pages/LearnerQuiz";
-import LearnerAIExercises from "./pages/LearnerAIExercises";
-import LearnerAIExerciseSession from "./pages/LearnerAIExerciseSession";
+// Pages Apprenant - V2 à venir
 
 function AppContent() {
   const location = useLocation();
@@ -216,55 +210,7 @@ function AppContent() {
             }
           />
 
-          {/* Routes Apprenant */}
-          <Route
-            path="/learner/programs"
-            element={
-              <ProtectedRoute>
-                <LearnerPrograms />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/learner/programs/:programId"
-            element={
-              <ProtectedRoute>
-                <LearnerProgramDetail />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/learner/programs/:programId/modules/:moduleId"
-            element={
-              <ProtectedRoute>
-                <LearnerModuleDetail />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/learner/modules/:moduleId/quiz"
-            element={
-              <ProtectedRoute>
-                <LearnerQuiz />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/learner/modules/:moduleId/ai-exercises"
-            element={
-              <ProtectedRoute>
-                <LearnerAIExercises />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/learner/modules/:moduleId/ai-exercises/:exerciseId"
-            element={
-              <ProtectedRoute>
-                <LearnerAIExerciseSession />
-              </ProtectedRoute>
-            }
-          />
+          {/* Routes Apprenant - V2 à venir */}
         </Routes>
       </div>
     </div>
