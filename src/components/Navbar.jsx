@@ -72,7 +72,7 @@ export default function Navbar() {
               Leçons
             </Link>
             <Link to="/admin/quizzes" style={{ color: "white", textDecoration: "none", fontSize: 14, fontWeight: 500 }}>
-              QCM
+              Exercices
             </Link>
             <Link to="/admin/ai-exercises" style={{ color: "white", textDecoration: "none", fontSize: 14, fontWeight: 500 }}>
               Exercices IA

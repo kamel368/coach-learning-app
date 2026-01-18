@@ -75,7 +75,7 @@ export default function AdminProgramDetail() {
         }
         setLessonsByChapter(lessonsMap);
 
-        // (Optionnel) QCM et exercices IA si tu veux aussi les structurer par programme
+        // (Optionnel) Exercices et exercices IA si tu veux aussi les structurer par programme
         const quizzesSnap = await getDocs(collection(db, "quizzes"));
         setQuizzes(
           quizzesSnap.docs
@@ -264,10 +264,10 @@ export default function AdminProgramDetail() {
   }
 };
 
-  // Les QCM / IA restent pour l'instant à plat, basés sur programId + moduleId
+  // Les Exercices / IA restent pour l'instant à plat, basés sur programId + moduleId
   const handleAddQuizForChapter = async (chapterId) => {
     if (!program) return;
-    const title = window.prompt("Nom du QCM ?");
+    const title = window.prompt("Nom des exercices ?");
     if (!title) return;
 
     const existingForChapter = quizzes.filter((q) => q.moduleId === chapterId);
@@ -293,7 +293,7 @@ export default function AdminProgramDetail() {
       ]);
     } catch (err) {
       console.error(err);
-      alert("Erreur lors de la création du QCM.");
+      alert("Erreur lors de la création des exercices.");
     }
   };
 
@@ -1121,9 +1121,9 @@ export default function AdminProgramDetail() {
                           }}
                           style={{
                             padding: '8px 16px',
-                            background: '#f0fdf4',
-                            color: '#10b981',
-                            border: '1px solid #bbf7d0',
+                            background: '#dbeafe',
+                            color: '#1e40af',
+                            border: '1px solid #bfdbfe',
                             borderRadius: 8,
                             fontSize: 14,
                             fontWeight: 500,
@@ -1134,14 +1134,14 @@ export default function AdminProgramDetail() {
                             transition: 'all 0.2s'
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.background = '#dcfce7';
+                            e.currentTarget.style.background = '#bfdbfe';
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.background = '#f0fdf4';
+                            e.currentTarget.style.background = '#dbeafe';
                           }}
                         >
                           <HelpCircle size={14} />
-                          QCM
+                          🎯 Exercices
                         </button>
 
                         <button
@@ -1365,7 +1365,7 @@ export default function AdminProgramDetail() {
                               }}
                             >
                               <HelpCircle size={16} color="#64748b" />
-                              Ajouter un QCM
+                              Ajouter des exercices
                             </button>
 
                             <button
@@ -1769,7 +1769,7 @@ export default function AdminProgramDetail() {
                         </div>
                       )}
 
-                      {/* QCM */}
+                      {/* EXERCICES */}
                       {quizzesForChapter.length > 0 && (
                         <div style={{ marginBottom: 8 }}>
                           <div
@@ -1779,9 +1779,9 @@ export default function AdminProgramDetail() {
                               marginBottom: 4,
                             }}
                           >
-                            QCM
+                            EXERCICES
                           </div>
-                          {/* Rendu QCM à adapter si besoin */}
+                          {/* Rendu Exercices à adapter si besoin */}
                         </div>
                       )}
 

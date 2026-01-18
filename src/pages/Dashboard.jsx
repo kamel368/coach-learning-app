@@ -354,7 +354,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Card QCM */}
+        {/* Card Exercices */}
         <div
           onClick={() => navigate('/admin/quizzes')}
           style={{
@@ -381,13 +381,13 @@ export default function Dashboard() {
             width: '48px',
             height: '48px',
             borderRadius: '12px',
-            background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
+            background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             marginBottom: '14px'
           }}>
-            <CheckCircle size={24} color="#10b981" strokeWidth={2} />
+            <CheckCircle size={24} color="#3b82f6" strokeWidth={2} />
           </div>
           
           <h3 style={{
@@ -397,7 +397,7 @@ export default function Dashboard() {
             marginBottom: '6px',
             letterSpacing: '-0.3px'
           }}>
-            QCM
+            Exercices
           </h3>
           
           <p style={{
@@ -406,7 +406,7 @@ export default function Dashboard() {
             lineHeight: '1.5',
             marginBottom: '12px'
           }}>
-            Créez des QCM pour valider les connaissances.
+            Créez des exercices variés pour valider les connaissances.
           </p>
           
           <div style={{
@@ -414,10 +414,10 @@ export default function Dashboard() {
             alignItems: 'center',
             gap: '6px',
             fontSize: '13px',
-            color: '#10b981',
+            color: '#3b82f6',
             fontWeight: '600'
           }}>
-            <span>Gérer les QCM</span>
+            <span>Gérer les exercices</span>
             <span style={{ fontSize: '16px' }}>→</span>
           </div>
         </div>

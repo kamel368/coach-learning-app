@@ -103,7 +103,7 @@ export default function AdminQuiz() {
       return;
     }
     if (!quizTitle.trim()) {
-      setError("Le titre du QCM est obligatoire.");
+      setError("Le titre des exercices est obligatoire.");
       return;
     }
 
@@ -154,7 +154,7 @@ export default function AdminQuiz() {
       setQuestions([{ text: "", answers: ["", "", "", ""], correctIndex: 0 }]);
     } catch (err) {
       console.error(err);
-      setError("Erreur lors de la création du QCM.");
+      setError("Erreur lors de la création des exercices.");
     } finally {
       setLoading(false);
     }
@@ -181,7 +181,7 @@ export default function AdminQuiz() {
         padding: 24,
       }}
     >
-      <h1 style={{ fontSize: 24, marginBottom: 16 }}>QCM par module</h1>
+      <h1 style={{ fontSize: 24, marginBottom: 16 }}>Exercices par module</h1>
 
       <div
         style={{
@@ -191,7 +191,7 @@ export default function AdminQuiz() {
           alignItems: "flex-start",
         }}
       >
-        {/* Formulaire QCM */}
+        {/* Formulaire Exercices */}
         <form
           onSubmit={handleSubmit}
           style={{
@@ -204,9 +204,9 @@ export default function AdminQuiz() {
             overflow: "auto",
           }}
         >
-          <h2 style={{ fontSize: 18, marginBottom: 8 }}>Nouveau QCM</h2>
+          <h2 style={{ fontSize: 18, marginBottom: 8 }}>Nouveaux exercices</h2>
           <p style={{ fontSize: 13, color: "var(--color-muted)", marginBottom: 16 }}>
-            Créez un QCM pour un module. Score minimum : 80 % par défaut.
+            Créez des exercices variés pour un module. Score minimum : 80 % par défaut.
           </p>
 
           <label style={{ fontSize: 13, display: "block", marginBottom: 4 }}>
@@ -259,7 +259,7 @@ export default function AdminQuiz() {
           </select>
 
           <label style={{ fontSize: 13, display: "block", marginBottom: 4 }}>
-            Titre du QCM
+            Titre des exercices
           </label>
           <input
             type="text"
@@ -431,16 +431,16 @@ export default function AdminQuiz() {
               fontSize: 14,
             }}
           >
-            {loading ? "Création..." : "Enregistrer le QCM"}
+            {loading ? "Création..." : "Enregistrer les exercices"}
           </button>
         </form>
 
-        {/* Liste des QCM existants */}
+        {/* Liste des Exercices existants */}
         <div>
-          <h2 style={{ fontSize: 18, marginBottom: 12 }}>QCM existants</h2>
+          <h2 style={{ fontSize: 18, marginBottom: 12 }}>Exercices existants</h2>
           {existingQuizzes.length === 0 ? (
             <p style={{ color: "var(--color-muted)", fontSize: 14 }}>
-              Aucun QCM pour l’instant.
+              Aucun exercice pour l'instant.
             </p>
           ) : (
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
