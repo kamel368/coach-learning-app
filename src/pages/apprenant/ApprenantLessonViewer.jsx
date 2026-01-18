@@ -126,7 +126,13 @@ export default function ApprenantLessonViewer() {
         return (
           <div 
             key={index}
-            style={blockStyle}
+            style={{
+              ...blockStyle,
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
+              hyphens: 'auto',
+              maxWidth: '100%'
+            }}
             dangerouslySetInnerHTML={{ __html: block.data?.html || block.data?.text || '' }}
           />
         );
@@ -138,12 +144,15 @@ export default function ApprenantLessonViewer() {
             key={index}
             style={{
               ...blockStyle,
-              fontSize: block.data?.level === 1 ? '32px' : 
-                        block.data?.level === 2 ? '28px' : 
-                        block.data?.level === 3 ? '24px' : '20px',
+              fontSize: block.data?.level === 1 ? 'clamp(24px, 6vw, 32px)' : 
+                        block.data?.level === 2 ? 'clamp(22px, 5vw, 28px)' : 
+                        block.data?.level === 3 ? 'clamp(20px, 4vw, 24px)' : 'clamp(18px, 3.5vw, 20px)',
               fontWeight: '700',
               color: '#1e293b',
-              marginBottom: '16px'
+              marginBottom: '16px',
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
+              hyphens: 'auto'
             }}
           >
             {block.data?.text || ''}
@@ -156,9 +165,12 @@ export default function ApprenantLessonViewer() {
             key={index}
             style={{
               ...blockStyle,
-              fontSize: '16px',
+              fontSize: 'clamp(14px, 3vw, 16px)',
               lineHeight: '1.7',
-              color: '#475569'
+              color: '#475569',
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
+              hyphens: 'auto'
             }}
           >
             {block.data?.text || ''}
@@ -174,13 +186,13 @@ export default function ApprenantLessonViewer() {
               style={{
                 maxWidth: '100%',
                 height: 'auto',
-                borderRadius: '12px',
+                borderRadius: 'clamp(8px, 2vw, 12px)',
                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
               }}
             />
             {block.data?.caption && (
               <p style={{
-                fontSize: '14px',
+                fontSize: 'clamp(12px, 2.5vw, 14px)',
                 color: '#94a3b8',
                 marginTop: '8px',
                 textAlign: 'center',
@@ -221,11 +233,12 @@ export default function ApprenantLessonViewer() {
               ...blockStyle,
               background: '#1e293b',
               color: '#e2e8f0',
-              padding: '20px',
-              borderRadius: '12px',
+              padding: 'clamp(16px, 3vw, 20px)',
+              borderRadius: 'clamp(8px, 2vw, 12px)',
               overflow: 'auto',
-              fontSize: '14px',
-              fontFamily: 'monospace'
+              fontSize: 'clamp(12px, 2.5vw, 14px)',
+              fontFamily: 'monospace',
+              lineHeight: '1.5'
             }}
           >
             <code>{block.data?.code || ''}</code>
@@ -345,10 +358,10 @@ export default function ApprenantLessonViewer() {
   if (!lesson) {
     return (
       <div style={{
-        padding: '40px',
+        padding: 'clamp(24px, 5vw, 40px)',
         textAlign: 'center'
       }}>
-        <p style={{ fontSize: '18px', color: '#64748b' }}>
+        <p style={{ fontSize: 'clamp(16px, 3vw, 18px)', color: '#64748b' }}>
           Leçon introuvable
         </p>
         <button
@@ -360,7 +373,7 @@ export default function ApprenantLessonViewer() {
             color: 'white',
             border: 'none',
             borderRadius: '12px',
-            fontSize: '16px',
+            fontSize: 'clamp(14px, 3vw, 16px)',
             fontWeight: '600',
             cursor: 'pointer'
           }}
@@ -389,18 +402,62 @@ export default function ApprenantLessonViewer() {
               transform: translateY(0);
             }
           }
+          
+          /* Styles globaux pour le contenu des leçons */
+          .lesson-content * {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
+          }
+          
+          .lesson-content p,
+          .lesson-content div,
+          .lesson-content h1,
+          .lesson-content h2,
+          .lesson-content h3,
+          .lesson-content h4,
+          .lesson-content h5,
+          .lesson-content h6,
+          .lesson-content span,
+          .lesson-content li {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
+          }
+          
+          @media (max-width: 768px) {
+            .lesson-content {
+              padding: 16px !important;
+            }
+            
+            .lesson-content img {
+              max-width: 100%;
+              height: auto !important;
+            }
+            
+            .lesson-content pre {
+              font-size: 12px;
+              overflow-x: auto;
+              max-width: 100%;
+            }
+            
+            .lesson-content p,
+            .lesson-content div {
+              word-break: break-word;
+            }
+          }
         `}
       </style>
 
       <div style={{
-        minHeight: '100vh',
+        minHeight: '100%',
         background: '#f8fafc'
       }}>
         {/* Header fixe */}
         <div style={{
           background: 'white',
           borderBottom: '1px solid #e2e8f0',
-          padding: '16px 32px',
+          padding: 'clamp(12px, 3vw, 16px) clamp(16px, 4vw, 32px)',
           position: 'sticky',
           top: 0,
           zIndex: 100,
@@ -411,7 +468,9 @@ export default function ApprenantLessonViewer() {
             margin: '0 auto',
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center'
+            alignItems: 'center',
+            gap: '16px',
+            flexWrap: 'wrap'
           }}>
             {/* Bouton retour */}
             <button
@@ -420,12 +479,15 @@ export default function ApprenantLessonViewer() {
                 background: 'transparent',
                 border: 'none',
                 color: '#64748b',
-                fontSize: '14px',
+                fontSize: 'clamp(13px, 2.5vw, 14px)',
                 fontWeight: '600',
                 cursor: 'pointer',
-                padding: '8px 16px',
+                padding: '8px 12px',
                 borderRadius: '8px',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = '#f1f5f9';
@@ -434,14 +496,21 @@ export default function ApprenantLessonViewer() {
                 e.currentTarget.style.background = 'transparent';
               }}
             >
-              ← Retour au module
+              <span>←</span>
+              <span style={{ display: window.innerWidth < 400 ? 'none' : 'inline' }}>
+                Retour au module
+              </span>
+              <span style={{ display: window.innerWidth >= 400 ? 'none' : 'inline' }}>
+                Retour
+              </span>
             </button>
 
             {/* Progress */}
             <div style={{
-              fontSize: '14px',
+              fontSize: 'clamp(13px, 2.5vw, 14px)',
               color: '#64748b',
-              fontWeight: '600'
+              fontWeight: '600',
+              whiteSpace: 'nowrap'
             }}>
               Leçon {currentIndex + 1} / {allLessons.length}
             </div>
@@ -452,42 +521,49 @@ export default function ApprenantLessonViewer() {
         <div style={{
           maxWidth: '900px',
           margin: '0 auto',
-          padding: '40px 32px'
+          padding: 'clamp(20px, 3vw, 32px) clamp(16px, 3vw, 24px)',
+          paddingBottom: 'clamp(40px, 6vw, 60px)'
         }}>
           {/* Titre leçon */}
           <div style={{
             background: 'white',
-            borderRadius: '20px',
-            padding: '40px',
-            marginBottom: '32px',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)'
+            borderRadius: 'clamp(12px, 2.5vw, 18px)',
+            padding: 'clamp(18px, 3.5vw, 30px)',
+            marginBottom: 'clamp(16px, 3vw, 24px)',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.06)',
+            width: '100%',
+            boxSizing: 'border-box'
           }}>
             {/* Breadcrumb */}
             {program && module && (
               <div style={{
-                fontSize: '13px',
+                fontSize: 'clamp(11px, 2vw, 13px)',
                 color: '#94a3b8',
-                marginBottom: '12px'
+                marginBottom: '12px',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
               }}>
                 {program.name} / {module.title}
               </div>
             )}
 
             <h1 style={{
-              fontSize: '32px',
+              fontSize: 'clamp(22px, 5vw, 32px)',
               fontWeight: '700',
               color: '#1e293b',
               marginBottom: '8px',
-              letterSpacing: '-0.5px'
+              letterSpacing: '-0.5px',
+              lineHeight: '1.2'
             }}>
               {lesson.title || `Leçon ${currentIndex + 1}`}
             </h1>
 
             {/* Barre de progression */}
             <div style={{
-              marginTop: '24px',
+              marginTop: 'clamp(16px, 3vw, 24px)',
               width: '100%',
-              height: '6px',
+              height: 'clamp(4px, 1vw, 6px)',
               background: '#e2e8f0',
               borderRadius: '999px',
               overflow: 'hidden'
@@ -502,22 +578,27 @@ export default function ApprenantLessonViewer() {
           </div>
 
           {/* Blocs de contenu */}
-          <div style={{
-            background: 'white',
-            borderRadius: '20px',
-            padding: '40px',
-            marginBottom: '32px',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
-            minHeight: '400px'
-          }}>
+          <div 
+            className="lesson-content"
+            style={{
+              background: 'white',
+              borderRadius: 'clamp(12px, 2.5vw, 18px)',
+              padding: 'clamp(20px, 4vw, 36px)',
+              marginBottom: 'clamp(20px, 3vw, 28px)',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.06)',
+              minHeight: '300px',
+              width: '100%',
+              boxSizing: 'border-box'
+            }}
+          >
             {lesson.blocks && lesson.blocks.length > 0 ? (
               lesson.blocks.map((block, index) => renderBlock(block, index))
             ) : (
               <p style={{
-                fontSize: '16px',
+                fontSize: 'clamp(14px, 3vw, 16px)',
                 color: '#94a3b8',
                 textAlign: 'center',
-                padding: '40px'
+                padding: 'clamp(32px, 6vw, 40px)'
               }}>
                 Cette leçon ne contient pas encore de contenu.
               </p>
@@ -529,25 +610,29 @@ export default function ApprenantLessonViewer() {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            gap: '16px'
+            gap: 'clamp(12px, 3vw, 16px)',
+            flexWrap: window.innerWidth < 500 ? 'wrap' : 'nowrap'
           }}>
             {/* Bouton précédent */}
             <button
               onClick={handlePrevious}
               disabled={!hasPrevious}
               style={{
-                padding: '14px 24px',
+                flex: window.innerWidth < 500 ? '1 1 100%' : '0 1 auto',
+                padding: 'clamp(12px, 2.5vw, 14px) clamp(20px, 4vw, 24px)',
                 background: hasPrevious ? 'white' : '#f1f5f9',
                 color: hasPrevious ? '#64748b' : '#cbd5e1',
                 border: hasPrevious ? '2px solid #e2e8f0' : '2px solid #f1f5f9',
                 borderRadius: '12px',
-                fontSize: '16px',
+                fontSize: 'clamp(14px, 3vw, 16px)',
                 fontWeight: '600',
                 cursor: hasPrevious ? 'pointer' : 'not-allowed',
                 transition: 'all 0.2s',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px'
+                justifyContent: 'center',
+                gap: '8px',
+                whiteSpace: 'nowrap'
               }}
               onMouseEnter={(e) => {
                 if (hasPrevious) {
@@ -563,7 +648,9 @@ export default function ApprenantLessonViewer() {
               }}
             >
               <span>←</span>
-              <span>Précédent</span>
+              <span style={{ display: window.innerWidth < 400 ? 'none' : 'inline' }}>
+                Précédent
+              </span>
             </button>
 
             {/* Bouton terminer / suivant */}
@@ -571,7 +658,8 @@ export default function ApprenantLessonViewer() {
               onClick={isLastLesson ? handleComplete : handleNext}
               disabled={completing}
               style={{
-                padding: '14px 32px',
+                flex: window.innerWidth < 500 ? '1 1 100%' : '1 1 auto',
+                padding: 'clamp(12px, 2.5vw, 14px) clamp(24px, 5vw, 32px)',
                 background: completing 
                   ? '#cbd5e1'
                   : isLastLesson 
@@ -580,13 +668,15 @@ export default function ApprenantLessonViewer() {
                 color: 'white',
                 border: 'none',
                 borderRadius: '12px',
-                fontSize: '16px',
+                fontSize: 'clamp(14px, 3vw, 16px)',
                 fontWeight: '600',
                 cursor: completing ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px'
+                justifyContent: 'center',
+                gap: '8px',
+                whiteSpace: 'nowrap'
               }}
               onMouseEnter={(e) => {
                 if (!completing) {
@@ -601,7 +691,11 @@ export default function ApprenantLessonViewer() {
                 }
               }}
             >
-              <span>{completing ? 'Chargement...' : isLastLesson ? 'Terminer la leçon' : 'Suivant'}</span>
+              <span style={{ 
+                fontSize: window.innerWidth < 400 ? 'clamp(13px, 3vw, 14px)' : 'inherit'
+              }}>
+                {completing ? 'Chargement...' : isLastLesson ? 'Terminer' : 'Suivant'}
+              </span>
               {!completing && <span>{isLastLesson ? '✓' : '→'}</span>}
             </button>
           </div>

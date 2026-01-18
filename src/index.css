@@ -183,15 +183,24 @@ button:focus-visible {
 }
 
 /* ============================================
-   BLOQUER LE SCROLL GLOBAL
+   GESTION DU SCROLL
    ============================================ */
 body, html {
-  overflow: hidden;
   height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 #root {
   height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Bloquer scroll uniquement pour l'éditeur de leçons */
+body.editor-mode,
+body.editor-mode html {
+  overflow: hidden;
 }
 
 /* ============================================

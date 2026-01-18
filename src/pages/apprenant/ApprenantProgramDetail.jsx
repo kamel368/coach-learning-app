@@ -103,10 +103,10 @@ export default function ApprenantProgramDetail() {
   if (!program) {
     return (
       <div style={{
-        padding: '40px',
+        padding: 'clamp(24px, 5vw, 40px)',
         textAlign: 'center'
       }}>
-        <p style={{ fontSize: '18px', color: '#64748b' }}>
+        <p style={{ fontSize: 'clamp(16px, 3vw, 18px)', color: '#64748b' }}>
           Programme introuvable
         </p>
         <button
@@ -118,7 +118,7 @@ export default function ApprenantProgramDetail() {
             color: 'white',
             border: 'none',
             borderRadius: '12px',
-            fontSize: '16px',
+            fontSize: 'clamp(14px, 3vw, 16px)',
             fontWeight: '600',
             cursor: 'pointer'
           }}
@@ -131,13 +131,14 @@ export default function ApprenantProgramDetail() {
 
   return (
     <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      padding: '40px 20px'
+      minHeight: '100%',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
     }}>
       <div style={{
         maxWidth: '1000px',
-        margin: '0 auto'
+        margin: '0 auto',
+        padding: 'clamp(24px, 4vw, 40px) clamp(16px, 3vw, 24px)',
+        paddingBottom: 'clamp(40px, 6vw, 60px)'
       }}>
         
         {/* Bouton retour */}
@@ -147,13 +148,16 @@ export default function ApprenantProgramDetail() {
             background: 'rgba(255, 255, 255, 0.2)',
             border: 'none',
             color: 'white',
-            padding: '10px 20px',
-            borderRadius: '8px',
-            fontSize: '14px',
+            padding: 'clamp(8px, 2vw, 10px) clamp(14px, 3vw, 18px)',
+            borderRadius: '10px',
+            fontSize: 'clamp(13px, 2.5vw, 14px)',
             fontWeight: '600',
             cursor: 'pointer',
-            marginBottom: '24px',
-            transition: 'all 0.2s'
+            marginBottom: 'clamp(16px, 3vw, 20px)',
+            transition: 'all 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
@@ -162,47 +166,54 @@ export default function ApprenantProgramDetail() {
             e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
           }}
         >
-          ← Retour aux programmes
+          <span>←</span>
+          <span style={{ display: window.innerWidth < 400 ? 'none' : 'inline' }}>
+            Retour aux programmes
+          </span>
+          <span style={{ display: window.innerWidth >= 400 ? 'none' : 'inline' }}>
+            Retour
+          </span>
         </button>
 
         {/* Header Programme */}
         <div style={{
           background: 'rgba(255, 255, 255, 0.95)',
-          borderRadius: '20px',
-          padding: '40px',
-          marginBottom: '32px',
-          boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)'
+          borderRadius: 'clamp(12px, 2.5vw, 20px)',
+          padding: 'clamp(20px, 4vw, 32px)',
+          marginBottom: 'clamp(20px, 3vw, 28px)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)'
         }}>
           {/* Icône */}
           <div style={{
-            width: '80px',
-            height: '80px',
-            borderRadius: '20px',
+            width: 'clamp(64px, 15vw, 80px)',
+            height: 'clamp(64px, 15vw, 80px)',
+            borderRadius: 'clamp(16px, 3vw, 20px)',
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '40px',
-            marginBottom: '24px'
+            fontSize: 'clamp(32px, 7vw, 40px)',
+            marginBottom: 'clamp(16px, 3vw, 24px)'
           }}>
             {program.icon || '📚'}
           </div>
 
           <h1 style={{
-            fontSize: '36px',
+            fontSize: 'clamp(24px, 6vw, 36px)',
             fontWeight: '700',
             color: '#1e293b',
             marginBottom: '12px',
-            letterSpacing: '-0.5px'
+            letterSpacing: '-0.5px',
+            lineHeight: '1.2'
           }}>
             {program.name}
           </h1>
 
           {program.description && (
             <p style={{
-              fontSize: '18px',
+              fontSize: 'clamp(14px, 3vw, 18px)',
               color: '#64748b',
-              marginBottom: '24px',
+              marginBottom: 'clamp(16px, 3vw, 24px)',
               lineHeight: '1.6'
             }}>
               {program.description}
@@ -214,24 +225,26 @@ export default function ApprenantProgramDetail() {
             <div style={{
               background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
               borderRadius: '16px',
-              padding: '24px',
-              marginTop: '24px'
+              padding: 'clamp(16px, 3vw, 24px)',
+              marginTop: 'clamp(16px, 3vw, 24px)'
             }}>
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: '12px'
+                marginBottom: '12px',
+                flexWrap: 'wrap',
+                gap: '8px'
               }}>
                 <span style={{
-                  fontSize: '16px',
+                  fontSize: 'clamp(14px, 3vw, 16px)',
                   fontWeight: '600',
                   color: '#1e293b'
                 }}>
                   Votre progression
                 </span>
                 <span style={{
-                  fontSize: '24px',
+                  fontSize: 'clamp(20px, 5vw, 24px)',
                   fontWeight: '700',
                   color: '#8b5cf6'
                 }}>
@@ -241,7 +254,7 @@ export default function ApprenantProgramDetail() {
               
               <div style={{
                 width: '100%',
-                height: '12px',
+                height: 'clamp(10px, 2vw, 12px)',
                 background: '#e2e8f0',
                 borderRadius: '999px',
                 overflow: 'hidden'
@@ -260,11 +273,12 @@ export default function ApprenantProgramDetail() {
         {/* Liste des modules */}
         <div>
           <h2 style={{
-            fontSize: '24px',
+            fontSize: 'clamp(20px, 4vw, 24px)',
             fontWeight: '700',
             color: '#ffffff',
-            marginBottom: '24px',
-            textShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+            marginBottom: 'clamp(16px, 3vw, 24px)',
+            textShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+            paddingLeft: 'clamp(0px, 2vw, 8px)'
           }}>
             📖 Modules du programme
           </h2>
@@ -273,11 +287,11 @@ export default function ApprenantProgramDetail() {
             <div style={{
               background: 'rgba(255, 255, 255, 0.95)',
               borderRadius: '16px',
-              padding: '40px',
+              padding: 'clamp(32px, 6vw, 40px)',
               textAlign: 'center'
             }}>
               <p style={{
-                fontSize: '18px',
+                fontSize: 'clamp(16px, 3vw, 18px)',
                 color: '#64748b'
               }}>
                 Aucun module disponible pour ce programme
@@ -287,7 +301,7 @@ export default function ApprenantProgramDetail() {
             <div style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: '16px'
+              gap: 'clamp(12px, 2.5vw, 16px)'
             }}>
               {modules.map((module, index) => {
                 const status = getModuleStatus(module.id);
@@ -297,15 +311,16 @@ export default function ApprenantProgramDetail() {
                     key={module.id}
                     style={{
                       background: '#ffffff',
-                      borderRadius: '16px',
-                      padding: '24px',
+                      borderRadius: 'clamp(12px, 2.5vw, 16px)',
+                      padding: 'clamp(16px, 3vw, 24px)',
                       cursor: 'pointer',
                       transition: 'all 0.3s ease',
                       boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
                       border: '2px solid transparent',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '20px'
+                      gap: 'clamp(12px, 3vw, 20px)',
+                      flexWrap: window.innerWidth < 500 ? 'wrap' : 'nowrap'
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.transform = 'translateY(-4px)';
@@ -321,14 +336,14 @@ export default function ApprenantProgramDetail() {
                   >
                     {/* Numéro module */}
                     <div style={{
-                      width: '60px',
-                      height: '60px',
-                      borderRadius: '12px',
+                      width: 'clamp(48px, 12vw, 60px)',
+                      height: 'clamp(48px, 12vw, 60px)',
+                      borderRadius: 'clamp(10px, 2vw, 12px)',
                       background: `${status.color}22`,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: '24px',
+                      fontSize: 'clamp(20px, 5vw, 24px)',
                       fontWeight: '700',
                       color: status.color,
                       flexShrink: 0
@@ -337,29 +352,37 @@ export default function ApprenantProgramDetail() {
                     </div>
 
                     {/* Contenu */}
-                    <div style={{ flex: 1 }}>
+                    <div style={{ 
+                      flex: 1,
+                      minWidth: window.innerWidth < 500 ? '100%' : 'auto'
+                    }}>
                       <h3 style={{
-                        fontSize: '20px',
+                        fontSize: 'clamp(16px, 3.5vw, 20px)',
                         fontWeight: '700',
                         color: '#1e293b',
-                        marginBottom: '6px'
+                        marginBottom: '6px',
+                        lineHeight: '1.3'
                       }}>
                         {module.title}
                       </h3>
 
                       {module.description && (
                         <p style={{
-                          fontSize: '14px',
+                          fontSize: 'clamp(13px, 2.5vw, 14px)',
                           color: '#64748b',
                           marginBottom: '8px',
-                          lineHeight: '1.5'
+                          lineHeight: '1.5',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden'
                         }}>
                           {module.description}
                         </p>
                       )}
 
                       <div style={{
-                        fontSize: '13px',
+                        fontSize: 'clamp(12px, 2.5vw, 13px)',
                         color: '#94a3b8'
                       }}>
                         {module.totalLessons} leçon{module.totalLessons > 1 ? 's' : ''}
@@ -371,16 +394,19 @@ export default function ApprenantProgramDetail() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: '8px',
-                      padding: '8px 16px',
+                      padding: 'clamp(6px, 1.5vw, 8px) clamp(12px, 2.5vw, 16px)',
                       background: `${status.color}11`,
                       borderRadius: '8px',
-                      fontSize: '14px',
+                      fontSize: 'clamp(13px, 2.5vw, 14px)',
                       fontWeight: '600',
                       color: status.color,
-                      flexShrink: 0
+                      flexShrink: 0,
+                      whiteSpace: 'nowrap'
                     }}>
-                      <span style={{ fontSize: '18px' }}>{status.icon}</span>
-                      <span>{status.label}</span>
+                      <span style={{ fontSize: 'clamp(16px, 3vw, 18px)' }}>{status.icon}</span>
+                      <span style={{ display: window.innerWidth < 400 ? 'none' : 'inline' }}>
+                        {status.label}
+                      </span>
                     </div>
                   </div>
                 );

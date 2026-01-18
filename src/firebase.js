@@ -1,6 +1,6 @@
 // src/firebase.js
 import { initializeApp, getApp } from "firebase/app";
-import { getAuth, createUserWithEmailAndPassword, signOut } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from 'firebase/storage';
 
@@ -17,6 +17,16 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+
+// ✅ IMPORTANT : Configurer la persistance de session
+// Cela permet de garder l'utilisateur connecté même après rechargement de page
+setPersistence(auth, browserLocalPersistence)
+  .then(() => {
+    console.log('✅ Session persistante configurée (localStorage)');
+  })
+  .catch((error) => {
+    console.error('❌ Erreur configuration persistance:', error);
+  });
 
 // Fonction pour créer un utilisateur sans déconnecter l'admin
 export async function createUserWithoutSignOut(email, password) {

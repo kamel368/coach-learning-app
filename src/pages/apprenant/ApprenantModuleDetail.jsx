@@ -108,10 +108,10 @@ export default function ApprenantModuleDetail() {
   if (!module) {
     return (
       <div style={{
-        padding: '40px',
+        padding: 'clamp(24px, 5vw, 40px)',
         textAlign: 'center'
       }}>
-        <p style={{ fontSize: '18px', color: '#64748b' }}>
+        <p style={{ fontSize: 'clamp(16px, 3vw, 18px)', color: '#64748b' }}>
           Module introuvable
         </p>
         <button
@@ -123,7 +123,7 @@ export default function ApprenantModuleDetail() {
             color: 'white',
             border: 'none',
             borderRadius: '12px',
-            fontSize: '16px',
+            fontSize: 'clamp(14px, 3vw, 16px)',
             fontWeight: '600',
             cursor: 'pointer'
           }}
@@ -139,13 +139,14 @@ export default function ApprenantModuleDetail() {
 
   return (
     <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      padding: '40px 20px'
+      minHeight: '100%',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
     }}>
       <div style={{
         maxWidth: '1200px',
-        margin: '0 auto'
+        margin: '0 auto',
+        padding: 'clamp(24px, 4vw, 40px) clamp(16px, 3vw, 24px)',
+        paddingBottom: 'clamp(40px, 6vw, 60px)'
       }}>
         
         {/* Bouton retour */}
@@ -155,13 +156,16 @@ export default function ApprenantModuleDetail() {
             background: 'rgba(255, 255, 255, 0.2)',
             border: 'none',
             color: 'white',
-            padding: '10px 20px',
-            borderRadius: '8px',
-            fontSize: '14px',
+            padding: 'clamp(8px, 2vw, 10px) clamp(14px, 3vw, 18px)',
+            borderRadius: '10px',
+            fontSize: 'clamp(13px, 2.5vw, 14px)',
             fontWeight: '600',
             cursor: 'pointer',
-            marginBottom: '24px',
-            transition: 'all 0.2s'
+            marginBottom: 'clamp(16px, 3vw, 20px)',
+            transition: 'all 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
@@ -170,41 +174,51 @@ export default function ApprenantModuleDetail() {
             e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
           }}
         >
-          ← Retour au programme
+          <span>←</span>
+          <span style={{ display: window.innerWidth < 400 ? 'none' : 'inline' }}>
+            Retour au programme
+          </span>
+          <span style={{ display: window.innerWidth >= 400 ? 'none' : 'inline' }}>
+            Retour
+          </span>
         </button>
 
         {/* Header Module */}
         <div style={{
           background: 'rgba(255, 255, 255, 0.95)',
-          borderRadius: '20px',
-          padding: '40px',
-          marginBottom: '32px',
-          boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)'
+          borderRadius: 'clamp(12px, 2.5vw, 20px)',
+          padding: 'clamp(20px, 4vw, 32px)',
+          marginBottom: 'clamp(20px, 3vw, 28px)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)'
         }}>
           {/* Breadcrumb */}
           {program && (
             <div style={{
-              fontSize: '14px',
+              fontSize: 'clamp(12px, 2.5vw, 14px)',
               color: '#64748b',
-              marginBottom: '16px'
+              marginBottom: '16px',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
             }}>
               {program.name} / Module
             </div>
           )}
 
           <h1 style={{
-            fontSize: '36px',
+            fontSize: 'clamp(24px, 6vw, 36px)',
             fontWeight: '700',
             color: '#1e293b',
             marginBottom: '12px',
-            letterSpacing: '-0.5px'
+            letterSpacing: '-0.5px',
+            lineHeight: '1.2'
           }}>
             {module.title}
           </h1>
 
           {module.description && (
             <p style={{
-              fontSize: '18px',
+              fontSize: 'clamp(14px, 3vw, 18px)',
               color: '#64748b',
               lineHeight: '1.6'
             }}>
@@ -213,21 +227,23 @@ export default function ApprenantModuleDetail() {
           )}
         </div>
 
-        {/* Grille : Leçons + QCM */}
+        {/* Grille : Leçons + QCM (responsive) */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '2fr 1fr',
-          gap: '24px',
+          gridTemplateColumns: window.innerWidth >= 768 ? '2fr 1fr' : '1fr',
+          gap: 'clamp(20px, 4vw, 24px)',
           alignItems: 'start'
         }}>
           
-          {/* Colonne gauche : Leçons */}
-          <div>
+          {/* Colonne leçons */}
+          <div style={{
+            order: window.innerWidth >= 768 ? 1 : 2
+          }}>
             <h2 style={{
-              fontSize: '24px',
+              fontSize: 'clamp(20px, 4vw, 24px)',
               fontWeight: '700',
               color: '#ffffff',
-              marginBottom: '20px',
+              marginBottom: 'clamp(16px, 3vw, 20px)',
               textShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
             }}>
               📚 Leçons
@@ -237,11 +253,11 @@ export default function ApprenantModuleDetail() {
               <div style={{
                 background: 'rgba(255, 255, 255, 0.95)',
                 borderRadius: '16px',
-                padding: '40px',
+                padding: 'clamp(32px, 6vw, 40px)',
                 textAlign: 'center'
               }}>
                 <p style={{
-                  fontSize: '16px',
+                  fontSize: 'clamp(14px, 3vw, 16px)',
                   color: '#64748b'
                 }}>
                   Aucune leçon disponible pour ce module
@@ -251,15 +267,15 @@ export default function ApprenantModuleDetail() {
               <div style={{
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '12px'
+                gap: 'clamp(10px, 2vw, 12px)'
               }}>
                 {lessons.map((lesson, index) => (
                   <div
                     key={lesson.id}
                     style={{
                       background: '#ffffff',
-                      borderRadius: '16px',
-                      padding: '20px',
+                      borderRadius: 'clamp(12px, 2.5vw, 16px)',
+                      padding: 'clamp(16px, 3vw, 20px)',
                       cursor: 'pointer',
                       transition: 'all 0.3s ease',
                       boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)',
@@ -280,18 +296,18 @@ export default function ApprenantModuleDetail() {
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '16px'
+                      gap: 'clamp(12px, 3vw, 16px)'
                     }}>
                       {/* Numéro leçon */}
                       <div style={{
-                        width: '40px',
-                        height: '40px',
-                        borderRadius: '10px',
+                        width: 'clamp(36px, 8vw, 40px)',
+                        height: 'clamp(36px, 8vw, 40px)',
+                        borderRadius: 'clamp(8px, 2vw, 10px)',
                         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '16px',
+                        fontSize: 'clamp(14px, 3vw, 16px)',
                         fontWeight: '700',
                         color: 'white',
                         flexShrink: 0
@@ -300,18 +316,21 @@ export default function ApprenantModuleDetail() {
                       </div>
 
                       {/* Contenu */}
-                      <div style={{ flex: 1 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <h3 style={{
-                          fontSize: '18px',
+                          fontSize: 'clamp(15px, 3vw, 18px)',
                           fontWeight: '600',
                           color: '#1e293b',
-                          marginBottom: '4px'
+                          marginBottom: '4px',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
                         }}>
                           {lesson.title || `Leçon ${index + 1}`}
                         </h3>
                         
                         <div style={{
-                          fontSize: '13px',
+                          fontSize: 'clamp(12px, 2.5vw, 13px)',
                           color: '#94a3b8'
                         }}>
                           {lesson.blocks?.length || 0} bloc{lesson.blocks?.length > 1 ? 's' : ''}
@@ -320,8 +339,9 @@ export default function ApprenantModuleDetail() {
 
                       {/* Flèche */}
                       <div style={{
-                        fontSize: '20px',
-                        color: '#cbd5e1'
+                        fontSize: 'clamp(18px, 4vw, 20px)',
+                        color: '#cbd5e1',
+                        flexShrink: 0
                       }}>
                         →
                       </div>
@@ -332,13 +352,15 @@ export default function ApprenantModuleDetail() {
             )}
           </div>
 
-          {/* Colonne droite : QCM */}
-          <div>
+          {/* Colonne QCM */}
+          <div style={{
+            order: window.innerWidth >= 768 ? 2 : 1
+          }}>
             <h2 style={{
-              fontSize: '24px',
+              fontSize: 'clamp(20px, 4vw, 24px)',
               fontWeight: '700',
               color: '#ffffff',
-              marginBottom: '20px',
+              marginBottom: 'clamp(16px, 3vw, 20px)',
               textShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
             }}>
               ✅ Évaluation
@@ -346,25 +368,26 @@ export default function ApprenantModuleDetail() {
 
             <div style={{
               background: '#ffffff',
-              borderRadius: '16px',
-              padding: '24px',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-              position: 'sticky',
+              borderRadius: 'clamp(10px, 2vw, 14px)',
+              padding: 'clamp(18px, 3.5vw, 22px)',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
+              position: window.innerWidth >= 768 ? 'sticky' : 'static',
               top: '24px'
             }}>
               {quiz ? (
                 <>
                   <h3 style={{
-                    fontSize: '18px',
+                    fontSize: 'clamp(16px, 3vw, 18px)',
                     fontWeight: '700',
                     color: '#1e293b',
-                    marginBottom: '8px'
+                    marginBottom: '8px',
+                    lineHeight: '1.3'
                   }}>
                     {quiz.title || 'QCM du module'}
                   </h3>
 
                   <p style={{
-                    fontSize: '14px',
+                    fontSize: 'clamp(13px, 2.5vw, 14px)',
                     color: '#64748b',
                     marginBottom: '16px',
                     lineHeight: '1.5'
@@ -375,13 +398,13 @@ export default function ApprenantModuleDetail() {
                   {/* Dernier score */}
                   {lastAttempt && (
                     <div style={{
-                      padding: '16px',
+                      padding: 'clamp(12px, 3vw, 16px)',
                       borderRadius: '12px',
                       background: lastAttempt.passed ? '#d1fae5' : '#fee2e2',
                       marginBottom: '16px'
                     }}>
                       <div style={{
-                        fontSize: '14px',
+                        fontSize: 'clamp(13px, 2.5vw, 14px)',
                         fontWeight: '600',
                         color: lastAttempt.passed ? '#065f46' : '#991b1b',
                         marginBottom: '4px'
@@ -389,7 +412,7 @@ export default function ApprenantModuleDetail() {
                         Dernier score : {lastAttempt.score}%
                       </div>
                       <div style={{
-                        fontSize: '13px',
+                        fontSize: 'clamp(12px, 2.5vw, 13px)',
                         color: lastAttempt.passed ? '#047857' : '#dc2626'
                       }}>
                         {lastAttempt.passed ? '✅ QCM réussi !' : '❌ Score insuffisant'}
@@ -402,14 +425,14 @@ export default function ApprenantModuleDetail() {
                     onClick={() => navigate(`/apprenant/programs/${programId}/modules/${moduleId}/quiz`)}
                     style={{
                       width: '100%',
-                      padding: '14px',
+                      padding: 'clamp(12px, 2.5vw, 14px)',
                       background: quizPassed 
                         ? 'linear-gradient(135deg, #10b981, #059669)'
                         : 'linear-gradient(135deg, #667eea, #764ba2)',
                       color: 'white',
                       border: 'none',
                       borderRadius: '12px',
-                      fontSize: '16px',
+                      fontSize: 'clamp(14px, 3vw, 16px)',
                       fontWeight: '600',
                       cursor: 'pointer',
                       transition: 'all 0.2s',
@@ -434,14 +457,15 @@ export default function ApprenantModuleDetail() {
                       cursor: 'pointer'
                     }}>
                       <summary style={{
-                        fontSize: '14px',
+                        fontSize: 'clamp(13px, 2.5vw, 14px)',
                         fontWeight: '600',
                         color: '#64748b',
                         padding: '8px',
                         borderRadius: '8px',
-                        background: '#f8fafc'
+                        background: '#f8fafc',
+                        listStyle: 'none'
                       }}>
-                        Historique ({quizAttempts.length} tentative{quizAttempts.length > 1 ? 's' : ''})
+                        📊 Historique ({quizAttempts.length} tentative{quizAttempts.length > 1 ? 's' : ''})
                       </summary>
                       
                       <div style={{
@@ -457,7 +481,7 @@ export default function ApprenantModuleDetail() {
                               padding: '10px 12px',
                               borderRadius: '8px',
                               background: '#f8fafc',
-                              fontSize: '13px',
+                              fontSize: 'clamp(12px, 2.5vw, 13px)',
                               display: 'flex',
                               justifyContent: 'space-between',
                               alignItems: 'center'
@@ -479,9 +503,9 @@ export default function ApprenantModuleDetail() {
                   )}
                 </>
               ) : (
-                <div style={{ textAlign: 'center', padding: '20px' }}>
+                <div style={{ textAlign: 'center', padding: 'clamp(16px, 3vw, 20px)' }}>
                   <p style={{
-                    fontSize: '14px',
+                    fontSize: 'clamp(13px, 2.5vw, 14px)',
                     color: '#94a3b8'
                   }}>
                     Aucun QCM disponible pour ce module
