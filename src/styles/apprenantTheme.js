@@ -64,25 +64,25 @@ export const apprenantTheme = {
     slow: 'all 0.3s ease',
   },
 
-  // Spacing responsive
+  // Spacing responsive (ULTRA-RÉDUIT -25%)
   spacing: {
-    xs: 'clamp(8px, 2vw, 12px)',
-    sm: 'clamp(12px, 2.5vw, 16px)',
-    md: 'clamp(16px, 3vw, 24px)',
-    lg: 'clamp(24px, 4vw, 32px)',
-    xl: 'clamp(32px, 5vw, 48px)',
+    xs: 'clamp(4px, 1vw, 6px)',
+    sm: 'clamp(6px, 1.5vw, 8px)',
+    md: 'clamp(8px, 2vw, 12px)',
+    lg: 'clamp(12px, 2.5vw, 16px)',
+    xl: 'clamp(16px, 3vw, 24px)',
   },
 
-  // Typography responsive
+  // Typography responsive (ULTRA-RÉDUIT -25%)
   fontSize: {
-    xs: 'clamp(11px, 2vw, 12px)',
-    sm: 'clamp(13px, 2.5vw, 14px)',
-    base: 'clamp(14px, 3vw, 16px)',
-    lg: 'clamp(16px, 3.5vw, 18px)',
-    xl: 'clamp(18px, 4vw, 20px)',
-    '2xl': 'clamp(20px, 4.5vw, 24px)',
-    '3xl': 'clamp(24px, 5vw, 28px)',
-    '4xl': 'clamp(28px, 6vw, 36px)',
+    xs: 'clamp(8px, 1.5vw, 9px)',
+    sm: 'clamp(10px, 2vw, 11px)',
+    base: 'clamp(11px, 2.5vw, 12px)',
+    lg: 'clamp(12px, 3vw, 13px)',
+    xl: 'clamp(13px, 3.5vw, 15px)',
+    '2xl': 'clamp(14px, 4vw, 16px)',
+    '3xl': 'clamp(16px, 4.5vw, 18px)',
+    '4xl': 'clamp(18px, 5vw, 22px)',
   },
 };
 

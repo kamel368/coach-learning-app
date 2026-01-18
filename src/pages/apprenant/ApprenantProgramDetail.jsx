@@ -193,8 +193,8 @@ export default function ApprenantProgramDetail() {
         }}>
           {/* Icône */}
           <div style={{
-            width: 'clamp(64px, 15vw, 80px)',
-            height: 'clamp(64px, 15vw, 80px)',
+            width: 'clamp(48px, 10vw, 56px)',
+            height: 'clamp(48px, 10vw, 56px)',
             borderRadius: apprenantTheme.radius.lg,
             background: apprenantTheme.gradients.secondary,
             display: 'flex',
@@ -203,14 +203,14 @@ export default function ApprenantProgramDetail() {
             marginBottom: apprenantTheme.spacing.md,
             boxShadow: apprenantTheme.shadows.md
           }}>
-            <BookOpen size={40} color="white" strokeWidth={2} />
+            <BookOpen size={26} color="white" strokeWidth={2} />
           </div>
 
           <h1 style={{
-            fontSize: apprenantTheme.fontSize['4xl'],
+            fontSize: 'clamp(16px, 4vw, 20px)',
             fontWeight: '700',
             color: apprenantTheme.colors.textPrimary,
-            marginBottom: '12px',
+            marginBottom: '8px',
             letterSpacing: '-0.5px',
             lineHeight: '1.2'
           }}>

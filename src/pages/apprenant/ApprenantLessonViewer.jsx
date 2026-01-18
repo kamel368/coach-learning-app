@@ -549,10 +549,10 @@ export default function ApprenantLessonViewer() {
             )}
 
             <h1 style={{
-              fontSize: 'clamp(22px, 5vw, 32px)',
+              fontSize: 'clamp(16px, 4vw, 20px)',
               fontWeight: '700',
               color: '#1e293b',
-              marginBottom: '8px',
+              marginBottom: '6px',
               letterSpacing: '-0.5px',
               lineHeight: '1.2'
             }}>

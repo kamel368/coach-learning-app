@@ -133,14 +133,14 @@ export default function ApprenantDashboard() {
           boxShadow: apprenantTheme.shadows.xl
         }}>
           <h1 style={{
-            fontSize: apprenantTheme.fontSize['4xl'],
+            fontSize: 'clamp(16px, 4vw, 20px)',
             fontWeight: '700',
             color: apprenantTheme.colors.textPrimary,
-            marginBottom: '12px',
+            marginBottom: '8px',
             letterSpacing: '-0.5px',
             display: 'flex',
             alignItems: 'center',
-            gap: '12px',
+            gap: '8px',
             flexWrap: 'wrap'
           }}>
             <span>Bonjour {userName} !</span>
@@ -305,8 +305,8 @@ export default function ApprenantDashboard() {
                 >
                   {/* Icône programme */}
                   <div style={{
-                    width: 'clamp(56px, 12vw, 72px)',
-                    height: 'clamp(56px, 12vw, 72px)',
+                    width: 'clamp(40px, 8vw, 48px)',
+                    height: 'clamp(40px, 8vw, 48px)',
                     borderRadius: apprenantTheme.radius.lg,
                     background: apprenantTheme.gradients.secondary,
                     display: 'flex',
@@ -316,16 +316,16 @@ export default function ApprenantDashboard() {
                     boxShadow: apprenantTheme.shadows.md,
                     flexShrink: 0
                   }}>
-                    <BookOpen size={32} color="white" strokeWidth={2} />
+                    <BookOpen size={22} color="white" strokeWidth={2} />
                   </div>
 
                   {/* Contenu */}
                   <div style={{ flex: 1 }}>
                     <h3 style={{
-                      fontSize: apprenantTheme.fontSize.xl,
+                      fontSize: 'clamp(14px, 3vw, 15px)',
                       fontWeight: '700',
                       color: apprenantTheme.colors.textPrimary,
-                      marginBottom: '8px',
+                      marginBottom: '6px',
                       lineHeight: '1.3'
                     }}>
                       {program.name}

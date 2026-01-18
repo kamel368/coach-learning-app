@@ -121,8 +121,8 @@ export default function ApprenantLayout() {
               }}
             >
               <div style={{
-                width: '40px',
-                height: '40px',
+                width: '32px',
+                height: '32px',
                 borderRadius: apprenantTheme.radius.md,
                 background: apprenantTheme.gradients.secondary,
                 display: 'flex',
@@ -130,11 +130,11 @@ export default function ApprenantLayout() {
                 justifyContent: 'center',
                 boxShadow: apprenantTheme.shadows.md
               }}>
-                <BookOpen size={20} color="white" strokeWidth={2.5} />
+                <BookOpen size={16} color="white" strokeWidth={2.5} />
               </div>
               
               <div style={{
-                fontSize: apprenantTheme.fontSize['2xl'],
+                fontSize: 'clamp(14px, 3.5vw, 16px)',
                 fontWeight: '700',
                 color: apprenantTheme.colors.textPrimary,
                 display: window.innerWidth < 500 ? 'none' : 'block'
