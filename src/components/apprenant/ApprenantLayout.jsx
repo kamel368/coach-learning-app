@@ -3,6 +3,8 @@ import { auth } from '../../firebase';
 import { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { Menu, X, BookOpen, User, LogOut } from 'lucide-react';
+import { apprenantTheme } from '../../styles/apprenantTheme';
 
 export default function ApprenantLayout() {
   const navigate = useNavigate();
@@ -81,18 +83,18 @@ export default function ApprenantLayout() {
         height: '100vh',
         display: 'flex',
         flexDirection: 'column',
-        background: '#f8fafc',
+        background: apprenantTheme.colors.bgSecondary,
         overflow: 'hidden'
       }}>
         {/* Header */}
         <header style={{
-          background: '#ffffff',
-          borderBottom: '1px solid #e2e8f0',
+          background: apprenantTheme.colors.bgPrimary,
+          borderBottom: `1px solid ${apprenantTheme.colors.border}`,
           padding: '16px 20px',
           position: 'sticky',
           top: 0,
           zIndex: 100,
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+          boxShadow: apprenantTheme.shadows.sm
         }}>
           <div style={{
             maxWidth: '1400px',
@@ -107,16 +109,37 @@ export default function ApprenantLayout() {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
-                cursor: 'pointer'
+                gap: '12px',
+                cursor: 'pointer',
+                transition: apprenantTheme.transitions.base
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = '0.8';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1';
               }}
             >
               <div style={{
-                fontSize: 'clamp(18px, 4vw, 24px)',
-                fontWeight: '700',
-                color: '#1e293b'
+                width: '40px',
+                height: '40px',
+                borderRadius: apprenantTheme.radius.md,
+                background: apprenantTheme.gradients.secondary,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: apprenantTheme.shadows.md
               }}>
-                🎓 <span style={{ display: window.innerWidth < 500 ? 'none' : 'inline' }}>Coach Learning</span>
+                <BookOpen size={20} color="white" strokeWidth={2.5} />
+              </div>
+              
+              <div style={{
+                fontSize: apprenantTheme.fontSize['2xl'],
+                fontWeight: '700',
+                color: apprenantTheme.colors.textPrimary,
+                display: window.innerWidth < 500 ? 'none' : 'block'
+              }}>
+                Coach Learning
               </div>
             </div>
 
@@ -129,17 +152,21 @@ export default function ApprenantLayout() {
               <NavLink
                 to="/apprenant/dashboard"
                 style={({ isActive }) => ({
-                  fontSize: '14px',
+                  fontSize: apprenantTheme.fontSize.sm,
                   fontWeight: '600',
-                  color: isActive ? '#8b5cf6' : '#64748b',
+                  color: isActive ? apprenantTheme.colors.secondary : apprenantTheme.colors.textSecondary,
                   textDecoration: 'none',
                   padding: '8px 16px',
-                  borderRadius: '8px',
-                  background: isActive ? '#f3e8ff' : 'transparent',
-                  transition: 'all 0.2s'
+                  borderRadius: apprenantTheme.radius.base,
+                  background: isActive ? `${apprenantTheme.colors.secondary}11` : 'transparent',
+                  transition: apprenantTheme.transitions.base,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
                 })}
               >
-                Mes programmes
+                <BookOpen size={16} />
+                <span>Mes programmes</span>
               </NavLink>
 
               <div style={{
@@ -147,36 +174,49 @@ export default function ApprenantLayout() {
                 alignItems: 'center',
                 gap: '12px',
                 paddingLeft: '24px',
-                borderLeft: '1px solid #e2e8f0'
+                borderLeft: `1px solid ${apprenantTheme.colors.border}`
               }}>
-                <span style={{
-                  fontSize: '14px',
-                  color: '#64748b'
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontSize: apprenantTheme.fontSize.sm,
+                  color: apprenantTheme.colors.textSecondary,
+                  padding: '8px 12px',
+                  background: apprenantTheme.colors.bgTertiary,
+                  borderRadius: apprenantTheme.radius.base
                 }}>
-                  👤 {userName}
-                </span>
+                  <User size={16} />
+                  <span>{userName}</span>
+                </div>
                 
                 <button
                   onClick={handleLogout}
                   style={{
                     padding: '8px 16px',
-                    background: '#f1f5f9',
+                    background: apprenantTheme.colors.bgTertiary,
                     border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '14px',
+                    borderRadius: apprenantTheme.radius.base,
+                    fontSize: apprenantTheme.fontSize.sm,
                     fontWeight: '600',
-                    color: '#64748b',
+                    color: apprenantTheme.colors.textSecondary,
                     cursor: 'pointer',
-                    transition: 'all 0.2s'
+                    transition: apprenantTheme.transitions.base,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#e2e8f0';
+                    e.currentTarget.style.background = apprenantTheme.colors.border;
+                    e.currentTarget.style.color = apprenantTheme.colors.error;
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = '#f1f5f9';
+                    e.currentTarget.style.background = apprenantTheme.colors.bgTertiary;
+                    e.currentTarget.style.color = apprenantTheme.colors.textSecondary;
                   }}
                 >
-                  Déconnexion
+                  <LogOut size={16} />
+                  <span>Déconnexion</span>
                 </button>
               </div>
             </nav>
@@ -191,13 +231,22 @@ export default function ApprenantLayout() {
                 width: '40px',
                 height: '40px',
                 background: 'transparent',
-                border: 'none',
+                border: `2px solid ${apprenantTheme.colors.border}`,
+                borderRadius: apprenantTheme.radius.base,
                 cursor: 'pointer',
-                fontSize: '24px',
-                color: '#64748b'
+                color: apprenantTheme.colors.textSecondary,
+                transition: apprenantTheme.transitions.base
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = apprenantTheme.colors.secondary;
+                e.currentTarget.style.color = apprenantTheme.colors.secondary;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = apprenantTheme.colors.border;
+                e.currentTarget.style.color = apprenantTheme.colors.textSecondary;
               }}
             >
-              ☰
+              <Menu size={20} />
             </button>
           </div>
         </header>
@@ -214,15 +263,15 @@ export default function ApprenantLayout() {
               {/* Header du menu */}
               <div style={{
                 padding: '20px',
-                borderBottom: '1px solid #e2e8f0',
+                borderBottom: `1px solid ${apprenantTheme.colors.border}`,
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center'
               }}>
                 <div style={{
-                  fontSize: '18px',
+                  fontSize: apprenantTheme.fontSize.lg,
                   fontWeight: '700',
-                  color: '#1e293b'
+                  color: apprenantTheme.colors.textPrimary
                 }}>
                   Menu
                 </div>
@@ -231,36 +280,42 @@ export default function ApprenantLayout() {
                   style={{
                     width: '32px',
                     height: '32px',
-                    background: '#f1f5f9',
+                    background: apprenantTheme.colors.bgTertiary,
                     border: 'none',
-                    borderRadius: '6px',
+                    borderRadius: apprenantTheme.radius.base,
                     cursor: 'pointer',
-                    fontSize: '18px',
-                    color: '#64748b'
+                    color: apprenantTheme.colors.textSecondary,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
                   }}
                 >
-                  ✕
+                  <X size={18} />
                 </button>
               </div>
 
               {/* User info */}
               <div style={{
                 padding: '20px',
-                borderBottom: '1px solid #e2e8f0'
+                borderBottom: `1px solid ${apprenantTheme.colors.border}`
               }}>
                 <div style={{
-                  fontSize: '14px',
-                  color: '#94a3b8',
-                  marginBottom: '4px'
+                  fontSize: apprenantTheme.fontSize.sm,
+                  color: apprenantTheme.colors.textTertiary,
+                  marginBottom: '8px'
                 }}>
                   Connecté en tant que
                 </div>
                 <div style={{
-                  fontSize: '16px',
+                  fontSize: apprenantTheme.fontSize.base,
                   fontWeight: '600',
-                  color: '#1e293b'
+                  color: apprenantTheme.colors.textPrimary,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
                 }}>
-                  👤 {userName}
+                  <User size={18} />
+                  <span>{userName}</span>
                 </div>
               </div>
 
@@ -275,17 +330,21 @@ export default function ApprenantLayout() {
                   to="/apprenant/dashboard"
                   onClick={() => setMobileMenuOpen(false)}
                   style={({ isActive }) => ({
-                    padding: '12px 16px',
-                    borderRadius: '8px',
-                    background: isActive ? '#f3e8ff' : '#f8fafc',
-                    color: isActive ? '#8b5cf6' : '#64748b',
+                    padding: '14px 16px',
+                    borderRadius: apprenantTheme.radius.md,
+                    background: isActive ? `${apprenantTheme.colors.secondary}11` : apprenantTheme.colors.bgSecondary,
+                    color: isActive ? apprenantTheme.colors.secondary : apprenantTheme.colors.textSecondary,
                     textDecoration: 'none',
-                    fontSize: '15px',
+                    fontSize: apprenantTheme.fontSize.base,
                     fontWeight: '600',
-                    transition: 'all 0.2s'
+                    transition: apprenantTheme.transitions.base,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px'
                   })}
                 >
-                  📚 Mes programmes
+                  <BookOpen size={20} />
+                  <span>Mes programmes</span>
                 </NavLink>
 
                 <button
@@ -294,19 +353,23 @@ export default function ApprenantLayout() {
                     handleLogout();
                   }}
                   style={{
-                    padding: '12px 16px',
-                    background: '#fef2f2',
+                    padding: '14px 16px',
+                    background: `${apprenantTheme.colors.error}11`,
                     border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '15px',
+                    borderRadius: apprenantTheme.radius.md,
+                    fontSize: apprenantTheme.fontSize.base,
                     fontWeight: '600',
-                    color: '#dc2626',
+                    color: apprenantTheme.colors.error,
                     cursor: 'pointer',
                     textAlign: 'left',
-                    transition: 'all 0.2s'
+                    transition: apprenantTheme.transitions.base,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px'
                   }}
                 >
-                  🚪 Déconnexion
+                  <LogOut size={20} />
+                  <span>Déconnexion</span>
                 </button>
               </div>
             </div>

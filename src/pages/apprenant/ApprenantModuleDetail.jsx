@@ -2,6 +2,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { collection, getDocs, doc, getDoc, query, where, orderBy } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
+import { ArrowLeft, BookOpen, CheckCircle, AlertCircle, ChevronRight, Clock, Award } from 'lucide-react';
+import { apprenantTheme, buttonStyles } from '../../styles/apprenantTheme';
 
 export default function ApprenantModuleDetail() {
   const { programId, moduleId } = useParams();
@@ -140,12 +142,12 @@ export default function ApprenantModuleDetail() {
   return (
     <div style={{
       minHeight: '100%',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+      background: apprenantTheme.colors.bgApp
     }}>
       <div style={{
         maxWidth: '1200px',
         margin: '0 auto',
-        padding: 'clamp(24px, 4vw, 40px) clamp(16px, 3vw, 24px)',
+        padding: apprenantTheme.spacing.lg + ' ' + apprenantTheme.spacing.md,
         paddingBottom: 'clamp(40px, 6vw, 60px)'
       }}>
         
@@ -153,28 +155,34 @@ export default function ApprenantModuleDetail() {
         <button
           onClick={() => navigate(`/apprenant/programs/${programId}`)}
           style={{
-            background: 'rgba(255, 255, 255, 0.2)',
-            border: 'none',
-            color: 'white',
-            padding: 'clamp(8px, 2vw, 10px) clamp(14px, 3vw, 18px)',
-            borderRadius: '10px',
-            fontSize: 'clamp(13px, 2.5vw, 14px)',
+            background: apprenantTheme.colors.bgPrimary,
+            border: `2px solid ${apprenantTheme.colors.border}`,
+            color: apprenantTheme.colors.textSecondary,
+            padding: apprenantTheme.spacing.sm + ' ' + apprenantTheme.spacing.md,
+            borderRadius: apprenantTheme.radius.base,
+            fontSize: apprenantTheme.fontSize.sm,
             fontWeight: '600',
             cursor: 'pointer',
-            marginBottom: 'clamp(16px, 3vw, 20px)',
-            transition: 'all 0.2s',
+            marginBottom: apprenantTheme.spacing.md,
+            transition: apprenantTheme.transitions.base,
             display: 'flex',
             alignItems: 'center',
-            gap: '6px'
+            gap: '8px',
+            boxShadow: apprenantTheme.shadows.sm
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
+            e.currentTarget.style.borderColor = apprenantTheme.colors.secondary;
+            e.currentTarget.style.color = apprenantTheme.colors.secondary;
+            e.currentTarget.style.boxShadow = apprenantTheme.shadows.md;
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+            e.currentTarget.style.background = apprenantTheme.colors.bgPrimary;
+            e.currentTarget.style.borderColor = apprenantTheme.colors.border;
+            e.currentTarget.style.color = apprenantTheme.colors.textSecondary;
+            e.currentTarget.style.boxShadow = apprenantTheme.shadows.sm;
           }}
         >
-          <span>←</span>
+          <ArrowLeft size={16} />
           <span style={{ display: window.innerWidth < 400 ? 'none' : 'inline' }}>
             Retour au programme
           </span>
@@ -239,15 +247,18 @@ export default function ApprenantModuleDetail() {
           <div style={{
             order: window.innerWidth >= 768 ? 1 : 2
           }}>
-            <h2 style={{
-              fontSize: 'clamp(20px, 4vw, 24px)',
-              fontWeight: '700',
-              color: '#ffffff',
-              marginBottom: 'clamp(16px, 3vw, 20px)',
-              textShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              fontSize: apprenantTheme.fontSize['2xl'],
+              fontWeight: '800',
+              color: apprenantTheme.colors.primary,
+              marginBottom: apprenantTheme.spacing.md
             }}>
-              📚 Leçons
-            </h2>
+              <BookOpen size={24} strokeWidth={2.5} />
+              <span>Leçons</span>
+            </div>
 
             {lessons.length === 0 ? (
               <div style={{
@@ -302,14 +313,15 @@ export default function ApprenantModuleDetail() {
                       <div style={{
                         width: 'clamp(36px, 8vw, 40px)',
                         height: 'clamp(36px, 8vw, 40px)',
-                        borderRadius: 'clamp(8px, 2vw, 10px)',
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        borderRadius: apprenantTheme.radius.base,
+                        background: apprenantTheme.gradients.secondary,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: 'clamp(14px, 3vw, 16px)',
+                        fontSize: apprenantTheme.fontSize.base,
                         fontWeight: '700',
                         color: 'white',
+                        boxShadow: apprenantTheme.shadows.sm,
                         flexShrink: 0
                       }}>
                         {index + 1}
@@ -356,15 +368,18 @@ export default function ApprenantModuleDetail() {
           <div style={{
             order: window.innerWidth >= 768 ? 2 : 1
           }}>
-            <h2 style={{
-              fontSize: 'clamp(20px, 4vw, 24px)',
-              fontWeight: '700',
-              color: '#ffffff',
-              marginBottom: 'clamp(16px, 3vw, 20px)',
-              textShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              fontSize: apprenantTheme.fontSize['2xl'],
+              fontWeight: '800',
+              color: apprenantTheme.colors.primary,
+              marginBottom: apprenantTheme.spacing.md
             }}>
-              ✅ Évaluation
-            </h2>
+              <Award size={24} strokeWidth={2.5} />
+              <span>Évaluation</span>
+            </div>
 
             <div style={{
               background: '#ffffff',

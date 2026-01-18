@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
 import { getAllUserProgress, calculateGlobalProgress } from '../../services/progressionService';
+import { BookOpen, TrendingUp, ArrowRight, Clock } from 'lucide-react';
+import { apprenantTheme, cardStyles, buttonStyles } from '../../styles/apprenantTheme';
 
 export default function ApprenantDashboard() {
   const navigate = useNavigate();
@@ -102,8 +104,8 @@ export default function ApprenantDashboard() {
         justifyContent: 'center',
         alignItems: 'center',
         height: '100vh',
-        fontSize: '18px',
-        color: '#64748b'
+        fontSize: apprenantTheme.fontSize.lg,
+        color: apprenantTheme.colors.textSecondary
       }}>
         Chargement...
       </div>
@@ -113,37 +115,58 @@ export default function ApprenantDashboard() {
   return (
     <div style={{
       minHeight: '100%',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+      background: apprenantTheme.colors.bgApp
     }}>
       <div style={{
         maxWidth: '1200px',
         margin: '0 auto',
-        padding: 'clamp(24px, 4vw, 40px) clamp(16px, 3vw, 24px)',
+        padding: apprenantTheme.spacing.lg + ' ' + apprenantTheme.spacing.md,
         paddingBottom: 'clamp(40px, 6vw, 60px)'
       }}>
         
         {/* Header de bienvenue */}
         <div style={{
-          background: 'rgba(255, 255, 255, 0.95)',
-          borderRadius: 'clamp(12px, 2.5vw, 20px)',
-          padding: 'clamp(20px, 4vw, 32px)',
-          marginBottom: 'clamp(20px, 3vw, 28px)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)'
+          background: apprenantTheme.colors.bgPrimary,
+          borderRadius: apprenantTheme.radius.xl,
+          padding: apprenantTheme.spacing.xl,
+          marginBottom: apprenantTheme.spacing.lg,
+          boxShadow: apprenantTheme.shadows.xl
         }}>
           <h1 style={{
-            fontSize: 'clamp(24px, 5vw, 36px)',
+            fontSize: apprenantTheme.fontSize['4xl'],
             fontWeight: '700',
-            color: '#1e293b',
+            color: apprenantTheme.colors.textPrimary,
             marginBottom: '12px',
-            letterSpacing: '-0.5px'
+            letterSpacing: '-0.5px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            flexWrap: 'wrap'
           }}>
-            Bonjour {userName} ! 👋
+            <span>Bonjour {userName} !</span>
+            <span style={{
+              display: 'inline-block',
+              animation: 'wave 2s ease-in-out infinite'
+            }}>👋</span>
           </h1>
 
+          <style>
+            {`
+              @keyframes wave {
+                0%, 100% { transform: rotate(0deg); }
+                10%, 30% { transform: rotate(14deg); }
+                20% { transform: rotate(-8deg); }
+                40% { transform: rotate(-4deg); }
+                50% { transform: rotate(10deg); }
+                60% { transform: rotate(0deg); }
+              }
+            `}
+          </style>
+
           <p style={{
-            fontSize: 'clamp(14px, 3vw, 18px)',
-            color: '#64748b',
-            marginBottom: 'clamp(20px, 4vw, 32px)',
+            fontSize: apprenantTheme.fontSize.lg,
+            color: apprenantTheme.colors.textSecondary,
+            marginBottom: apprenantTheme.spacing.lg,
             lineHeight: '1.6'
           }}>
             Continuez votre apprentissage là où vous vous êtes arrêté
@@ -151,9 +174,10 @@ export default function ApprenantDashboard() {
 
           {/* Progression globale */}
           <div style={{
-            background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-            borderRadius: '16px',
-            padding: 'clamp(16px, 3vw, 24px)'
+            background: apprenantTheme.gradients.card,
+            borderRadius: apprenantTheme.radius.lg,
+            padding: apprenantTheme.spacing.md,
+            border: `1px solid ${apprenantTheme.colors.border}`
           }}>
             <div style={{
               display: 'flex',
@@ -161,19 +185,23 @@ export default function ApprenantDashboard() {
               alignItems: 'center',
               marginBottom: '12px',
               flexWrap: 'wrap',
-              gap: '8px'
+              gap: '12px'
             }}>
-              <span style={{
-                fontSize: 'clamp(14px, 3vw, 16px)',
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: apprenantTheme.fontSize.base,
                 fontWeight: '600',
-                color: '#1e293b'
+                color: apprenantTheme.colors.textPrimary
               }}>
-                Progression globale
-              </span>
+                <TrendingUp size={20} color={apprenantTheme.colors.secondary} />
+                <span>Progression globale</span>
+              </div>
               <span style={{
-                fontSize: 'clamp(20px, 4vw, 28px)',
+                fontSize: apprenantTheme.fontSize['3xl'],
                 fontWeight: '700',
-                color: '#8b5cf6'
+                color: apprenantTheme.colors.secondary
               }}>
                 {globalProgress}%
               </span>
@@ -182,15 +210,17 @@ export default function ApprenantDashboard() {
             <div style={{
               width: '100%',
               height: 'clamp(10px, 2vw, 16px)',
-              background: '#e2e8f0',
-              borderRadius: '999px',
-              overflow: 'hidden'
+              background: apprenantTheme.colors.bgTertiary,
+              borderRadius: apprenantTheme.radius.full,
+              overflow: 'hidden',
+              position: 'relative'
             }}>
               <div style={{
                 width: `${globalProgress}%`,
                 height: '100%',
-                background: 'linear-gradient(90deg, #8b5cf6 0%, #7c3aed 100%)',
-                transition: 'width 0.5s ease'
+                background: apprenantTheme.gradients.secondary,
+                transition: 'width 0.5s ease',
+                boxShadow: '0 0 10px rgba(59, 130, 246, 0.5)'
               }} />
             </div>
           </div>
@@ -198,40 +228,51 @@ export default function ApprenantDashboard() {
 
         {/* Section programmes */}
         <div>
-          <h2 style={{
-            fontSize: 'clamp(20px, 4vw, 28px)',
-            fontWeight: '700',
-            color: '#ffffff',
-            marginBottom: 'clamp(16px, 3vw, 24px)',
-            textShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            fontSize: apprenantTheme.fontSize['3xl'],
+            fontWeight: '800',
+            color: apprenantTheme.colors.primary,
+            marginBottom: apprenantTheme.spacing.md,
             paddingLeft: 'clamp(0px, 2vw, 8px)'
           }}>
-            📚 Vos programmes de formation
-          </h2>
+            <BookOpen size={28} strokeWidth={2.5} />
+            <span>Vos programmes de formation</span>
+          </div>
 
           {programs.length === 0 ? (
             <div style={{
-              background: 'rgba(255, 255, 255, 0.95)',
-              borderRadius: '16px',
+              background: apprenantTheme.colors.bgPrimary,
+              borderRadius: apprenantTheme.radius.xl,
               padding: 'clamp(32px, 6vw, 60px)',
-              textAlign: 'center'
+              textAlign: 'center',
+              boxShadow: apprenantTheme.shadows.xl
             }}>
               <div style={{
-                fontSize: 'clamp(48px, 10vw, 64px)',
-                marginBottom: '16px'
+                width: '80px',
+                height: '80px',
+                margin: '0 auto 24px',
+                borderRadius: apprenantTheme.radius.full,
+                background: apprenantTheme.gradients.card,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}>
-                📚
+                <BookOpen size={40} color={apprenantTheme.colors.textTertiary} />
               </div>
               <p style={{
-                fontSize: 'clamp(16px, 3vw, 18px)',
-                color: '#64748b',
-                marginBottom: '8px'
+                fontSize: apprenantTheme.fontSize.lg,
+                color: apprenantTheme.colors.textSecondary,
+                marginBottom: '8px',
+                fontWeight: '600'
               }}>
                 Aucun programme disponible pour le moment
               </p>
               <p style={{
-                fontSize: 'clamp(13px, 2.5vw, 14px)',
-                color: '#94a3b8'
+                fontSize: apprenantTheme.fontSize.sm,
+                color: apprenantTheme.colors.textTertiary
               }}>
                 Les programmes apparaîtront ici une fois qu'ils seront publiés
               </p>
@@ -240,57 +281,50 @@ export default function ApprenantDashboard() {
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))',
-              gap: 'clamp(16px, 3vw, 24px)'
+              gap: apprenantTheme.spacing.md
             }}>
               {programs.map((program) => (
                 <div
                   key={program.id}
                   style={{
-                    background: '#ffffff',
-                    borderRadius: '20px',
-                    padding: 'clamp(20px, 4vw, 28px)',
+                    ...cardStyles.base,
                     cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-                    border: '2px solid transparent',
                     display: 'flex',
                     flexDirection: 'column',
-                    height: '100%'
+                    height: '100%',
+                    background: apprenantTheme.colors.bgPrimary
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-8px)';
-                    e.currentTarget.style.boxShadow = '0 12px 40px rgba(139, 92, 246, 0.3)';
-                    e.currentTarget.style.borderColor = '#8b5cf6';
+                    Object.assign(e.currentTarget.style, cardStyles.hover);
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.1)';
-                    e.currentTarget.style.borderColor = 'transparent';
+                    Object.assign(e.currentTarget.style, cardStyles.base);
+                    e.currentTarget.style.background = apprenantTheme.colors.bgPrimary;
                   }}
                   onClick={() => navigate(`/apprenant/programs/${program.id}`)}
                 >
-                  {/* Icône */}
+                  {/* Icône programme */}
                   <div style={{
                     width: 'clamp(56px, 12vw, 72px)',
                     height: 'clamp(56px, 12vw, 72px)',
-                    borderRadius: '16px',
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    borderRadius: apprenantTheme.radius.lg,
+                    background: apprenantTheme.gradients.secondary,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: 'clamp(28px, 6vw, 36px)',
-                    marginBottom: 'clamp(16px, 3vw, 20px)',
+                    marginBottom: apprenantTheme.spacing.md,
+                    boxShadow: apprenantTheme.shadows.md,
                     flexShrink: 0
                   }}>
-                    {program.icon || '📚'}
+                    <BookOpen size={32} color="white" strokeWidth={2} />
                   </div>
 
                   {/* Contenu */}
                   <div style={{ flex: 1 }}>
                     <h3 style={{
-                      fontSize: 'clamp(18px, 3.5vw, 22px)',
+                      fontSize: apprenantTheme.fontSize.xl,
                       fontWeight: '700',
-                      color: '#1e293b',
+                      color: apprenantTheme.colors.textPrimary,
                       marginBottom: '8px',
                       lineHeight: '1.3'
                     }}>
@@ -299,8 +333,8 @@ export default function ApprenantDashboard() {
 
                     {program.description && (
                       <p style={{
-                        fontSize: 'clamp(13px, 2.5vw, 14px)',
-                        color: '#64748b',
+                        fontSize: apprenantTheme.fontSize.sm,
+                        color: apprenantTheme.colors.textSecondary,
                         marginBottom: '16px',
                         lineHeight: '1.5',
                         display: '-webkit-box',
@@ -313,27 +347,23 @@ export default function ApprenantDashboard() {
                     )}
 
                     <div style={{
-                      fontSize: 'clamp(12px, 2.5vw, 13px)',
-                      color: '#94a3b8',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      fontSize: apprenantTheme.fontSize.sm,
+                      color: apprenantTheme.colors.textTertiary,
                       marginBottom: '16px'
                     }}>
-                      {program.totalLessons} leçon{program.totalLessons > 1 ? 's' : ''}
+                      <Clock size={14} />
+                      <span>{program.totalLessons} leçon{program.totalLessons > 1 ? 's' : ''}</span>
                     </div>
                   </div>
 
                   {/* Bouton */}
                   <button
                     style={{
+                      ...buttonStyles.primary.base,
                       width: '100%',
-                      padding: 'clamp(12px, 2.5vw, 14px)',
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '12px',
-                      fontSize: 'clamp(14px, 3vw, 16px)',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -341,12 +371,10 @@ export default function ApprenantDashboard() {
                       marginTop: 'auto'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'scale(1.02)';
-                      e.currentTarget.style.boxShadow = '0 8px 20px rgba(102, 126, 234, 0.4)';
+                      Object.assign(e.currentTarget.style, buttonStyles.primary.hover);
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'scale(1)';
-                      e.currentTarget.style.boxShadow = 'none';
+                      Object.assign(e.currentTarget.style, buttonStyles.primary.base);
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -354,7 +382,7 @@ export default function ApprenantDashboard() {
                     }}
                   >
                     <span>Commencer</span>
-                    <span style={{ fontSize: 'clamp(16px, 3vw, 18px)' }}>→</span>
+                    <ArrowRight size={18} strokeWidth={2.5} />
                   </button>
                 </div>
               ))}

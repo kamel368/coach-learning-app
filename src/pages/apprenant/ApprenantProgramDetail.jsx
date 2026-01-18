@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { collection, getDocs, doc, getDoc, query, orderBy } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
 import { getUserProgramProgress } from '../../services/progressionService';
+import { ArrowLeft, BookOpen, TrendingUp, ChevronRight, Lock, PlayCircle } from 'lucide-react';
+import { apprenantTheme, cardStyles } from '../../styles/apprenantTheme';
 
 export default function ApprenantProgramDetail() {
   const { programId } = useParams();
@@ -92,8 +94,8 @@ export default function ApprenantProgramDetail() {
         justifyContent: 'center',
         alignItems: 'center',
         height: '100vh',
-        fontSize: '18px',
-        color: '#64748b'
+        fontSize: apprenantTheme.fontSize.lg,
+        color: apprenantTheme.colors.textSecondary
       }}>
         Chargement...
       </div>
@@ -103,10 +105,10 @@ export default function ApprenantProgramDetail() {
   if (!program) {
     return (
       <div style={{
-        padding: 'clamp(24px, 5vw, 40px)',
+        padding: apprenantTheme.spacing.xl,
         textAlign: 'center'
       }}>
-        <p style={{ fontSize: 'clamp(16px, 3vw, 18px)', color: '#64748b' }}>
+        <p style={{ fontSize: apprenantTheme.fontSize.lg, color: apprenantTheme.colors.textSecondary }}>
           Programme introuvable
         </p>
         <button
@@ -114,11 +116,11 @@ export default function ApprenantProgramDetail() {
           style={{
             marginTop: '20px',
             padding: '12px 24px',
-            background: '#8b5cf6',
+            background: apprenantTheme.gradients.secondary,
             color: 'white',
             border: 'none',
-            borderRadius: '12px',
-            fontSize: 'clamp(14px, 3vw, 16px)',
+            borderRadius: apprenantTheme.radius.md,
+            fontSize: apprenantTheme.fontSize.base,
             fontWeight: '600',
             cursor: 'pointer'
           }}
@@ -132,12 +134,12 @@ export default function ApprenantProgramDetail() {
   return (
     <div style={{
       minHeight: '100%',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+      background: apprenantTheme.colors.bgApp
     }}>
       <div style={{
         maxWidth: '1000px',
         margin: '0 auto',
-        padding: 'clamp(24px, 4vw, 40px) clamp(16px, 3vw, 24px)',
+        padding: apprenantTheme.spacing.lg + ' ' + apprenantTheme.spacing.md,
         paddingBottom: 'clamp(40px, 6vw, 60px)'
       }}>
         
@@ -145,28 +147,34 @@ export default function ApprenantProgramDetail() {
         <button
           onClick={() => navigate('/apprenant/dashboard')}
           style={{
-            background: 'rgba(255, 255, 255, 0.2)',
-            border: 'none',
-            color: 'white',
-            padding: 'clamp(8px, 2vw, 10px) clamp(14px, 3vw, 18px)',
-            borderRadius: '10px',
-            fontSize: 'clamp(13px, 2.5vw, 14px)',
+            background: apprenantTheme.colors.bgPrimary,
+            border: `2px solid ${apprenantTheme.colors.border}`,
+            color: apprenantTheme.colors.textSecondary,
+            padding: apprenantTheme.spacing.sm + ' ' + apprenantTheme.spacing.md,
+            borderRadius: apprenantTheme.radius.base,
+            fontSize: apprenantTheme.fontSize.sm,
             fontWeight: '600',
             cursor: 'pointer',
-            marginBottom: 'clamp(16px, 3vw, 20px)',
-            transition: 'all 0.2s',
+            marginBottom: apprenantTheme.spacing.md,
+            transition: apprenantTheme.transitions.base,
             display: 'flex',
             alignItems: 'center',
-            gap: '6px'
+            gap: '8px',
+            boxShadow: apprenantTheme.shadows.sm
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
+            e.currentTarget.style.borderColor = apprenantTheme.colors.secondary;
+            e.currentTarget.style.color = apprenantTheme.colors.secondary;
+            e.currentTarget.style.boxShadow = apprenantTheme.shadows.md;
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+            e.currentTarget.style.background = apprenantTheme.colors.bgPrimary;
+            e.currentTarget.style.borderColor = apprenantTheme.colors.border;
+            e.currentTarget.style.color = apprenantTheme.colors.textSecondary;
+            e.currentTarget.style.boxShadow = apprenantTheme.shadows.sm;
           }}
         >
-          <span>←</span>
+          <ArrowLeft size={16} />
           <span style={{ display: window.innerWidth < 400 ? 'none' : 'inline' }}>
             Retour aux programmes
           </span>
@@ -177,31 +185,31 @@ export default function ApprenantProgramDetail() {
 
         {/* Header Programme */}
         <div style={{
-          background: 'rgba(255, 255, 255, 0.95)',
-          borderRadius: 'clamp(12px, 2.5vw, 20px)',
-          padding: 'clamp(20px, 4vw, 32px)',
-          marginBottom: 'clamp(20px, 3vw, 28px)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)'
+          background: apprenantTheme.colors.bgPrimary,
+          borderRadius: apprenantTheme.radius.xl,
+          padding: apprenantTheme.spacing.xl,
+          marginBottom: apprenantTheme.spacing.lg,
+          boxShadow: apprenantTheme.shadows.xl
         }}>
           {/* Icône */}
           <div style={{
             width: 'clamp(64px, 15vw, 80px)',
             height: 'clamp(64px, 15vw, 80px)',
-            borderRadius: 'clamp(16px, 3vw, 20px)',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: apprenantTheme.radius.lg,
+            background: apprenantTheme.gradients.secondary,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: 'clamp(32px, 7vw, 40px)',
-            marginBottom: 'clamp(16px, 3vw, 24px)'
+            marginBottom: apprenantTheme.spacing.md,
+            boxShadow: apprenantTheme.shadows.md
           }}>
-            {program.icon || '📚'}
+            <BookOpen size={40} color="white" strokeWidth={2} />
           </div>
 
           <h1 style={{
-            fontSize: 'clamp(24px, 6vw, 36px)',
+            fontSize: apprenantTheme.fontSize['4xl'],
             fontWeight: '700',
-            color: '#1e293b',
+            color: apprenantTheme.colors.textPrimary,
             marginBottom: '12px',
             letterSpacing: '-0.5px',
             lineHeight: '1.2'
@@ -211,9 +219,9 @@ export default function ApprenantProgramDetail() {
 
           {program.description && (
             <p style={{
-              fontSize: 'clamp(14px, 3vw, 18px)',
-              color: '#64748b',
-              marginBottom: 'clamp(16px, 3vw, 24px)',
+              fontSize: apprenantTheme.fontSize.lg,
+              color: apprenantTheme.colors.textSecondary,
+              marginBottom: apprenantTheme.spacing.md,
               lineHeight: '1.6'
             }}>
               {program.description}
@@ -223,10 +231,11 @@ export default function ApprenantProgramDetail() {
           {/* Progression programme */}
           {userProgress && (
             <div style={{
-              background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-              borderRadius: '16px',
-              padding: 'clamp(16px, 3vw, 24px)',
-              marginTop: 'clamp(16px, 3vw, 24px)'
+              background: apprenantTheme.gradients.card,
+              borderRadius: apprenantTheme.radius.lg,
+              padding: apprenantTheme.spacing.md,
+              marginTop: apprenantTheme.spacing.md,
+              border: `1px solid ${apprenantTheme.colors.border}`
             }}>
               <div style={{
                 display: 'flex',
@@ -236,17 +245,21 @@ export default function ApprenantProgramDetail() {
                 flexWrap: 'wrap',
                 gap: '8px'
               }}>
-                <span style={{
-                  fontSize: 'clamp(14px, 3vw, 16px)',
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontSize: apprenantTheme.fontSize.base,
                   fontWeight: '600',
-                  color: '#1e293b'
+                  color: apprenantTheme.colors.textPrimary
                 }}>
-                  Votre progression
-                </span>
+                  <TrendingUp size={18} color={apprenantTheme.colors.secondary} />
+                  <span>Votre progression</span>
+                </div>
                 <span style={{
-                  fontSize: 'clamp(20px, 5vw, 24px)',
+                  fontSize: apprenantTheme.fontSize['2xl'],
                   fontWeight: '700',
-                  color: '#8b5cf6'
+                  color: apprenantTheme.colors.secondary
                 }}>
                   {userProgress.percentage || 0}%
                 </span>
@@ -255,15 +268,16 @@ export default function ApprenantProgramDetail() {
               <div style={{
                 width: '100%',
                 height: 'clamp(10px, 2vw, 12px)',
-                background: '#e2e8f0',
-                borderRadius: '999px',
+                background: apprenantTheme.colors.bgTertiary,
+                borderRadius: apprenantTheme.radius.full,
                 overflow: 'hidden'
               }}>
                 <div style={{
                   width: `${userProgress.percentage || 0}%`,
                   height: '100%',
-                  background: 'linear-gradient(90deg, #8b5cf6 0%, #7c3aed 100%)',
-                  transition: 'width 0.5s ease'
+                  background: apprenantTheme.gradients.secondary,
+                  transition: 'width 0.5s ease',
+                  boxShadow: '0 0 10px rgba(59, 130, 246, 0.5)'
                 }} />
               </div>
             </div>
@@ -272,27 +286,31 @@ export default function ApprenantProgramDetail() {
 
         {/* Liste des modules */}
         <div>
-          <h2 style={{
-            fontSize: 'clamp(20px, 4vw, 24px)',
-            fontWeight: '700',
-            color: '#ffffff',
-            marginBottom: 'clamp(16px, 3vw, 24px)',
-            textShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            fontSize: apprenantTheme.fontSize['2xl'],
+            fontWeight: '800',
+            color: apprenantTheme.colors.primary,
+            marginBottom: apprenantTheme.spacing.md,
             paddingLeft: 'clamp(0px, 2vw, 8px)'
           }}>
-            📖 Modules du programme
-          </h2>
+            <BookOpen size={24} strokeWidth={2.5} />
+            <span>Modules du programme</span>
+          </div>
 
           {modules.length === 0 ? (
             <div style={{
-              background: 'rgba(255, 255, 255, 0.95)',
-              borderRadius: '16px',
-              padding: 'clamp(32px, 6vw, 40px)',
-              textAlign: 'center'
+              background: apprenantTheme.colors.bgPrimary,
+              borderRadius: apprenantTheme.radius.xl,
+              padding: apprenantTheme.spacing.xl,
+              textAlign: 'center',
+              boxShadow: apprenantTheme.shadows.xl
             }}>
               <p style={{
-                fontSize: 'clamp(16px, 3vw, 18px)',
-                color: '#64748b'
+                fontSize: apprenantTheme.fontSize.lg,
+                color: apprenantTheme.colors.textSecondary
               }}>
                 Aucun module disponible pour ce programme
               </p>
@@ -301,35 +319,36 @@ export default function ApprenantProgramDetail() {
             <div style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: 'clamp(12px, 2.5vw, 16px)'
+              gap: apprenantTheme.spacing.sm
             }}>
               {modules.map((module, index) => {
                 const status = getModuleStatus(module.id);
+                const StatusIcon = status.label === 'Non commencé' ? Lock : PlayCircle;
 
                 return (
                   <div
                     key={module.id}
                     style={{
-                      background: '#ffffff',
-                      borderRadius: 'clamp(12px, 2.5vw, 16px)',
-                      padding: 'clamp(16px, 3vw, 24px)',
+                      background: apprenantTheme.colors.bgPrimary,
+                      borderRadius: apprenantTheme.radius.lg,
+                      padding: apprenantTheme.spacing.md,
                       cursor: 'pointer',
-                      transition: 'all 0.3s ease',
-                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-                      border: '2px solid transparent',
+                      transition: apprenantTheme.transitions.slow,
+                      boxShadow: apprenantTheme.shadows.md,
+                      border: `2px solid transparent`,
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 'clamp(12px, 3vw, 20px)',
+                      gap: apprenantTheme.spacing.md,
                       flexWrap: window.innerWidth < 500 ? 'wrap' : 'nowrap'
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.transform = 'translateY(-4px)';
-                      e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 0, 0, 0.15)';
-                      e.currentTarget.style.borderColor = status.color;
+                      e.currentTarget.style.boxShadow = apprenantTheme.shadows.xl;
+                      e.currentTarget.style.borderColor = apprenantTheme.colors.secondary;
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.1)';
+                      e.currentTarget.style.boxShadow = apprenantTheme.shadows.md;
                       e.currentTarget.style.borderColor = 'transparent';
                     }}
                     onClick={() => navigate(`/apprenant/programs/${programId}/modules/${module.id}`)}
@@ -338,15 +357,16 @@ export default function ApprenantProgramDetail() {
                     <div style={{
                       width: 'clamp(48px, 12vw, 60px)',
                       height: 'clamp(48px, 12vw, 60px)',
-                      borderRadius: 'clamp(10px, 2vw, 12px)',
-                      background: `${status.color}22`,
+                      borderRadius: apprenantTheme.radius.md,
+                      background: `${apprenantTheme.colors.secondary}11`,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: 'clamp(20px, 5vw, 24px)',
+                      fontSize: apprenantTheme.fontSize['2xl'],
                       fontWeight: '700',
-                      color: status.color,
-                      flexShrink: 0
+                      color: apprenantTheme.colors.secondary,
+                      flexShrink: 0,
+                      border: `2px solid ${apprenantTheme.colors.secondary}22`
                     }}>
                       {index + 1}
                     </div>
@@ -357,9 +377,9 @@ export default function ApprenantProgramDetail() {
                       minWidth: window.innerWidth < 500 ? '100%' : 'auto'
                     }}>
                       <h3 style={{
-                        fontSize: 'clamp(16px, 3.5vw, 20px)',
+                        fontSize: apprenantTheme.fontSize.xl,
                         fontWeight: '700',
-                        color: '#1e293b',
+                        color: apprenantTheme.colors.textPrimary,
                         marginBottom: '6px',
                         lineHeight: '1.3'
                       }}>
@@ -368,8 +388,8 @@ export default function ApprenantProgramDetail() {
 
                       {module.description && (
                         <p style={{
-                          fontSize: 'clamp(13px, 2.5vw, 14px)',
-                          color: '#64748b',
+                          fontSize: apprenantTheme.fontSize.sm,
+                          color: apprenantTheme.colors.textSecondary,
                           marginBottom: '8px',
                           lineHeight: '1.5',
                           display: '-webkit-box',
@@ -382,8 +402,8 @@ export default function ApprenantProgramDetail() {
                       )}
 
                       <div style={{
-                        fontSize: 'clamp(12px, 2.5vw, 13px)',
-                        color: '#94a3b8'
+                        fontSize: apprenantTheme.fontSize.sm,
+                        color: apprenantTheme.colors.textTertiary
                       }}>
                         {module.totalLessons} leçon{module.totalLessons > 1 ? 's' : ''}
                       </div>
@@ -394,16 +414,16 @@ export default function ApprenantProgramDetail() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: '8px',
-                      padding: 'clamp(6px, 1.5vw, 8px) clamp(12px, 2.5vw, 16px)',
-                      background: `${status.color}11`,
-                      borderRadius: '8px',
-                      fontSize: 'clamp(13px, 2.5vw, 14px)',
+                      padding: apprenantTheme.spacing.sm + ' ' + apprenantTheme.spacing.md,
+                      background: `${apprenantTheme.colors.secondary}11`,
+                      borderRadius: apprenantTheme.radius.base,
+                      fontSize: apprenantTheme.fontSize.sm,
                       fontWeight: '600',
-                      color: status.color,
+                      color: apprenantTheme.colors.secondary,
                       flexShrink: 0,
                       whiteSpace: 'nowrap'
                     }}>
-                      <span style={{ fontSize: 'clamp(16px, 3vw, 18px)' }}>{status.icon}</span>
+                      <StatusIcon size={18} />
                       <span style={{ display: window.innerWidth < 400 ? 'none' : 'inline' }}>
                         {status.label}
                       </span>
