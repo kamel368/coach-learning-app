@@ -1,8 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
-import { getAllUserProgress, calculateGlobalProgress } from '../../services/progressionService';
+import { getAllUserProgress, calculateGlobalProgress, getUserAssignedProgramsWithDetails } from '../../services/progressionService';
 import { BookOpen, TrendingUp, ArrowRight, Clock } from 'lucide-react';
 import { apprenantTheme, cardStyles, buttonStyles } from '../../styles/apprenantTheme';
 
@@ -32,37 +32,11 @@ export default function ApprenantDashboard() {
         setUserName(userDoc.data().displayName || userDoc.data().name || 'Apprenant');
       }
 
-      // Récupérer tous les programmes publiés
-      const programsSnap = await getDocs(collection(db, 'programs'));
-      const programsData = [];
-
-      for (const programDoc of programsSnap.docs) {
-        const programData = programDoc.data();
-        
-        // Filtrer uniquement les programmes publiés
-        if (programData.status === 'published') {
-          // Compter les leçons dans tous les modules
-          let totalLessons = 0;
-          const modulesSnap = await getDocs(
-            collection(db, `programs/${programDoc.id}/modules`)
-          );
-          
-          for (const moduleDoc of modulesSnap.docs) {
-            const lessonsSnap = await getDocs(
-              collection(db, `programs/${programDoc.id}/modules/${moduleDoc.id}/lessons`)
-            );
-            totalLessons += lessonsSnap.size;
-          }
-
-          programsData.push({
-            id: programDoc.id,
-            ...programData,
-            totalLessons
-          });
-        }
-      }
-
-      setPrograms(programsData);
+      // Récupérer les programmes affectés à l'utilisateur
+      console.log('🔍 Fetching assigned programs for user:', user.uid);
+      const assignedPrograms = await getUserAssignedProgramsWithDetails(user.uid);
+      console.log('✅ Assigned programs:', assignedPrograms);
+      setPrograms(assignedPrograms);
 
       // Charger la progression utilisateur
       const allProgress = await getAllUserProgress(user.uid);
@@ -268,13 +242,13 @@ export default function ApprenantDashboard() {
                 marginBottom: '8px',
                 fontWeight: '600'
               }}>
-                Aucun programme disponible pour le moment
+                Aucun programme affecté
               </p>
               <p style={{
                 fontSize: apprenantTheme.fontSize.sm,
                 color: apprenantTheme.colors.textTertiary
               }}>
-                Les programmes apparaîtront ici une fois qu'ils seront publiés
+                Contactez votre administrateur pour accéder à des programmes de formation
               </p>
             </div>
           ) : (

@@ -12,6 +12,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import Breadcrumb from "../components/Breadcrumb";
+import { assignProgramsToUser, getAllPrograms } from '../services/assignmentService';
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -26,6 +27,13 @@ export default function AdminUsers() {
   const [newPassword, setNewPassword] = useState("");
   const [newRole, setNewRole] = useState("learner");
   const [creating, setCreating] = useState(false);
+
+  // États pour la modal d'affectation
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [availablePrograms, setAvailablePrograms] = useState([]);
+  const [selectedPrograms, setSelectedPrograms] = useState([]);
+  const [assignLoading, setAssignLoading] = useState(false);
 
   // Charger tous les utilisateurs
   useEffect(() => {
@@ -115,6 +123,63 @@ export default function AdminUsers() {
     } finally {
       setCreating(false);
     }
+  }
+
+  // Fonction pour ouvrir la modal d'affectation
+  async function handleOpenAssignModal(user) {
+    setSelectedUser(user);
+    setSelectedPrograms(user.assignedPrograms || []);
+    setShowAssignModal(true);
+    
+    // Charger les programmes disponibles
+    const programs = await getAllPrograms();
+    setAvailablePrograms(programs);
+  }
+
+  // Fonction pour sauvegarder l'affectation
+  async function handleSaveAssignment() {
+    if (!selectedUser) return;
+    
+    setAssignLoading(true);
+    try {
+      const result = await assignProgramsToUser(selectedUser.id, selectedPrograms);
+      
+      if (result.success) {
+        alert('✅ Programmes affectés avec succès !');
+        
+        // Mettre à jour la liste locale
+        setUsers(users.map(u => 
+          u.id === selectedUser.id 
+            ? { ...u, assignedPrograms: selectedPrograms }
+            : u
+        ));
+        setFilteredUsers(filteredUsers.map(u => 
+          u.id === selectedUser.id 
+            ? { ...u, assignedPrograms: selectedPrograms }
+            : u
+        ));
+        
+        setShowAssignModal(false);
+        setSelectedUser(null);
+        setSelectedPrograms([]);
+      } else {
+        alert('❌ Erreur: ' + result.error);
+      }
+    } catch (error) {
+      console.error(error);
+      alert('❌ Erreur lors de l\'affectation');
+    } finally {
+      setAssignLoading(false);
+    }
+  }
+
+  // Fonction pour toggle un programme
+  function toggleProgram(programId) {
+    setSelectedPrograms(prev => 
+      prev.includes(programId)
+        ? prev.filter(id => id !== programId)
+        : [...prev, programId]
+    );
   }
 
   if (loading) return <div style={{ padding: 24 }}>Chargement...</div>;
@@ -294,6 +359,9 @@ export default function AdminUsers() {
               <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 13, fontWeight: 600 }}>
                 Date de création
               </th>
+              <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 13, fontWeight: 600 }}>
+                Programmes affectés
+              </th>
               <th style={{ padding: "12px 16px", textAlign: "center", fontSize: 13, fontWeight: 600 }}>
                 Actions
               </th>
@@ -302,7 +370,7 @@ export default function AdminUsers() {
           <tbody>
             {filteredUsers.length === 0 ? (
               <tr>
-                <td colSpan={4} style={{ padding: 20, textAlign: "center", color: "var(--color-muted)" }}>
+                <td colSpan={5} style={{ padding: 20, textAlign: "center", color: "var(--color-muted)" }}>
                   Aucun utilisateur trouvé.
                 </td>
               </tr>
@@ -330,6 +398,47 @@ export default function AdminUsers() {
                       ? new Date(user.createdAt.toDate()).toLocaleDateString("fr-FR")
                       : "—"}
                   </td>
+                  <td style={{ padding: "12px 16px" }}>
+                    {user.role === "learner" ? (
+                      <div>
+                        {user.assignedPrograms && user.assignedPrograms.length > 0 ? (
+                          <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>
+                            {user.assignedPrograms.length} programme{user.assignedPrograms.length > 1 ? 's' : ''}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 4 }}>
+                            Aucun programme
+                          </div>
+                        )}
+                        <button
+                          onClick={() => handleOpenAssignModal(user)}
+                          style={{
+                            padding: "4px 8px",
+                            background: "#f1f5f9",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: 6,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: "#3b82f6",
+                            cursor: "pointer",
+                            transition: "all 0.2s"
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "#e0f2fe";
+                            e.currentTarget.style.borderColor = "#3b82f6";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "#f1f5f9";
+                            e.currentTarget.style.borderColor = "#e2e8f0";
+                          }}
+                        >
+                          Gérer
+                        </button>
+                      </div>
+                    ) : (
+                      <span style={{ color: "#94a3b8", fontSize: 12 }}>—</span>
+                    )}
+                  </td>
                   <td style={{ padding: "12px 16px", textAlign: "center" }}>
                     <button
                       onClick={() => handleToggleRole(user)}
@@ -353,6 +462,252 @@ export default function AdminUsers() {
           </tbody>
         </table>
       </div>
+
+      {/* Modal d'affectation */}
+      {showAssignModal && (
+        <>
+          {/* Overlay */}
+          <div
+            onClick={() => setShowAssignModal(false)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.5)',
+              zIndex: 999,
+              animation: 'fadeIn 0.2s ease'
+            }}
+          />
+          
+          {/* Modal */}
+          <div
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: 'white',
+              borderRadius: '16px',
+              padding: '24px',
+              width: '90%',
+              maxWidth: '500px',
+              maxHeight: '80vh',
+              overflow: 'auto',
+              zIndex: 1000,
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+              animation: 'slideUp 0.3s ease'
+            }}
+          >
+            <style>
+              {`
+                @keyframes fadeIn {
+                  from { opacity: 0; }
+                  to { opacity: 1; }
+                }
+                @keyframes slideUp {
+                  from { 
+                    opacity: 0;
+                    transform: translate(-50%, -45%);
+                  }
+                  to { 
+                    opacity: 1;
+                    transform: translate(-50%, -50%);
+                  }
+                }
+              `}
+            </style>
+            
+            {/* Header */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '20px'
+            }}>
+              <h2 style={{ fontSize: '20px', fontWeight: '700', margin: 0 }}>
+                Affecter des programmes
+              </h2>
+              <button
+                onClick={() => setShowAssignModal(false)}
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: '#f1f5f9',
+                  cursor: 'pointer',
+                  fontSize: '18px',
+                  color: '#64748b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            
+            {/* User info */}
+            <div style={{
+              background: '#f8fafc',
+              borderRadius: '12px',
+              padding: '16px',
+              marginBottom: '20px'
+            }}>
+              <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '4px' }}>
+                Apprenant
+              </div>
+              <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>
+                {selectedUser?.name || selectedUser?.email}
+              </div>
+            </div>
+            
+            {/* Liste programmes */}
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#1e293b',
+                marginBottom: '12px'
+              }}>
+                Sélectionne les programmes à affecter :
+              </div>
+              
+              {availablePrograms.length === 0 ? (
+                <div style={{
+                  padding: '20px',
+                  textAlign: 'center',
+                  color: '#94a3b8',
+                  fontSize: '14px'
+                }}>
+                  Aucun programme disponible
+                </div>
+              ) : (
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px'
+                }}>
+                  {availablePrograms.map(program => (
+                    <label
+                      key={program.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '12px',
+                        borderRadius: '10px',
+                        border: '2px solid',
+                        borderColor: selectedPrograms.includes(program.id) ? '#3b82f6' : '#e5e7eb',
+                        background: selectedPrograms.includes(program.id) ? '#eff6ff' : '#ffffff',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!selectedPrograms.includes(program.id)) {
+                          e.currentTarget.style.borderColor = '#cbd5e1';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!selectedPrograms.includes(program.id)) {
+                          e.currentTarget.style.borderColor = '#e5e7eb';
+                        }
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedPrograms.includes(program.id)}
+                        onChange={() => toggleProgram(program.id)}
+                        style={{
+                          width: '18px',
+                          height: '18px',
+                          cursor: 'pointer'
+                        }}
+                      />
+                      <div style={{ flex: 1 }}>
+                        <div style={{
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: '#1e293b'
+                        }}>
+                          {program.name}
+                        </div>
+                        {program.description && (
+                          <div style={{
+                            fontSize: '12px',
+                            color: '#64748b',
+                            marginTop: '2px'
+                          }}>
+                            {program.description}
+                          </div>
+                        )}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            {/* Compteur */}
+            <div style={{
+              padding: '12px',
+              background: '#f8fafc',
+              borderRadius: '8px',
+              marginBottom: '20px',
+              fontSize: '13px',
+              color: '#64748b',
+              textAlign: 'center'
+            }}>
+              {selectedPrograms.length} programme{selectedPrograms.length > 1 ? 's' : ''} sélectionné{selectedPrograms.length > 1 ? 's' : ''}
+            </div>
+            
+            {/* Actions */}
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={() => setShowAssignModal(false)}
+                disabled={assignLoading}
+                style={{
+                  padding: '10px 20px',
+                  background: '#f1f5f9',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#64748b',
+                  cursor: assignLoading ? 'not-allowed' : 'pointer',
+                  opacity: assignLoading ? 0.5 : 1
+                }}
+              >
+                Annuler
+              </button>
+              
+              <button
+                onClick={handleSaveAssignment}
+                disabled={assignLoading}
+                style={{
+                  padding: '10px 20px',
+                  background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: 'white',
+                  cursor: assignLoading ? 'not-allowed' : 'pointer',
+                  opacity: assignLoading ? 0.7 : 1
+                }}
+              >
+                {assignLoading ? 'Enregistrement...' : 'Enregistrer'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

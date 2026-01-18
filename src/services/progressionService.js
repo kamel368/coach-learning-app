@@ -3,7 +3,9 @@ import {
   getDoc, 
   setDoc, 
   collection,
-  getDocs 
+  getDocs,
+  query,
+  where
 } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -133,5 +135,76 @@ export async function calculateGlobalProgress(userId) {
   } catch (error) {
     console.error('Erreur calculateGlobalProgress:', error);
     return 0;
+  }
+}
+
+/**
+ * Récupérer les programmes affectés à l'utilisateur avec leurs détails
+ * @param {string} userId - ID de l'utilisateur
+ * @returns {Promise<Array>} Liste des programmes affectés avec le nombre de leçons
+ */
+export async function getUserAssignedProgramsWithDetails(userId) {
+  try {
+    console.log('🔍 getUserAssignedProgramsWithDetails for user:', userId);
+    
+    // 1. Récupérer l'utilisateur
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    if (!userDoc.exists()) {
+      console.warn('⚠️ User document not found:', userId);
+      return [];
+    }
+    
+    const assignedProgramIds = userDoc.data().assignedPrograms || [];
+    console.log('📋 Assigned program IDs:', assignedProgramIds);
+    
+    if (assignedProgramIds.length === 0) {
+      console.log('ℹ️ No programs assigned to this user');
+      return [];
+    }
+    
+    // 2. Récupérer tous les programmes publiés
+    const programsQuery = query(
+      collection(db, 'programs'),
+      where('status', '==', 'published')
+    );
+    const programsSnap = await getDocs(programsQuery);
+    console.log('📚 Total published programs:', programsSnap.size);
+    
+    // 3. Filtrer pour ne garder que les programmes affectés
+    const allPrograms = programsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const assignedPrograms = allPrograms.filter(p => assignedProgramIds.includes(p.id));
+    console.log('✅ Assigned and published programs:', assignedPrograms.length);
+    
+    // 4. Pour chaque programme, compter les leçons
+    const programsWithLessons = await Promise.all(
+      assignedPrograms.map(async (program) => {
+        let totalLessons = 0;
+        
+        // Compter les leçons dans tous les modules
+        const modulesSnap = await getDocs(
+          collection(db, `programs/${program.id}/modules`)
+        );
+        
+        for (const moduleDoc of modulesSnap.docs) {
+          const lessonsSnap = await getDocs(
+            collection(db, `programs/${program.id}/modules/${moduleDoc.id}/lessons`)
+          );
+          totalLessons += lessonsSnap.size;
+        }
+        
+        console.log(`  → ${program.name}: ${totalLessons} leçons`);
+        
+        return {
+          ...program,
+          totalLessons
+        };
+      })
+    );
+    
+    console.log('🎉 getUserAssignedProgramsWithDetails completed:', programsWithLessons.length, 'programs');
+    return programsWithLessons;
+  } catch (error) {
+    console.error('❌ Erreur getUserAssignedProgramsWithDetails:', error);
+    return [];
   }
 }
