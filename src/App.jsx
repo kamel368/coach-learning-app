@@ -21,6 +21,9 @@ import AdminUsers from "./pages/AdminUsers";
 // ✅ Nouvelle page Teachizy-like
 import LessonEditorPage from "./pages/LessonEditorPage";
 
+// ✅ Builder d'exercices
+import ExerciseEditorPage from "./pages/admin/ExerciseEditorPage";
+
 // ✅ Page temporaire de nettoyage Firebase
 import CleanupPage from "./pages/CleanupPage";
 
@@ -177,6 +180,16 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <LessonEditorPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* ✅ Builder d'exercices (PLEIN ÉCRAN) */}
+          <Route
+            path="/admin/programs/:programId/chapters/:chapterId/exercises"
+            element={
+              <ProtectedRoute>
+                <ExerciseEditorPage />
               </ProtectedRoute>
             }
           />

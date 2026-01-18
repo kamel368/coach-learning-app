@@ -1117,7 +1117,8 @@ export default function AdminProgramDetail() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleAddQuizForChapter(chapter.id);
+                            // Navigation vers le builder d'exercices
+                            navigate(`/admin/programs/${program.id}/chapters/${chapter.id}/exercises`);
                           }}
                           style={{
                             padding: '8px 16px',
