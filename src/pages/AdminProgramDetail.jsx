@@ -1118,7 +1118,7 @@ export default function AdminProgramDetail() {
                           onClick={(e) => {
                             e.stopPropagation();
                             // Navigation vers le builder d'exercices
-                            navigate(`/admin/programs/${program.id}/chapters/${chapter.id}/exercises`);
+                            navigate(`/admin/programs/${program.id}/modules/${chapter.id}/exercises`);
                           }}
                           style={{
                             padding: '8px 16px',

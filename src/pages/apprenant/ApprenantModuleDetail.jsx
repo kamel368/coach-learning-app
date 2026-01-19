@@ -362,6 +362,84 @@ export default function ApprenantModuleDetail() {
                 ))}
               </div>
             )}
+            
+            {/* Section Exercices - NOUVEAU */}
+            <div style={{ marginTop: 'clamp(20px, 4vw, 24px)' }}>
+              <button
+                onClick={() => navigate(`/apprenant/programs/${programId}/modules/${moduleId}/exercises`)}
+                style={{
+                  width: '100%',
+                  padding: 'clamp(20px, 4vw, 24px)',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  borderRadius: 'clamp(12px, 2.5vw, 16px)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  boxShadow: '0 4px 16px rgba(102, 126, 234, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(102, 126, 234, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(102, 126, 234, 0.3)';
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(12px, 3vw, 16px)' }}>
+                  <div style={{
+                    width: 'clamp(48px, 10vw, 56px)',
+                    height: 'clamp(48px, 10vw, 56px)',
+                    borderRadius: '14px',
+                    background: 'rgba(255,255,255,0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 'clamp(24px, 5vw, 28px)',
+                    flexShrink: 0
+                  }}>
+                    🎯
+                  </div>
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{
+                      fontSize: 'clamp(16px, 3.5vw, 20px)',
+                      fontWeight: '700',
+                      color: 'white',
+                      marginBottom: '4px'
+                    }}>
+                      Passer les exercices
+                    </div>
+                    <div style={{
+                      fontSize: 'clamp(13px, 2.5vw, 14px)',
+                      color: 'rgba(255,255,255,0.9)'
+                    }}>
+                      Teste tes connaissances sur ce module
+                    </div>
+                  </div>
+                </div>
+                
+                <div style={{
+                  padding: 'clamp(8px, 2vw, 10px) clamp(14px, 3vw, 18px)',
+                  background: 'rgba(255,255,255,0.25)',
+                  borderRadius: '10px',
+                  fontSize: 'clamp(13px, 2.5vw, 14px)',
+                  fontWeight: '600',
+                  color: 'white',
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <span style={{ display: window.innerWidth < 400 ? 'none' : 'inline' }}>
+                    Commencer
+                  </span>
+                  <ChevronRight size={18} />
+                </div>
+              </button>
+            </div>
           </div>
 
           {/* Colonne QCM */}

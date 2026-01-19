@@ -33,6 +33,9 @@ import ApprenantDashboard from './pages/apprenant/ApprenantDashboard';
 import ApprenantProgramDetail from './pages/apprenant/ApprenantProgramDetail';
 import ApprenantModuleDetail from './pages/apprenant/ApprenantModuleDetail';
 import ApprenantLessonViewer from './pages/apprenant/ApprenantLessonViewer';
+import ApprenantExercises from './pages/apprenant/ApprenantExercises';
+import ApprenantExercisesResults from './pages/apprenant/ApprenantExercisesResults';
+import ExerciseDebugPage from './pages/apprenant/ExerciseDebugPage';
 
 function AppContent() {
   const location = useLocation();
@@ -186,7 +189,7 @@ function AppContent() {
 
           {/* ✅ Builder d'exercices (PLEIN ÉCRAN) */}
           <Route
-            path="/admin/programs/:programId/chapters/:chapterId/exercises"
+            path="/admin/programs/:programId/modules/:moduleId/exercises"
             element={
               <ProtectedRoute>
                 <ExerciseEditorPage />
@@ -248,6 +251,27 @@ function AppContent() {
             <Route path="programs/:programId/modules/:moduleId" element={
               <ProtectedRoute>
                 <ApprenantModuleDetail />
+              </ProtectedRoute>
+            } />
+            
+            {/* ✅ Exercices d'un module */}
+            <Route path="programs/:programId/modules/:moduleId/exercises" element={
+              <ProtectedRoute>
+                <ApprenantExercises />
+              </ProtectedRoute>
+            } />
+            
+            {/* 🔍 DEBUG exercices */}
+            <Route path="programs/:programId/modules/:moduleId/exercises/debug" element={
+              <ProtectedRoute>
+                <ExerciseDebugPage />
+              </ProtectedRoute>
+            } />
+            
+            {/* ✅ Résultats des exercices */}
+            <Route path="programs/:programId/modules/:moduleId/exercises/results" element={
+              <ProtectedRoute>
+                <ApprenantExercisesResults />
               </ProtectedRoute>
             } />
             

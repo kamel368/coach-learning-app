@@ -5,7 +5,7 @@ import ExerciseBlockPalette from '../../components/exercises/ExerciseBlockPalett
 import ExerciseBlockRenderer from '../../components/exercises/ExerciseBlockRenderer';
 
 export default function ExerciseEditorPage() {
-  const { programId, chapterId } = useParams();
+  const { programId, moduleId } = useParams();
   const navigate = useNavigate();
   
   const {
@@ -21,7 +21,7 @@ export default function ExerciseEditorPage() {
     canUndo,
     canRedo,
     saveExercises
-  } = useExerciseEditor(programId, chapterId);
+  } = useExerciseEditor(programId, moduleId);
 
   const handleSave = async () => {
     const result = await saveExercises();

@@ -5,7 +5,7 @@ import { db } from '../firebase';
 /**
  * Hook pour gérer l'édition d'exercices avec système undo/redo
  */
-export function useExerciseEditor(programId, chapterId) {
+export function useExerciseEditor(programId, moduleId) {
   const [blocks, setBlocks] = useState([]);
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -22,13 +22,13 @@ export function useExerciseEditor(programId, chapterId) {
   // Charger les exercices existants
   useEffect(() => {
     async function loadExercises() {
-      if (!programId || !chapterId) return;
+      if (!programId || !moduleId) return;
       
       try {
         setLoading(true);
         const exercisesRef = doc(
           db,
-          `programs/${programId}/chapters/${chapterId}/exercises/main`
+          `programs/${programId}/modules/${moduleId}/exercises/main`
         );
         const exercisesSnap = await getDoc(exercisesRef);
         
@@ -55,7 +55,7 @@ export function useExerciseEditor(programId, chapterId) {
     }
     
     loadExercises();
-  }, [programId, chapterId]);
+  }, [programId, moduleId]);
 
   // Ajouter à l'historique
   const addToHistory = useCallback((newBlocks) => {
@@ -129,17 +129,17 @@ export function useExerciseEditor(programId, chapterId) {
 
   // Sauvegarder
   const saveExercises = useCallback(async () => {
-    if (!programId || !chapterId) return { success: false };
+    if (!programId || !moduleId) return { success: false };
     
     try {
       setSaving(true);
       const exercisesRef = doc(
         db,
-        `programs/${programId}/chapters/${chapterId}/exercises/main`
+        `programs/${programId}/modules/${moduleId}/exercises/main`
       );
       
       await setDoc(exercisesRef, {
-        chapterId,
+        moduleId,
         programId,
         blocks,
         settings,
@@ -153,7 +153,7 @@ export function useExerciseEditor(programId, chapterId) {
     } finally {
       setSaving(false);
     }
-  }, [programId, chapterId, blocks, settings]);
+  }, [programId, moduleId, blocks, settings]);
 
   return {
     blocks,
