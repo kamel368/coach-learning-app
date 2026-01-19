@@ -8,13 +8,13 @@ import DragDropBlockEditor from './blocks/DragDropBlockEditor';
 import MatchPairsBlockEditor from './blocks/MatchPairsBlockEditor';
 
 const BLOCK_LABELS = {
-  flashcard: { icon: '🃏', label: 'Flashcard' },
-  true_false: { icon: '✓✗', label: 'Vrai/Faux' },
-  qcm: { icon: '☑', label: 'QCM' },
-  qcm_selective: { icon: '☑☑', label: 'QCM Sélectif' },
-  reorder: { icon: '🔢', label: 'Réorganiser' },
-  drag_drop: { icon: '🎯', label: 'Glisser-Déposer' },
-  match_pairs: { icon: '🔗', label: 'Paires' }
+  flashcard: { icon: '🃏', label: 'Flashcard', color: '#8b5cf6' },
+  true_false: { icon: '✓✗', label: 'Vrai/Faux', color: '#3b82f6' },
+  qcm: { icon: '☑', label: 'QCM', color: '#10b981' },
+  qcm_selective: { icon: '☑☑', label: 'QCM Sélectif', color: '#f59e0b' },
+  reorder: { icon: '🔢', label: 'Réorganiser', color: '#06b6d4' },
+  drag_drop: { icon: '🎯', label: 'Glisser-Déposer', color: '#ef4444' },
+  match_pairs: { icon: '🔗', label: 'Paires', color: '#ec4899' }
 };
 
 export default function ExerciseBlockRenderer({
@@ -26,7 +26,7 @@ export default function ExerciseBlockRenderer({
   onMoveUp,
   onMoveDown
 }) {
-  const blockInfo = BLOCK_LABELS[block.type] || { icon: '❓', label: 'Inconnu' };
+  const blockInfo = BLOCK_LABELS[block.type] || { icon: '❓', label: 'Inconnu', color: '#64748b' };
 
   const renderEditor = () => {
     switch (block.type) {
@@ -51,32 +51,66 @@ export default function ExerciseBlockRenderer({
 
   return (
     <div style={{
-      background: '#f8fafc',
+      background: 'white',
       borderRadius: '12px',
-      border: '2px solid #e2e8f0',
+      border: '1px solid #e2e8f0',
       overflow: 'hidden',
       transition: 'all 0.2s'
     }}>
-      {/* Header */}
+      {/* Header - Style cohérent */}
       <div style={{
-        background: 'white',
+        background: '#fafbfc',
         padding: '12px 16px',
         display: 'flex',
         alignItems: 'center',
         gap: '12px',
-        borderBottom: '1px solid #e2e8f0'
+        borderBottom: '1px solid #f1f5f9'
       }}>
         {/* Drag handle */}
-        <div style={{ cursor: 'grab', color: '#94a3b8' }}>
-          <GripVertical size={20} />
+        <div style={{
+          cursor: 'grab',
+          color: '#cbd5e1',
+          display: 'flex',
+          alignItems: 'center'
+        }}>
+          <GripVertical size={18} />
         </div>
 
-        {/* Numéro et type */}
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '18px' }}>{blockInfo.icon}</span>
-          <span style={{ fontSize: '15px', fontWeight: '600', color: '#1e293b' }}>
-            {index + 1}. {blockInfo.label}
-          </span>
+        {/* Badge numéro + type */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          flex: 1
+        }}>
+          <div style={{
+            width: '28px',
+            height: '28px',
+            borderRadius: '6px',
+            background: blockInfo.color,
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '12px',
+            fontWeight: '700'
+          }}>
+            {index + 1}
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <div style={{
+              fontSize: '13px',
+              fontWeight: '600',
+              color: '#1e293b',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              <span>{blockInfo.icon}</span>
+              <span>{blockInfo.label}</span>
+            </div>
+          </div>
         </div>
 
         {/* Points */}
@@ -84,7 +118,7 @@ export default function ExerciseBlockRenderer({
           padding: '4px 10px',
           background: '#fef3c7',
           borderRadius: '6px',
-          fontSize: '13px',
+          fontSize: '12px',
           fontWeight: '600',
           color: '#92400e'
         }}>
@@ -92,38 +126,65 @@ export default function ExerciseBlockRenderer({
         </div>
 
         {/* Actions */}
-        <div style={{ display: 'flex', gap: '4px' }}>
+        <div style={{
+          display: 'flex',
+          gap: '4px',
+          background: 'white',
+          padding: '2px',
+          borderRadius: '6px'
+        }}>
           <button
             onClick={onMoveUp}
             disabled={index === 0}
-            style={{
-              padding: '6px',
-              background: index === 0 ? '#f8fafc' : 'white',
-              border: '1px solid #e2e8f0',
-              borderRadius: '6px',
-              cursor: index === 0 ? 'not-allowed' : 'pointer',
-              opacity: index === 0 ? 0.5 : 1
-            }}
             title="Monter"
+            style={{
+              padding: '4px 6px',
+              background: 'transparent',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: index === 0 ? 'not-allowed' : 'pointer',
+              opacity: index === 0 ? 0.3 : 1,
+              transition: 'background 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              if (index !== 0) e.currentTarget.style.background = '#f1f5f9';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+            }}
           >
-            <ArrowUp size={16} color="#64748b" />
+            <ArrowUp size={14} color="#64748b" />
           </button>
 
           <button
             onClick={onMoveDown}
             disabled={index === totalBlocks - 1}
-            style={{
-              padding: '6px',
-              background: index === totalBlocks - 1 ? '#f8fafc' : 'white',
-              border: '1px solid #e2e8f0',
-              borderRadius: '6px',
-              cursor: index === totalBlocks - 1 ? 'not-allowed' : 'pointer',
-              opacity: index === totalBlocks - 1 ? 0.5 : 1
-            }}
             title="Descendre"
+            style={{
+              padding: '4px 6px',
+              background: 'transparent',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: index === totalBlocks - 1 ? 'not-allowed' : 'pointer',
+              opacity: index === totalBlocks - 1 ? 0.3 : 1,
+              transition: 'background 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              if (index !== totalBlocks - 1) e.currentTarget.style.background = '#f1f5f9';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+            }}
           >
-            <ArrowDown size={16} color="#64748b" />
+            <ArrowDown size={14} color="#64748b" />
           </button>
+
+          <div style={{
+            width: '1px',
+            height: '20px',
+            background: '#e2e8f0',
+            margin: '0 2px'
+          }} />
 
           <button
             onClick={() => {
@@ -131,16 +192,23 @@ export default function ExerciseBlockRenderer({
                 onDelete();
               }
             }}
-            style={{
-              padding: '6px',
-              background: 'white',
-              border: '1px solid #fee2e2',
-              borderRadius: '6px',
-              cursor: 'pointer'
-            }}
             title="Supprimer"
+            style={{
+              padding: '4px 6px',
+              background: 'transparent',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              transition: 'background 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#fee2e2';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+            }}
           >
-            <Trash2 size={16} color="#dc2626" />
+            <Trash2 size={14} color="#ef4444" />
           </button>
         </div>
       </div>
