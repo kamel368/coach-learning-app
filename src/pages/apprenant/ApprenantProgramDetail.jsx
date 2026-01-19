@@ -433,6 +433,153 @@ export default function ApprenantProgramDetail() {
               })}
             </div>
           )}
+
+          {/* 🏆 BOUTON ÉVALUATION COMPLÈTE DU PROGRAMME */}
+          {modules.length > 0 && (
+            <div style={{
+              marginTop: apprenantTheme.spacing.xl,
+              padding: 'clamp(20px, 4vw, 28px)',
+              background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+              borderRadius: apprenantTheme.radius.xl,
+              boxShadow: '0 8px 24px rgba(240, 147, 251, 0.35), 0 0 0 3px rgba(240, 147, 251, 0.15)',
+              position: 'relative',
+              overflow: 'hidden',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease'
+            }}
+            onClick={() => navigate(`/apprenant/program-evaluation/${programId}`)}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-4px)';
+              e.currentTarget.style.boxShadow = '0 12px 32px rgba(240, 147, 251, 0.45), 0 0 0 4px rgba(240, 147, 251, 0.2)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 8px 24px rgba(240, 147, 251, 0.35), 0 0 0 3px rgba(240, 147, 251, 0.15)';
+            }}
+            >
+              {/* Effet de fond animé */}
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)',
+                pointerEvents: 'none'
+              }} />
+
+              <div style={{
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'clamp(16px, 3vw, 24px)',
+                flexWrap: window.innerWidth < 600 ? 'wrap' : 'nowrap'
+              }}>
+                {/* Icône trophy */}
+                <div style={{
+                  width: 'clamp(64px, 15vw, 80px)',
+                  height: 'clamp(64px, 15vw, 80px)',
+                  borderRadius: apprenantTheme.radius.xl,
+                  background: 'rgba(255,255,255,0.2)',
+                  backdropFilter: 'blur(10px)',
+                  WebkitBackdropFilter: 'blur(10px)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 'clamp(32px, 7vw, 40px)',
+                  flexShrink: 0,
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.1)'
+                }}>
+                  🏆
+                </div>
+
+                {/* Contenu */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h3 style={{
+                    fontSize: 'clamp(18px, 4vw, 24px)',
+                    fontWeight: '700',
+                    color: 'white',
+                    marginBottom: '8px',
+                    textShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                  }}>
+                    Évaluation Complète du Programme
+                  </h3>
+                  <p style={{
+                    fontSize: 'clamp(13px, 2.5vw, 15px)',
+                    color: 'rgba(255,255,255,0.95)',
+                    marginBottom: '12px',
+                    lineHeight: '1.5'
+                  }}>
+                    Testez vos connaissances sur l'ensemble du programme avec tous les exercices mélangés
+                  </p>
+                  
+                  {/* Stats */}
+                  <div style={{
+                    display: 'flex',
+                    gap: '16px',
+                    flexWrap: 'wrap'
+                  }}>
+                    <div style={{
+                      padding: '6px 12px',
+                      background: 'rgba(255,255,255,0.2)',
+                      backdropFilter: 'blur(10px)',
+                      WebkitBackdropFilter: 'blur(10px)',
+                      borderRadius: apprenantTheme.radius.base,
+                      fontSize: 'clamp(11px, 2vw, 13px)',
+                      fontWeight: '600',
+                      color: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                      <span>📚</span>
+                      <span>{modules.length} module{modules.length > 1 ? 's' : ''}</span>
+                    </div>
+                    
+                    <div style={{
+                      padding: '6px 12px',
+                      background: 'rgba(255,255,255,0.2)',
+                      backdropFilter: 'blur(10px)',
+                      WebkitBackdropFilter: 'blur(10px)',
+                      borderRadius: apprenantTheme.radius.base,
+                      fontSize: 'clamp(11px, 2vw, 13px)',
+                      fontWeight: '600',
+                      color: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                      <span>⏱️</span>
+                      <span>Durée estimée : {Math.ceil(modules.length * 10)} min</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bouton d'action */}
+                <div style={{
+                  padding: 'clamp(10px, 2vw, 14px) clamp(20px, 4vw, 28px)',
+                  background: 'rgba(255,255,255,0.25)',
+                  backdropFilter: 'blur(10px)',
+                  WebkitBackdropFilter: 'blur(10px)',
+                  borderRadius: apprenantTheme.radius.lg,
+                  fontSize: 'clamp(14px, 2.5vw, 16px)',
+                  fontWeight: '700',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  whiteSpace: 'nowrap',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  flexShrink: 0
+                }}>
+                  <span style={{ display: window.innerWidth < 500 ? 'none' : 'inline' }}>
+                    Démarrer l'évaluation
+                  </span>
+                  <ChevronRight size={20} />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

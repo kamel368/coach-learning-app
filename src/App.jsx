@@ -35,6 +35,10 @@ import ApprenantModuleDetail from './pages/apprenant/ApprenantModuleDetail';
 import ApprenantLessonViewer from './pages/apprenant/ApprenantLessonViewer';
 import ApprenantExercises from './pages/apprenant/ApprenantExercises';
 import ApprenantExercisesResults from './pages/apprenant/ApprenantExercisesResults';
+import ApprenantModuleEvaluation from './pages/apprenant/ApprenantModuleEvaluation';
+import ApprenantModuleEvaluationResults from './pages/apprenant/ApprenantModuleEvaluationResults';
+import ApprenantProgramEvaluation from './pages/apprenant/ApprenantProgramEvaluation';
+import ApprenantProgramEvaluationResults from './pages/apprenant/ApprenantProgramEvaluationResults';
 import ExerciseDebugPage from './pages/apprenant/ExerciseDebugPage';
 
 function AppContent() {
@@ -272,6 +276,34 @@ function AppContent() {
             <Route path="programs/:programId/modules/:moduleId/exercises/results" element={
               <ProtectedRoute>
                 <ApprenantExercisesResults />
+              </ProtectedRoute>
+            } />
+            
+            {/* 🏆 Évaluation complète du module */}
+            <Route path="evaluation/:programId/:moduleId" element={
+              <ProtectedRoute>
+                <ApprenantModuleEvaluation />
+              </ProtectedRoute>
+            } />
+            
+            {/* 🏆 Résultats évaluation module */}
+            <Route path="evaluation/:programId/:moduleId/results" element={
+              <ProtectedRoute>
+                <ApprenantModuleEvaluationResults />
+              </ProtectedRoute>
+            } />
+            
+            {/* 🏆 Évaluation complète du PROGRAMME */}
+            <Route path="program-evaluation/:programId" element={
+              <ProtectedRoute>
+                <ApprenantProgramEvaluation />
+              </ProtectedRoute>
+            } />
+            
+            {/* 🏆 Résultats évaluation PROGRAMME */}
+            <Route path="program-evaluation/:programId/results" element={
+              <ProtectedRoute>
+                <ApprenantProgramEvaluationResults />
               </ProtectedRoute>
             } />
             
