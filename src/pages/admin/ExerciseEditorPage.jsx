@@ -1,6 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Undo2, Redo2, GripVertical, Trash2, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowLeft, Save, Undo2, Redo2, GripVertical, Trash2, ChevronUp, ChevronDown, BookOpen, CreditCard, CheckCircle2, Circle, ListChecks, ArrowUpDown, Target, Link2, FileText, Package } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../firebase';
 import { useExerciseEditor } from '../../hooks/useExerciseEditor';
 import FlashcardBlockEditor from '../../components/exercises/blocks/FlashcardBlockEditor';
 import TrueFalseBlockEditor from '../../components/exercises/blocks/TrueFalseBlockEditor';
@@ -11,23 +13,23 @@ import DragDropBlockEditor from '../../components/exercises/blocks/DragDropBlock
 import MatchPairsBlockEditor from '../../components/exercises/blocks/MatchPairsBlockEditor';
 
 const BLOCK_TYPES = [
-  { type: 'flashcard', icon: '🃏', label: 'Flashcard', desc: 'Question/Réponse simple', color: '#8b5cf6' },
-  { type: 'true_false', icon: '✓✗', label: 'Vrai/Faux', desc: 'Affirmation à valider', color: '#3b82f6' },
-  { type: 'qcm', icon: '☑', label: 'QCM', desc: 'Choix multiple (1 réponse)', color: '#10b981' },
-  { type: 'qcm_selective', icon: '☑☑', label: 'QCM Sélectif', desc: 'Plusieurs bonnes réponses', color: '#f59e0b' },
-  { type: 'reorder', icon: '🔢', label: 'Réorganiser', desc: 'Remettre dans l\'ordre', color: '#06b6d4' },
-  { type: 'drag_drop', icon: '🎯', label: 'Glisser-Déposer', desc: 'Associer des éléments', color: '#ef4444' },
-  { type: 'match_pairs', icon: '🔗', label: 'Paires', desc: 'Relier des paires', color: '#ec4899' }
+  { type: 'flashcard', icon: CreditCard, label: 'Flashcard', desc: 'Question/Réponse', color: '#8b5cf6' },
+  { type: 'true_false', icon: CheckCircle2, label: 'Vrai/Faux', desc: 'Affirmation', color: '#3b82f6' },
+  { type: 'qcm', icon: Circle, label: 'QCM', desc: 'Choix unique', color: '#10b981' },
+  { type: 'qcm_selective', icon: ListChecks, label: 'QCM Sélectif', desc: 'Multi-choix', color: '#f59e0b' },
+  { type: 'reorder', icon: ArrowUpDown, label: 'Réorganiser', desc: 'Ordre', color: '#06b6d4' },
+  { type: 'drag_drop', icon: Target, label: 'Glisser-Déposer', desc: 'Association', color: '#ef4444' },
+  { type: 'match_pairs', icon: Link2, label: 'Paires', desc: 'Relier', color: '#ec4899' }
 ];
 
 const BLOCK_LABELS = {
-  flashcard: { icon: '🃏', label: 'Flashcard', color: '#8b5cf6' },
-  true_false: { icon: '✓✗', label: 'Vrai/Faux', color: '#3b82f6' },
-  qcm: { icon: '☑', label: 'QCM', color: '#10b981' },
-  qcm_selective: { icon: '☑☑', label: 'QCM Sélectif', color: '#f59e0b' },
-  reorder: { icon: '🔢', label: 'Réorganiser', color: '#06b6d4' },
-  drag_drop: { icon: '🎯', label: 'Glisser-Déposer', color: '#ef4444' },
-  match_pairs: { icon: '🔗', label: 'Paires', color: '#ec4899' }
+  flashcard: { icon: CreditCard, label: 'Flashcard', color: '#8b5cf6' },
+  true_false: { icon: CheckCircle2, label: 'Vrai/Faux', color: '#3b82f6' },
+  qcm: { icon: Circle, label: 'QCM', color: '#10b981' },
+  qcm_selective: { icon: ListChecks, label: 'QCM Sélectif', color: '#f59e0b' },
+  reorder: { icon: ArrowUpDown, label: 'Réorganiser', color: '#06b6d4' },
+  drag_drop: { icon: Target, label: 'Glisser-Déposer', color: '#ef4444' },
+  match_pairs: { icon: Link2, label: 'Paires', color: '#ec4899' }
 };
 
 export default function ExerciseEditorPage() {
@@ -49,14 +51,33 @@ export default function ExerciseEditorPage() {
     saveExercises
   } = useExerciseEditor(programId, moduleId);
 
-  const [activeTab, setActiveTab] = useState('exercices'); // 'exercices' ou 'blocs'
-  const [selectedBlockId, setSelectedBlockId] = useState(null);
+  const [activeTab, setActiveTab] = useState('exercices');
   const [draggedIndex, setDraggedIndex] = useState(null);
+  const [chapterTitle, setChapterTitle] = useState('');
+  const [editingBlockId, setEditingBlockId] = useState(null);
+
+  // Récupérer le titre du chapitre
+  useEffect(() => {
+    async function fetchChapterTitle() {
+      try {
+        const moduleRef = doc(db, 'programs', programId, 'modules', moduleId);
+        const moduleSnap = await getDoc(moduleRef);
+        if (moduleSnap.exists()) {
+          setChapterTitle(moduleSnap.data().title || 'Sans titre');
+        }
+      } catch (error) {
+        console.error('Erreur lors de la récupération du titre du chapitre:', error);
+      }
+    }
+    if (programId && moduleId) {
+      fetchChapterTitle();
+    }
+  }, [programId, moduleId]);
 
   const handleSave = async () => {
     const result = await saveExercises();
     if (result.success) {
-      alert('✅ Exercices enregistrés avec succès !');
+      alert('✅ Exercices enregistrés !');
     } else {
       alert('❌ Erreur : ' + result.error);
     }
@@ -64,14 +85,14 @@ export default function ExerciseEditorPage() {
 
   const handleAddBlock = (type) => {
     const newBlockId = addBlock(type);
-    setActiveTab('exercices'); // Retour onglet exercices
-    // Sélectionner automatiquement le nouveau bloc
+    setActiveTab('exercices');
+    setEditingBlockId(newBlockId);
+    
+    // Scroller vers le nouveau bloc après un court délai
     setTimeout(() => {
-      if (blocks.length >= 0) {
-        const newBlock = blocks[blocks.length];
-        if (newBlock) {
-          setSelectedBlockId(newBlock.id);
-        }
+      const element = document.getElementById(`block-${newBlockId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }, 100);
   };
@@ -85,9 +106,12 @@ export default function ExerciseEditorPage() {
     e.preventDefault();
     if (draggedIndex === null || draggedIndex === index) return;
     
-    // Déplacer visuellement
-    const direction = draggedIndex < index ? 'down' : 'up';
-    moveBlock(blocks[draggedIndex].id, direction);
+    const block = blocks[draggedIndex];
+    if (draggedIndex < index) {
+      moveBlock(block.id, 'down');
+    } else {
+      moveBlock(block.id, 'up');
+    }
     setDraggedIndex(index);
   };
 
@@ -95,47 +119,7 @@ export default function ExerciseEditorPage() {
     setDraggedIndex(null);
   };
 
-  const renderEditor = () => {
-    if (!selectedBlockId) {
-      return (
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100%',
-          padding: '40px',
-          textAlign: 'center'
-        }}>
-          <div style={{
-            fontSize: '64px',
-            marginBottom: '16px',
-            opacity: 0.3
-          }}>
-            👈
-          </div>
-          <h3 style={{
-            fontSize: '16px',
-            fontWeight: '600',
-            color: '#64748b',
-            marginBottom: '8px'
-          }}>
-            Sélectionne un exercice
-          </h3>
-          <p style={{
-            fontSize: '13px',
-            color: '#94a3b8',
-            maxWidth: '300px'
-          }}>
-            Clique sur un exercice dans la liste de gauche pour l'éditer
-          </p>
-        </div>
-      );
-    }
-
-    const block = blocks.find(b => b.id === selectedBlockId);
-    if (!block) return null;
-
+  const renderBlockEditor = (block, index) => {
     const blockInfo = BLOCK_LABELS[block.type] || { icon: '❓', label: 'Inconnu', color: '#64748b' };
 
     const commonProps = {
@@ -167,92 +151,176 @@ export default function ExerciseEditorPage() {
         EditorComponent = MatchPairsBlockEditor;
         break;
       default:
-        return <div>Type inconnu</div>;
+        return null;
     }
 
+    const isEditing = editingBlockId === block.id;
+    
     return (
-      <div style={{
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
-        {/* Header bloc sélectionné */}
+      <div
+        id={`block-${block.id}`}
+        key={block.id}
+        draggable
+        onDragStart={(e) => handleDragStart(e, index)}
+        onDragOver={(e) => handleDragOver(e, index)}
+        onDragEnd={handleDragEnd}
+        onClick={() => setEditingBlockId(block.id)}
+        style={{
+          background: 'white',
+          borderRadius: '8px',
+          border: isEditing ? '2px solid #3b82f6' : '1px solid #e2e8f0',
+          marginBottom: '11px',
+          overflow: 'hidden',
+          opacity: draggedIndex === index ? 0.5 : 1,
+          transition: 'all 0.3s ease',
+          boxShadow: isEditing ? '0 0 0 3px rgba(59, 130, 246, 0.1)' : 'none',
+          transform: isEditing ? 'scale(1.01)' : 'scale(1)',
+          cursor: 'pointer'
+        }}
+      >
+        {/* Header bloc */}
         <div style={{
-          padding: '16px 20px',
-          borderBottom: '1px solid #f1f5f9',
+          padding: '8px 11px',
           background: '#fafbfc',
+          borderBottom: '1px solid #f1f5f9',
           display: 'flex',
           alignItems: 'center',
-          gap: '12px'
+          gap: '7px'
         }}>
+          <GripVertical 
+            size={13} 
+            color="#cbd5e1" 
+            style={{ cursor: 'grab', flexShrink: 0 }} 
+          />
+          
           <div style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '8px',
+            width: '20px',
+            height: '20px',
+            borderRadius: '4px',
             background: blockInfo.color,
             color: 'white',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '18px'
+            fontSize: '9px',
+            fontWeight: '700',
+            flexShrink: 0
           }}>
-            {blockInfo.icon}
+            {index + 1}
           </div>
-          <div style={{ flex: 1 }}>
+
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
-              fontSize: '14px',
-              fontWeight: '700',
-              color: '#1e293b'
-            }}>
-              {blockInfo.label}
-            </div>
-            <div style={{
-              fontSize: '11px',
-              color: '#94a3b8'
-            }}>
-              Exercice {blocks.findIndex(b => b.id === selectedBlockId) + 1} / {blocks.length}
-            </div>
-          </div>
-          <button
-            onClick={() => {
-              if (window.confirm('Supprimer cet exercice ?')) {
-                deleteBlock(block.id);
-                setSelectedBlockId(null);
-              }
-            }}
-            style={{
-              padding: '6px 12px',
-              background: 'white',
-              border: '1px solid #fee2e2',
-              borderRadius: '6px',
-              fontSize: '12px',
+              fontSize: '9px',
               fontWeight: '600',
-              color: '#ef4444',
-              cursor: 'pointer',
+              color: '#1e293b',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#fee2e2';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'white';
-            }}
-          >
-            <Trash2 size={14} />
-            Supprimer
-          </button>
+              gap: '4px'
+            }}>
+              {blockInfo.icon && <blockInfo.icon size={10} color={blockInfo.color} />}
+              <span>{blockInfo.label}</span>
+            </div>
+          </div>
+
+          <div style={{
+            padding: '3px 6px',
+            background: '#fef3c7',
+            borderRadius: '3px',
+            fontSize: '8px',
+            fontWeight: '600',
+            color: '#92400e'
+          }}>
+            {block.points} pts
+          </div>
+
+          {/* Actions */}
+          <div style={{
+            display: 'flex',
+            gap: '1px',
+            background: 'white',
+            padding: '1px',
+            borderRadius: '3px'
+          }}>
+            <button
+              onClick={() => moveBlock(block.id, 'up')}
+              disabled={index === 0}
+              style={{
+                padding: '3px',
+                background: 'transparent',
+                border: 'none',
+                borderRadius: '2px',
+                cursor: index === 0 ? 'not-allowed' : 'pointer',
+                opacity: index === 0 ? 0.3 : 1,
+                transition: 'background 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                if (index !== 0) e.currentTarget.style.background = '#f1f5f9';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
+            >
+              <ChevronUp size={10} color="#64748b" />
+            </button>
+
+            <button
+              onClick={() => moveBlock(block.id, 'down')}
+              disabled={index === blocks.length - 1}
+              style={{
+                padding: '3px',
+                background: 'transparent',
+                border: 'none',
+                borderRadius: '2px',
+                cursor: index === blocks.length - 1 ? 'not-allowed' : 'pointer',
+                opacity: index === blocks.length - 1 ? 0.3 : 1,
+                transition: 'background 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                if (index !== blocks.length - 1) e.currentTarget.style.background = '#f1f5f9';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
+            >
+              <ChevronDown size={10} color="#64748b" />
+            </button>
+
+            <div style={{
+              width: '1px',
+              height: '13px',
+              background: '#e2e8f0',
+              margin: '0 1px'
+            }} />
+
+            <button
+              onClick={() => {
+                if (window.confirm('Supprimer cet exercice ?')) {
+                  deleteBlock(block.id);
+                }
+              }}
+              style={{
+                padding: '3px',
+                background: 'transparent',
+                border: 'none',
+                borderRadius: '2px',
+                cursor: 'pointer',
+                transition: 'background 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#fee2e2';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
+            >
+              <Trash2 size={10} color="#ef4444" />
+            </button>
+          </div>
         </div>
 
-        {/* Éditeur scrollable */}
-        <div style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '20px',
-          background: 'white'
-        }}>
+        {/* Éditeur */}
+        <div style={{ padding: '14px' }}>
           <EditorComponent {...commonProps} />
         </div>
       </div>
@@ -268,24 +336,18 @@ export default function ExerciseEditorPage() {
         justifyContent: 'center',
         background: '#f8fafc'
       }}>
-        <div style={{
-          textAlign: 'center',
-          padding: '40px',
-          background: 'white',
-          borderRadius: '12px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-        }}>
+        <div style={{ textAlign: 'center' }}>
           <div style={{
-            width: '40px',
-            height: '40px',
-            border: '3px solid #e2e8f0',
+            width: '28px',
+            height: '28px',
+            border: '2px solid #e2e8f0',
             borderTopColor: '#3b82f6',
             borderRadius: '50%',
-            margin: '0 auto 16px',
+            margin: '0 auto 11px',
             animation: 'spin 1s linear infinite'
           }} />
-          <div style={{ fontSize: '14px', color: '#64748b', fontWeight: '600' }}>
-            Chargement des exercices...
+          <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '600' }}>
+            Chargement...
           </div>
         </div>
       </div>
@@ -294,60 +356,51 @@ export default function ExerciseEditorPage() {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      height: '100vh',
       background: '#f8fafc',
       display: 'flex',
-      flexDirection: 'column'
+      flexDirection: 'column',
+      overflow: 'hidden'
     }}>
       {/* HEADER FIXE */}
       <div style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
+        flexShrink: 0,
         background: 'white',
         borderBottom: '1px solid #e2e8f0',
         boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
       }}>
         <div style={{
-          padding: '12px 24px',
+          padding: '8px 17px',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '16px'
+          justifyContent: 'space-between'
         }}>
-          {/* Gauche : Retour + Titre */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          {/* Gauche */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '11px' }}>
             <button
               onClick={() => navigate(`/admin/programs/${programId}`)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '8px 12px',
+                gap: '4px',
+                padding: '6px 8px',
                 background: 'transparent',
                 border: 'none',
-                borderRadius: '6px',
-                fontSize: '13px',
+                borderRadius: '4px',
+                fontSize: '9px',
                 fontWeight: '600',
                 color: '#64748b',
-                cursor: 'pointer',
-                transition: 'background 0.2s'
+                cursor: 'pointer'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >
-              <ArrowLeft size={16} />
+              <ArrowLeft size={11} />
               Retour
             </button>
 
-            <div style={{
-              height: '20px',
-              width: '1px',
-              background: '#e2e8f0'
-            }} />
+            <div style={{ height: '14px', width: '1px', background: '#e2e8f0' }} />
 
             <h1 style={{
-              fontSize: '15px',
+              fontSize: '11px',
               fontWeight: '700',
               color: '#1e293b',
               margin: 0
@@ -356,71 +409,63 @@ export default function ExerciseEditorPage() {
             </h1>
           </div>
 
-          {/* Droite : Actions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {/* Undo/Redo */}
+          {/* Droite */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div style={{
               display: 'flex',
               background: '#f8fafc',
-              borderRadius: '6px',
-              padding: '2px'
+              borderRadius: '4px',
+              padding: '1px'
             }}>
               <button
                 onClick={undo}
                 disabled={!canUndo}
-                title="Annuler (Ctrl+Z)"
                 style={{
-                  padding: '6px 10px',
+                  padding: '4px 7px',
                   background: canUndo ? 'white' : 'transparent',
                   border: 'none',
-                  borderRadius: '4px',
+                  borderRadius: '3px',
                   cursor: canUndo ? 'pointer' : 'not-allowed',
-                  opacity: canUndo ? 1 : 0.4,
-                  transition: 'all 0.2s'
+                  opacity: canUndo ? 1 : 0.4
                 }}
               >
-                <Undo2 size={16} color="#64748b" />
+                <Undo2 size={11} color="#64748b" />
               </button>
 
               <button
                 onClick={redo}
                 disabled={!canRedo}
-                title="Refaire (Ctrl+Y)"
                 style={{
-                  padding: '6px 10px',
+                  padding: '4px 7px',
                   background: canRedo ? 'white' : 'transparent',
                   border: 'none',
-                  borderRadius: '4px',
+                  borderRadius: '3px',
                   cursor: canRedo ? 'pointer' : 'not-allowed',
-                  opacity: canRedo ? 1 : 0.4,
-                  transition: 'all 0.2s'
+                  opacity: canRedo ? 1 : 0.4
                 }}
               >
-                <Redo2 size={16} color="#64748b" />
+                <Redo2 size={11} color="#64748b" />
               </button>
             </div>
 
-            {/* Bouton Enregistrer */}
             <button
               onClick={handleSave}
               disabled={saving}
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '8px 16px',
+                gap: '4px',
+                padding: '6px 11px',
                 background: saving ? '#cbd5e1' : 'linear-gradient(135deg, #3b82f6, #2563eb)',
                 border: 'none',
-                borderRadius: '6px',
-                fontSize: '13px',
+                borderRadius: '4px',
+                fontSize: '9px',
                 fontWeight: '600',
                 color: 'white',
-                cursor: saving ? 'wait' : 'pointer',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                transition: 'all 0.2s'
+                cursor: saving ? 'wait' : 'pointer'
               }}
             >
-              <Save size={16} />
+              <Save size={11} />
               {saving ? 'Enregistrement...' : 'Enregistrer'}
             </button>
           </div>
@@ -431,11 +476,13 @@ export default function ExerciseEditorPage() {
       <div style={{
         flex: 1,
         display: 'flex',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        minHeight: 0
       }}>
-        {/* COLONNE GAUCHE - Onglets */}
+        {/* COLONNE GAUCHE - 263px fixe avec scroll indépendant */}
         <div style={{
-          width: '320px',
+          width: '263px',
+          flexShrink: 0,
           background: 'white',
           borderRight: '1px solid #e2e8f0',
           display: 'flex',
@@ -444,82 +491,104 @@ export default function ExerciseEditorPage() {
         }}>
           {/* Onglets */}
           <div style={{
+            flexShrink: 0,
             display: 'flex',
-            borderBottom: '1px solid #e2e8f0',
-            background: '#fafbfc'
+            gap: 6,
+            background: '#f1f5f9',
+            padding: 3,
+            borderRadius: 8
           }}>
             <button
               onClick={() => setActiveTab('exercices')}
               style={{
                 flex: 1,
-                padding: '12px 16px',
-                background: activeTab === 'exercices' ? 'white' : 'transparent',
+                padding: '7px 11px',
+                background: activeTab === 'exercices' 
+                  ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' 
+                  : 'transparent',
+                color: activeTab === 'exercices' ? '#ffffff' : '#64748b',
                 border: 'none',
-                borderBottom: activeTab === 'exercices' ? '2px solid #3b82f6' : '2px solid transparent',
-                fontSize: '13px',
+                borderRadius: 6,
+                fontSize: '9px',
                 fontWeight: '600',
-                color: activeTab === 'exercices' ? '#1e293b' : '#94a3b8',
                 cursor: 'pointer',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 5,
+                boxShadow: activeTab === 'exercices' 
+                  ? '0 3px 8px rgba(59, 130, 246, 0.25)' 
+                  : 'none'
               }}
             >
-              Exercices ({blocks.length})
+              <FileText size={11} />
+              <span>Exercices ({blocks.length})</span>
             </button>
 
             <button
               onClick={() => setActiveTab('blocs')}
               style={{
                 flex: 1,
-                padding: '12px 16px',
-                background: activeTab === 'blocs' ? 'white' : 'transparent',
+                padding: '7px 11px',
+                background: activeTab === 'blocs' 
+                  ? 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)' 
+                  : 'transparent',
+                color: activeTab === 'blocs' ? '#ffffff' : '#64748b',
                 border: 'none',
-                borderBottom: activeTab === 'blocs' ? '2px solid #3b82f6' : '2px solid transparent',
-                fontSize: '13px',
+                borderRadius: 6,
+                fontSize: '9px',
                 fontWeight: '600',
-                color: activeTab === 'blocs' ? '#1e293b' : '#94a3b8',
                 cursor: 'pointer',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 5,
+                boxShadow: activeTab === 'blocs' 
+                  ? '0 3px 8px rgba(139, 92, 246, 0.25)' 
+                  : 'none'
               }}
             >
-              + Blocs
+              <Package size={11} />
+              <span>Blocs</span>
             </button>
           </div>
 
-          {/* Contenu onglets */}
-          <div style={{
-            flex: 1,
-            overflowY: 'auto'
+          {/* Contenu onglets - SCROLL INDÉPENDANT */}
+          <div style={{ 
+            flex: 1, 
+            overflowY: 'auto',
+            overflowX: 'hidden'
           }}>
             {activeTab === 'exercices' ? (
-              // ONGLET EXERCICES - Liste glisser-déposer
-              <div style={{ padding: '12px' }}>
+              <div style={{ padding: '11px' }}>
                 {blocks.length === 0 ? (
-                  <div style={{
-                    padding: '40px 20px',
-                    textAlign: 'center'
-                  }}>
-                    <div style={{
-                      fontSize: '48px',
-                      marginBottom: '12px',
-                      opacity: 0.3
+                  <div style={{ textAlign: 'center', padding: '28px 14px' }}>
+                    <div style={{ 
+                      width: '40px', 
+                      height: '40px',
+                      margin: '0 auto 8px',
+                      borderRadius: '10px',
+                      background: '#f1f5f9',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      opacity: 0.5
                     }}>
-                      📝
+                      <Target size={20} color="#64748b" />
                     </div>
-                    <p style={{
-                      fontSize: '13px',
-                      color: '#94a3b8',
-                      marginBottom: '16px'
-                    }}>
-                      Aucun exercice créé
+                    <p style={{ fontSize: '9px', color: '#94a3b8', marginBottom: '11px' }}>
+                      Aucun exercice
                     </p>
                     <button
                       onClick={() => setActiveTab('blocs')}
                       style={{
-                        padding: '8px 16px',
-                        background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                        padding: '6px 11px',
+                        background: '#3b82f6',
                         border: 'none',
-                        borderRadius: '6px',
-                        fontSize: '12px',
+                        borderRadius: '4px',
+                        fontSize: '8px',
                         fontWeight: '600',
                         color: 'white',
                         cursor: 'pointer'
@@ -529,186 +598,242 @@ export default function ExerciseEditorPage() {
                     </button>
                   </div>
                 ) : (
-                  blocks.map((block, index) => {
-                    const blockInfo = BLOCK_LABELS[block.type] || { icon: '❓', label: 'Inconnu', color: '#64748b' };
-                    const isSelected = selectedBlockId === block.id;
-                    
-                    return (
-                      <div
-                        key={block.id}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, index)}
-                        onDragOver={(e) => handleDragOver(e, index)}
-                        onDragEnd={handleDragEnd}
-                        onClick={() => setSelectedBlockId(block.id)}
-                        style={{
-                          padding: '12px',
-                          marginBottom: '8px',
-                          background: isSelected ? '#f0f9ff' : 'white',
-                          border: '1px solid',
-                          borderColor: isSelected ? '#3b82f6' : '#e2e8f0',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s',
-                          opacity: draggedIndex === index ? 0.5 : 1,
+                  <div style={{ fontSize: '8px', color: '#94a3b8', marginBottom: '8px' }}>
+                    Glisse pour réorganiser
+                  </div>
+                )}
+
+                {blocks.map((block, index) => {
+                  const blockInfo = BLOCK_LABELS[block.type];
+                  const IconComponent = blockInfo.icon;
+                  return (
+                    <div
+                      key={block.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, index)}
+                      onDragOver={(e) => handleDragOver(e, index)}
+                      onDragEnd={handleDragEnd}
+                      style={{
+                        padding: '7px',
+                        marginBottom: '6px',
+                        background: 'white',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '6px',
+                        cursor: 'grab',
+                        opacity: draggedIndex === index ? 0.5 : 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <GripVertical size={10} color="#cbd5e1" />
+                      <div style={{
+                        width: '17px',
+                        height: '17px',
+                        borderRadius: '3px',
+                        background: blockInfo.color,
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '8px',
+                        fontWeight: '700',
+                        flexShrink: 0
+                      }}>
+                        {index + 1}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          fontSize: '8px',
+                          fontWeight: '600',
+                          color: '#1e293b',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '10px'
+                          gap: '4px'
+                        }}>
+                          {IconComponent && <IconComponent size={10} color={blockInfo.color} />}
+                          <span>{blockInfo.label}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div style={{ padding: '11px' }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  gap: '7px'
+                }}>
+                  {BLOCK_TYPES.map((blockType) => {
+                    const IconComponent = blockType.icon;
+                    return (
+                      <button
+                        key={blockType.type}
+                        onClick={() => handleAddBlock(blockType.type)}
+                        style={{
+                          padding: '11px 8px',
+                          background: 'white',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '7px',
+                          cursor: 'pointer',
+                          textAlign: 'center',
+                          transition: 'all 0.2s',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: '6px'
                         }}
                         onMouseEnter={(e) => {
-                          if (!isSelected) {
-                            e.currentTarget.style.borderColor = '#cbd5e1';
-                          }
+                          e.currentTarget.style.borderColor = blockType.color;
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                          e.currentTarget.style.boxShadow = '0 3px 6px rgba(0,0,0,0.1)';
                         }}
                         onMouseLeave={(e) => {
-                          if (!isSelected) {
-                            e.currentTarget.style.borderColor = '#e2e8f0';
-                          }
+                          e.currentTarget.style.borderColor = '#e2e8f0';
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = 'none';
                         }}
                       >
-                        <GripVertical size={16} color="#cbd5e1" style={{ cursor: 'grab' }} />
-                        
                         <div style={{
-                          width: '28px',
-                          height: '28px',
-                          borderRadius: '6px',
-                          background: blockInfo.color,
+                          width: '34px',
+                          height: '34px',
+                          borderRadius: '8px',
+                          background: blockType.color,
                           color: 'white',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '12px',
-                          fontWeight: '700',
-                          flexShrink: 0
+                          justifyContent: 'center'
                         }}>
-                          {index + 1}
+                          {IconComponent && <IconComponent size={18} color="white" />}
                         </div>
-
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{
-                            fontSize: '13px',
-                            fontWeight: '600',
-                            color: '#1e293b',
-                            marginBottom: '2px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px'
-                          }}>
-                            <span>{blockInfo.icon}</span>
-                            <span style={{
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
-                            }}>
-                              {blockInfo.label}
-                            </span>
-                          </div>
-                          <div style={{
-                            fontSize: '11px',
-                            color: '#94a3b8'
-                          }}>
-                            {block.points} pts
-                          </div>
+                        <div style={{
+                          fontSize: '8px',
+                          fontWeight: '600',
+                          color: '#1e293b'
+                        }}>
+                          {blockType.label}
                         </div>
-                      </div>
+                        <div style={{
+                          fontSize: '7px',
+                          color: '#94a3b8',
+                          lineHeight: '1.3'
+                        }}>
+                          {blockType.desc}
+                        </div>
+                      </button>
                     );
-                  })
-                )}
-              </div>
-            ) : (
-              // ONGLET BLOCS - Palette
-              <div style={{ padding: '12px' }}>
-                <div style={{
-                  marginBottom: '12px',
-                  padding: '12px',
-                  background: '#f0f9ff',
-                  border: '1px solid #bfdbfe',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  color: '#1e40af'
-                }}>
-                  💡 Clique sur un type pour ajouter un exercice
+                  })}
                 </div>
-
-                {BLOCK_TYPES.map((blockType) => (
-                  <button
-                    key={blockType.type}
-                    onClick={() => handleAddBlock(blockType.type)}
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      marginBottom: '8px',
-                      background: 'white',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      transition: 'all 0.2s',
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: '10px'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#f8fafc';
-                      e.currentTarget.style.borderColor = blockType.color;
-                      e.currentTarget.style.transform = 'translateX(2px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'white';
-                      e.currentTarget.style.borderColor = '#e2e8f0';
-                      e.currentTarget.style.transform = 'translateX(0)';
-                    }}
-                  >
-                    <div style={{
-                      width: '36px',
-                      height: '36px',
-                      borderRadius: '8px',
-                      background: blockType.color,
-                      color: 'white',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '20px',
-                      flexShrink: 0
-                    }}>
-                      {blockType.icon}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{
-                        fontSize: '13px',
-                        fontWeight: '600',
-                        color: '#1e293b',
-                        marginBottom: '2px'
-                      }}>
-                        {blockType.label}
-                      </div>
-                      <div style={{
-                        fontSize: '11px',
-                        color: '#94a3b8',
-                        lineHeight: '1.4'
-                      }}>
-                        {blockType.desc}
-                      </div>
-                    </div>
-                    <Plus size={16} color="#94a3b8" style={{ marginTop: '8px' }} />
-                  </button>
-                ))}
               </div>
             )}
           </div>
         </div>
 
-        {/* COLONNE DROITE - Éditeur */}
+        {/* COLONNE DROITE - SCROLL INDÉPENDANT */}
         <div style={{
           flex: 1,
-          background: '#fafbfc',
-          overflow: 'hidden'
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          padding: '17px'
         }}>
-          {renderEditor()}
+          <div style={{ maxWidth: '630px', margin: '0 auto' }}>
+            {/* Titre du chapitre */}
+            {chapterTitle && (
+              <div style={{
+                marginBottom: '17px',
+                padding: '11px 14px',
+                background: 'white',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+              }}>
+                <div style={{
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '6px',
+                  background: '#f1f5f9',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <BookOpen size={14} color="#64748b" />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{
+                    fontSize: '8px',
+                    fontWeight: '600',
+                    color: '#94a3b8',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.35px',
+                    marginBottom: '3px'
+                  }}>
+                    Chapitre
+                  </div>
+                  <div style={{
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    color: '#1e293b',
+                    lineHeight: '1.3'
+                  }}>
+                    {chapterTitle}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {blocks.length === 0 ? (
+              <div style={{
+                background: 'white',
+                borderRadius: '8px',
+                padding: '42px 28px',
+                textAlign: 'center',
+                border: '2px dashed #e2e8f0'
+              }}>
+                <div style={{ 
+                  width: '60px', 
+                  height: '60px',
+                  margin: '0 auto 11px',
+                  borderRadius: '12px',
+                  background: '#f1f5f9',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: 0.5
+                }}>
+                  <Target size={30} color="#64748b" />
+                </div>
+                <h3 style={{
+                  fontSize: '13px',
+                  fontWeight: '700',
+                  color: '#1e293b',
+                  marginBottom: '6px'
+                }}>
+                  Aucun exercice
+                </h3>
+                <p style={{
+                  fontSize: '10px',
+                  color: '#64748b',
+                  marginBottom: '17px'
+                }}>
+                  Clique sur "Blocs" pour ajouter des exercices
+                </p>
+              </div>
+            ) : (
+              blocks.map((block, index) => renderBlockEditor(block, index))
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Animation spinner */}
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }

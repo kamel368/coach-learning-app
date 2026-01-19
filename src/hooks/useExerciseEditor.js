@@ -78,6 +78,9 @@ export function useExerciseEditor(programId, moduleId) {
     const newBlocks = [...blocks, newBlock];
     setBlocks(newBlocks);
     addToHistory(newBlocks);
+    
+    // Retourner l'ID du nouveau bloc
+    return newBlock.id;
   }, [blocks, addToHistory]);
 
   // Mettre à jour un bloc
