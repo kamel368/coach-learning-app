@@ -1,6 +1,18 @@
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { Target, TrendingUp, Trophy, Clock, ChevronRight } from 'lucide-react';
+import { 
+  BarChart3, 
+  Trophy, 
+  Clock, 
+  Target, 
+  TrendingUp, 
+  BookOpen, 
+  CheckCircle2, 
+  ChevronRight,
+  Calendar,
+  Award,
+  Zap
+} from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useHistorique } from '../../hooks/useHistorique';
 
@@ -138,121 +150,125 @@ export default function ApprenantHistorique() {
     }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         {/* Header */}
-        <h1 style={{
-          fontSize: '28px',
-          fontWeight: '700',
-          color: '#1e293b',
-          marginBottom: '24px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px'
+        <div style={{
+          marginBottom: '32px'
         }}>
-          <span style={{ fontSize: '32px' }}>📊</span>
-          Mon Historique
-        </h1>
+          <h1 style={{
+            fontSize: '28px',
+            fontWeight: '700',
+            color: '#1e293b',
+            marginBottom: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px'
+          }}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <BarChart3 size={24} color="white" />
+            </div>
+            Mon Historique
+          </h1>
+          <p style={{
+            fontSize: '15px',
+            color: '#64748b'
+          }}>
+            Suivez votre progression et vos performances
+          </p>
+        </div>
 
         {/* Statistiques */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
           gap: '16px',
           marginBottom: '32px'
         }}>
-          {/* Card Total tentatives */}
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: '20px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            border: '1px solid #e2e8f0'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '8px'
-            }}>
-              <span style={{ fontSize: '14px', color: '#64748b', fontWeight: '600' }}>
-                Total tentatives
-              </span>
-              <Target size={20} color="#64748b" />
-            </div>
-            <div style={{ fontSize: '32px', fontWeight: '700', color: '#1e293b' }}>
-              {statistics.totalAttempts}
-            </div>
-          </div>
-
-          {/* Card Score moyen */}
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: '20px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            border: '1px solid #e2e8f0'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '8px'
-            }}>
-              <span style={{ fontSize: '14px', color: '#64748b', fontWeight: '600' }}>
-                Score moyen
-              </span>
-              <TrendingUp size={20} color="#64748b" />
-            </div>
-            <div style={{ fontSize: '32px', fontWeight: '700', color: '#3b82f6' }}>
-              {statistics.averageScore}%
-            </div>
-          </div>
-
-          {/* Card Meilleur score */}
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: '20px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            border: '1px solid #e2e8f0'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '8px'
-            }}>
-              <span style={{ fontSize: '14px', color: '#64748b', fontWeight: '600' }}>
-                Meilleur score
-              </span>
-              <Trophy size={20} color="#64748b" />
-            </div>
-            <div style={{ fontSize: '32px', fontWeight: '700', color: '#10b981' }}>
-              {statistics.bestScore}%
-            </div>
-          </div>
-
-          {/* Card Temps total */}
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: '20px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            border: '1px solid #e2e8f0'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '8px'
-            }}>
-              <span style={{ fontSize: '14px', color: '#64748b', fontWeight: '600' }}>
-                Temps total
-              </span>
-              <Clock size={20} color="#64748b" />
-            </div>
-            <div style={{ fontSize: '32px', fontWeight: '700', color: '#8b5cf6' }}>
-              {formatDuration(statistics.totalTime)}
-            </div>
-          </div>
+          {[
+            {
+              icon: Target,
+              label: 'Total tentatives',
+              value: statistics.totalAttempts,
+              color: '#3b82f6',
+              bgGradient: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)'
+            },
+            {
+              icon: TrendingUp,
+              label: 'Score moyen',
+              value: `${statistics.averageScore}%`,
+              color: '#8b5cf6',
+              bgGradient: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)'
+            },
+            {
+              icon: Trophy,
+              label: 'Meilleur score',
+              value: `${statistics.bestScore}%`,
+              color: '#10b981',
+              bgGradient: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)'
+            },
+            {
+              icon: Clock,
+              label: 'Temps total',
+              value: formatDuration(statistics.totalTime),
+              color: '#f59e0b',
+              bgGradient: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)'
+            }
+          ].map((card, index) => {
+            const IconComponent = card.icon;
+            return (
+              <div
+                key={index}
+                style={{
+                  background: card.bgGradient,
+                  borderRadius: '16px',
+                  padding: '20px',
+                  border: '1px solid rgba(0,0,0,0.05)'
+                }}
+              >
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '12px'
+                }}>
+                  <span style={{
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    color: '#64748b',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    {card.label}
+                  </span>
+                  <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '10px',
+                    background: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+                  }}>
+                    <IconComponent size={18} color={card.color} />
+                  </div>
+                </div>
+                <div style={{
+                  fontSize: '28px',
+                  fontWeight: '700',
+                  color: card.color
+                }}>
+                  {card.value}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         {/* Graphique à barres - Score moyen par programme */}
@@ -274,7 +290,8 @@ export default function ApprenantHistorique() {
               alignItems: 'center',
               gap: '8px'
             }}>
-              📊 Performance par programme
+              <BarChart3 size={20} color="#3b82f6" />
+              Performance par programme
             </h3>
             <p style={{
               fontSize: '13px',
@@ -343,7 +360,7 @@ export default function ApprenantHistorique() {
                         flexDirection: 'column',
                         alignItems: 'center',
                         flex: 1,
-                        maxWidth: '140px',
+                        maxWidth: '160px',
                         position: 'relative'
                       }}
                       onMouseEnter={() => setHoveredBar(index)}
@@ -397,7 +414,7 @@ export default function ApprenantHistorique() {
                       <div style={{
                         display: 'flex',
                         alignItems: 'flex-end',
-                        gap: '4px',
+                        gap: '8px',
                         marginBottom: '8px'
                       }}>
                         {/* Barre Lecture (bleu) */}
@@ -414,13 +431,13 @@ export default function ApprenantHistorique() {
                           </div>
                           <div
                             style={{
-                              width: isHovered ? '28px' : '24px',
+                              width: isHovered ? '48px' : '40px',
                               height: `${readingHeight}px`,
                               minHeight: program.readingProgress > 0 ? '4px' : '2px',
                               background: program.readingProgress > 0 
                                 ? 'linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%)' 
                                 : '#e2e8f0',
-                              borderRadius: '4px 4px 0 0',
+                              borderRadius: '6px 6px 0 0',
                               transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
                               boxShadow: isHovered && program.readingProgress > 0
                                 ? '0 4px 12px rgba(59, 130, 246, 0.4)' 
@@ -443,13 +460,13 @@ export default function ApprenantHistorique() {
                           </div>
                           <div
                             style={{
-                              width: isHovered ? '28px' : '24px',
+                              width: isHovered ? '48px' : '40px',
                               height: `${exerciseHeight}px`,
                               minHeight: program.exerciseScore > 0 ? '4px' : '2px',
                               background: program.exerciseScore > 0 
                                 ? 'linear-gradient(180deg, #10b981 0%, #059669 100%)' 
                                 : '#e2e8f0',
-                              borderRadius: '4px 4px 0 0',
+                              borderRadius: '6px 6px 0 0',
                               transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
                               boxShadow: isHovered && program.exerciseScore > 0
                                 ? '0 4px 12px rgba(16, 185, 129, 0.4)' 
@@ -506,7 +523,8 @@ export default function ApprenantHistorique() {
                   borderRadius: '4px',
                   background: 'linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%)'
                 }} />
-                <span>📚 Progression lecture</span>
+                <BookOpen size={14} />
+                <span>Progression lecture</span>
               </div>
               <div style={{
                 display: 'flex',
@@ -521,69 +539,56 @@ export default function ApprenantHistorique() {
                   borderRadius: '4px',
                   background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)'
                 }} />
-                <span>📝 Score exercices</span>
+                <Zap size={14} />
+                <span>Score exercices</span>
               </div>
             </div>
           </div>
         )}
 
-        {/* Filtres */}
+        {/* Filtres modernisés */}
         <div style={{
           display: 'flex',
-          gap: '12px',
+          gap: '8px',
           marginBottom: '24px',
-          flexWrap: 'wrap'
+          background: '#f1f5f9',
+          padding: '4px',
+          borderRadius: '12px',
+          width: 'fit-content'
         }}>
-          <button
-            onClick={() => setFilter('all')}
-            style={{
-              padding: '10px 20px',
-              background: filter === 'all' ? '#3b82f6' : 'white',
-              color: filter === 'all' ? 'white' : '#64748b',
-              border: filter === 'all' ? 'none' : '1px solid #e2e8f0',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-          >
-            Tous ({allAttempts?.length || 0})
-          </button>
-
-          <button
-            onClick={() => setFilter('exercises')}
-            style={{
-              padding: '10px 20px',
-              background: filter === 'exercises' ? '#3b82f6' : 'white',
-              color: filter === 'exercises' ? 'white' : '#64748b',
-              border: filter === 'exercises' ? 'none' : '1px solid #e2e8f0',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-          >
-            📝 Exercices
-          </button>
-
-          <button
-            onClick={() => setFilter('evaluations')}
-            style={{
-              padding: '10px 20px',
-              background: filter === 'evaluations' ? '#3b82f6' : 'white',
-              color: filter === 'evaluations' ? 'white' : '#64748b',
-              border: filter === 'evaluations' ? 'none' : '1px solid #e2e8f0',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-          >
-            🏆 Évaluations
-          </button>
+          {[
+            { key: 'all', label: 'Tous', icon: BarChart3 },
+            { key: 'exercises', label: 'Exercices', icon: BookOpen },
+            { key: 'evaluations', label: 'Évaluations', icon: Award }
+          ].map((filterOption) => {
+            const isActive = filter === filterOption.key;
+            const IconComponent = filterOption.icon;
+            return (
+              <button
+                key={filterOption.key}
+                onClick={() => setFilter(filterOption.key)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 16px',
+                  background: isActive ? 'white' : 'transparent',
+                  color: isActive ? '#3b82f6' : '#64748b',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.08)' : 'none'
+                }}
+              >
+                <IconComponent size={16} />
+                {filterOption.label}
+                {filterOption.key === 'all' && ` (${allAttempts?.length || 0})`}
+              </button>
+            );
+          })}
         </div>
 
         {/* Liste des tentatives */}
@@ -595,7 +600,18 @@ export default function ApprenantHistorique() {
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
             textAlign: 'center'
           }}>
-            <div style={{ fontSize: '64px', marginBottom: '16px' }}>📊</div>
+            <div style={{ 
+              width: '80px', 
+              height: '80px', 
+              borderRadius: '20px', 
+              background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px auto'
+            }}>
+              <BarChart3 size={40} color="#3b82f6" />
+            </div>
             <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>
               Aucune tentative pour le moment
             </h3>
@@ -624,150 +640,137 @@ export default function ApprenantHistorique() {
             flexDirection: 'column',
             gap: '12px'
           }}>
-            {attempts.map((attempt) => {
-              const badgeStyle = getBadgeStyle(attempt.percentage);
-              
-              return (
-                <div
-                  key={attempt.id}
-                  style={{
-                    background: 'white',
-                    borderRadius: '12px',
-                    padding: '20px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                    border: '1px solid #e2e8f0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '16px',
-                    flexWrap: 'wrap',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                  }}
-                >
-                  {/* Icône */}
+            {attempts.map((attempt) => (
+              <div
+                key={attempt.id}
+                style={{
+                  background: 'white',
+                  borderRadius: '12px',
+                  padding: '16px 20px',
+                  marginBottom: '12px',
+                  border: '1px solid #e2e8f0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  transition: 'all 0.2s',
+                  cursor: 'pointer'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = 'none';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+                onClick={() => handleViewDetails(attempt)}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1 }}>
+                  {/* Icône type */}
                   <div style={{
-                    width: '48px',
-                    height: '48px',
-                    borderRadius: '10px',
-                    background: attempt.type === 'evaluation' ? '#fef3c7' : '#dbeafe',
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '12px',
+                    background: attempt.type === 'evaluation' 
+                      ? 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)'
+                      : 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '24px',
                     flexShrink: 0
                   }}>
-                    {attempt.type === 'evaluation' ? '🏆' : '📝'}
+                    {attempt.type === 'evaluation' 
+                      ? <Trophy size={20} color="#f59e0b" />
+                      : <BookOpen size={20} color="#3b82f6" />
+                    }
                   </div>
-
-                  {/* Contenu */}
-                  <div style={{ flex: 1, minWidth: '200px' }}>
+                  
+                  {/* Infos */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
-                      fontSize: '16px',
-                      fontWeight: '700',
+                      fontSize: '15px',
+                      fontWeight: '600',
                       color: '#1e293b',
-                      marginBottom: '4px'
+                      marginBottom: '4px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
                     }}>
                       {attempt.programName}
                       {attempt.type === 'evaluation' && (
-                        <span style={{ color: '#64748b', fontWeight: '400' }}>
+                        <span style={{ color: '#94a3b8', fontWeight: '400' }}>
                           {' • '}Évaluation complète
                         </span>
                       )}
                       {attempt.type === 'exercise' && attempt.chapterName && (
-                        <span style={{ color: '#64748b', fontWeight: '400' }}>
+                        <span style={{ color: '#94a3b8', fontWeight: '400' }}>
                           {' • '}{attempt.chapterName}
                         </span>
                       )}
                     </div>
                     <div style={{
-                      fontSize: '13px',
-                      color: '#64748b',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '12px',
+                      fontSize: '13px',
+                      color: '#64748b',
                       flexWrap: 'wrap'
                     }}>
-                      <span>📅 {formatDate(attempt.completedAt)}</span>
-                      <span>⏱️ {formatDuration(attempt.duration)}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Calendar size={14} />
+                        {formatDate(attempt.completedAt)}
+                      </span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Clock size={14} />
+                        {formatDuration(attempt.duration)}
+                      </span>
                     </div>
                   </div>
-
-                  {/* Score */}
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    flexWrap: 'wrap'
-                  }}>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{
-                        fontSize: '24px',
-                        fontWeight: '700',
-                        color: '#1e293b'
-                      }}>
-                        {attempt.percentage}%
-                      </div>
-                      <div style={{
-                        fontSize: '12px',
-                        color: '#64748b'
-                      }}>
-                        {attempt.score}/{attempt.maxScore} pts
-                      </div>
-                    </div>
-
-                    {/* Badge */}
-                    <div style={{
-                      padding: '6px 12px',
-                      background: badgeStyle.background,
-                      color: badgeStyle.color,
-                      borderRadius: '6px',
-                      fontSize: '12px',
-                      fontWeight: '600'
-                    }}>
-                      {badgeStyle.label}
-                    </div>
-                  </div>
-
-                  {/* Bouton voir détails */}
-                  <button
-                    onClick={() => handleViewDetails(attempt)}
-                    style={{
-                      padding: '10px 16px',
-                      background: '#f8fafc',
-                      color: '#3b82f6',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '8px',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      transition: 'all 0.2s',
-                      flexShrink: 0
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#3b82f6';
-                      e.currentTarget.style.color = 'white';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = '#f8fafc';
-                      e.currentTarget.style.color = '#3b82f6';
-                    }}
-                  >
-                    Voir détails
-                    <ChevronRight size={16} />
-                  </button>
                 </div>
-              );
-            })}
+
+                {/* Score + Badge */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexShrink: 0 }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{
+                      fontSize: '20px',
+                      fontWeight: '700',
+                      color: '#1e293b'
+                    }}>
+                      {attempt.percentage}%
+                    </div>
+                    <div style={{
+                      fontSize: '12px',
+                      color: '#94a3b8'
+                    }}>
+                      {attempt.score}/{attempt.maxScore} pts
+                    </div>
+                  </div>
+                  
+                  {/* Badge */}
+                  <div style={{
+                    padding: '6px 12px',
+                    borderRadius: '20px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    background: attempt.percentage >= 80 
+                      ? '#dcfce7' 
+                      : attempt.percentage >= 50 
+                        ? '#fef3c7' 
+                        : '#fee2e2',
+                    color: attempt.percentage >= 80 
+                      ? '#16a34a' 
+                      : attempt.percentage >= 50 
+                        ? '#d97706' 
+                        : '#dc2626',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {attempt.percentage >= 80 ? 'Excellent' : attempt.percentage >= 50 ? 'Bien' : 'À revoir'}
+                  </div>
+                  
+                  <ChevronRight size={20} color="#94a3b8" />
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

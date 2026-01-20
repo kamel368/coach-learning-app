@@ -3,7 +3,7 @@ import { auth } from '../../firebase';
 import { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { Menu, X, BookOpen, User, LogOut } from 'lucide-react';
+import { Menu, X, BookOpen, User, LogOut, BarChart3 } from 'lucide-react';
 import { apprenantTheme } from '../../styles/apprenantTheme';
 
 export default function ApprenantLayout() {
@@ -185,7 +185,7 @@ export default function ApprenantLayout() {
                   gap: '8px'
                 })}
               >
-                <span style={{ fontSize: '16px' }}>📊</span>
+                <BarChart3 size={16} />
                 <span>Historique</span>
               </NavLink>
 
@@ -384,7 +384,7 @@ export default function ApprenantLayout() {
                     gap: '12px'
                   })}
                 >
-                  <span style={{ fontSize: '20px' }}>📊</span>
+                  <BarChart3 size={20} />
                   <span>Historique</span>
                 </NavLink>
 

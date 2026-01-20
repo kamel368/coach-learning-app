@@ -1,15 +1,19 @@
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Trophy, CheckCircle, XCircle, ArrowLeft, RotateCcw } from 'lucide-react';
-
-const BLOCK_LABELS = {
-  flashcard: { icon: '🃏', label: 'Flashcard' },
-  true_false: { icon: '✓✗', label: 'Vrai/Faux' },
-  qcm: { icon: '☑', label: 'QCM' },
-  qcm_selective: { icon: '☑☑', label: 'QCM Sélectif' },
-  reorder: { icon: '🔢', label: 'Réorganiser' },
-  drag_drop: { icon: '🎯', label: 'Glisser-Déposer' },
-  match_pairs: { icon: '🔗', label: 'Paires' }
-};
+import { 
+  Trophy,
+  Target,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  ArrowLeft,
+  RotateCcw,
+  BarChart3,
+  Sparkles,
+  TrendingUp,
+  Award,
+  Zap,
+  BookOpen
+} from 'lucide-react';
 
 export default function ApprenantExercisesResults() {
   const location = useLocation();
@@ -42,8 +46,45 @@ export default function ApprenantExercisesResults() {
     );
   }
 
-  const { score, maxScore, percentage, results: blockResults } = results;
-  const isPassed = percentage >= 70;
+  const { score, maxScore, percentage: resultPercentage, results: blockResults } = results;
+  
+  // Debug logs
+  console.log('📊 Données résultats:', {
+    score,
+    maxScore,
+    resultPercentage,
+    blockResults,
+    results
+  });
+  
+  const correctCount = blockResults.filter(r => r.isCorrect).length;
+  const incorrectCount = blockResults.filter(r => !r.isCorrect).length;
+  
+  // Calculer le score total si non fourni
+  const calculatedScore = score !== undefined 
+    ? score 
+    : blockResults.reduce((total, r) => total + (r.earnedPoints || 0), 0);
+  
+  const calculatedMaxScore = maxScore !== undefined 
+    ? maxScore 
+    : blockResults.reduce((total, r) => total + (r.maxPoints || 0), 0);
+  
+  // Calculer le pourcentage de manière sûre
+  const calculatedPercentage = calculatedMaxScore > 0 
+    ? Math.round((calculatedScore / calculatedMaxScore) * 100) 
+    : 0;
+  
+  // Utiliser la valeur existante ou la calculée
+  const displayPercentage = resultPercentage !== undefined 
+    ? resultPercentage 
+    : calculatedPercentage;
+  
+  console.log('✅ Pourcentage final:', {
+    displayPercentage,
+    calculatedScore,
+    calculatedMaxScore,
+    calculatedPercentage
+  });
 
   const formatDuration = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -51,218 +92,359 @@ export default function ApprenantExercisesResults() {
     return `${mins}min ${secs}s`;
   };
 
+  const handleRestart = () => {
+    navigate(`/apprenant/programs/${programId}/modules/${moduleId}/exercises`);
+  };
+
+  // Icône selon le type d'exercice
+  const getExerciseIcon = (type) => {
+    switch(type) {
+      case 'flashcard': return <Zap size={16} color="#1e293b" />;
+      case 'true_false': return <CheckCircle2 size={16} color="#1e293b" />;
+      case 'qcm': return <Target size={16} color="#1e293b" />;
+      case 'qcm_selective': return <Target size={16} color="#1e293b" />;
+      case 'reorder': return <BarChart3 size={16} color="#1e293b" />;
+      case 'drag_drop': return <Sparkles size={16} color="#1e293b" />;
+      case 'match_pairs': return <Award size={16} color="#1e293b" />;
+      default: return <BookOpen size={16} color="#1e293b" />;
+    }
+  };
+
+  const getExerciseLabel = (type) => {
+    const labels = {
+      flashcard: 'Flashcard',
+      true_false: 'Vrai/Faux',
+      qcm: 'QCM',
+      qcm_selective: 'QCM Sélectif',
+      reorder: 'Réorganiser',
+      drag_drop: 'Glisser-Déposer',
+      match_pairs: 'Paires'
+    };
+    return labels[type] || 'Exercice';
+  };
+
   return (
     <div style={{
       minHeight: '100vh',
       background: '#f8fafc',
-      padding: '17px'
+      padding: '24px'
     }}>
       <div style={{
-        maxWidth: '900px',
+        maxWidth: '800px',
         margin: '0 auto'
       }}>
-        {/* Header - Résultat global */}
+        {/* Hero Section avec gradient dynamique */}
         <div style={{
-          background: 'white',
-          borderRadius: '11px',
-          padding: '28px',
-          marginBottom: '17px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          textAlign: 'center'
+          background: displayPercentage >= 80 
+            ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+            : displayPercentage >= 50 
+              ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+              : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+          borderRadius: '16px',
+          padding: '24px 32px',
+          textAlign: 'center',
+          color: 'white',
+          marginBottom: '24px',
+          position: 'relative',
+          overflow: 'hidden'
         }}>
-          {/* Icône */}
+          {/* Cercles décoratifs en arrière-plan */}
           <div style={{
-            fontSize: '56px',
-            marginBottom: '11px'
+            position: 'absolute',
+            top: '-30px',
+            right: '-30px',
+            width: '120px',
+            height: '120px',
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.1)'
+          }} />
+          <div style={{
+            position: 'absolute',
+            bottom: '-20px',
+            left: '-20px',
+            width: '80px',
+            height: '80px',
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.08)'
+          }} />
+
+          {/* Icône dynamique */}
+          <div style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 12px',
+            backdropFilter: 'blur(10px)',
+            position: 'relative'
           }}>
-            {isPassed ? '🎉' : '💪'}
+            {displayPercentage >= 80 ? (
+              <Trophy size={28} color="white" />
+            ) : displayPercentage >= 50 ? (
+              <TrendingUp size={28} color="white" />
+            ) : (
+              <Zap size={28} color="white" />
+            )}
           </div>
 
-          {/* Titre */}
+          {/* Titre dynamique */}
           <h1 style={{
             fontSize: '22px',
-            fontWeight: '800',
-            color: '#1e293b',
-            marginBottom: '6px'
+            fontWeight: '700',
+            marginBottom: '4px',
+            position: 'relative'
           }}>
-            {isPassed ? 'BRAVO !' : 'CONTINUE TES EFFORTS !'}
+            {displayPercentage >= 80 ? 'EXCELLENT TRAVAIL !' : displayPercentage >= 50 ? 'BIEN JOUÉ !' : 'CONTINUE TES EFFORTS !'}
           </h1>
-
-          <div style={{
-            fontSize: '11px',
-            color: '#64748b',
-            marginBottom: '17px'
+          <p style={{
+            fontSize: '13px',
+            opacity: 0.9,
+            position: 'relative'
           }}>
-            {isPassed 
-              ? 'Tu as réussi les exercices avec succès !'
-              : 'Tu peux recommencer pour améliorer ton score'
-            }
-          </div>
+            {displayPercentage >= 80 
+              ? 'Tu maîtrises parfaitement ce module !' 
+              : displayPercentage >= 50 
+                ? 'Tu es sur la bonne voie !' 
+                : 'Tu peux recommencer pour améliorer ton score'}
+          </p>
+        </div>
 
-          {/* Score principal */}
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '11px',
-            padding: '14px 28px',
-            background: isPassed 
-              ? 'linear-gradient(135deg, #10b981, #059669)'
-              : 'linear-gradient(135deg, #f59e0b, #d97706)',
-            borderRadius: '11px',
-            marginBottom: '17px'
-          }}>
-            <Trophy size={28} color="white" />
-            <div style={{ textAlign: 'left' }}>
-              <div style={{
-                fontSize: '34px',
-                fontWeight: '800',
-                color: 'white',
-                lineHeight: '1'
-              }}>
-                {percentage}%
-              </div>
-              <div style={{
-                fontSize: '10px',
-                color: 'rgba(255,255,255,0.9)',
-                fontWeight: '600'
-              }}>
-                {score} / {maxScore} points
-              </div>
-            </div>
-          </div>
-
-          {/* Stats */}
+        {/* Section Score - Layout Horizontal Compact */}
+        <div style={{
+          background: 'white',
+          borderRadius: '16px',
+          padding: '20px 24px',
+          marginBottom: '20px',
+          boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '24px',
+          flexWrap: 'wrap'
+        }}>
+          {/* Score circulaire - plus petit */}
           <div style={{
             display: 'flex',
-            gap: '17px',
-            justifyContent: 'center',
-            paddingTop: '17px',
-            borderTop: '1px solid #f1f5f9'
+            alignItems: 'center',
+            gap: '16px'
           }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '17px', fontWeight: '700', color: '#10b981' }}>
-                {blockResults.filter(r => r.isCorrect).length}
-              </div>
-              <div style={{ fontSize: '9px', color: '#64748b', fontWeight: '600' }}>
-                Réussis
+            <div style={{
+              width: '80px',
+              height: '80px',
+              borderRadius: '50%',
+              background: `conic-gradient(
+                ${displayPercentage >= 80 ? '#10b981' : displayPercentage >= 50 ? '#f59e0b' : '#3b82f6'} ${displayPercentage * 3.6}deg,
+                #f1f5f9 ${displayPercentage * 3.6}deg
+              )`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                background: 'white',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <div style={{
+                  fontSize: '22px',
+                  fontWeight: '800',
+                  color: displayPercentage >= 80 ? '#10b981' : displayPercentage >= 50 ? '#f59e0b' : '#3b82f6',
+                  lineHeight: 1
+                }}>
+                  {displayPercentage}%
+                </div>
               </div>
             </div>
             
-            <div style={{
-              width: '1px',
-              background: '#e2e8f0'
-            }} />
-
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '17px', fontWeight: '700', color: '#ef4444' }}>
-                {blockResults.filter(r => !r.isCorrect).length}
+            <div>
+              <div style={{
+                fontSize: '16px',
+                fontWeight: '700',
+                color: '#1e293b',
+                marginBottom: '2px'
+              }}>
+                {calculatedScore}/{calculatedMaxScore} points
               </div>
-              <div style={{ fontSize: '9px', color: '#64748b', fontWeight: '600' }}>
-                Manqués
+              <div style={{
+                fontSize: '13px',
+                color: '#64748b'
+              }}>
+                Score obtenu
+              </div>
+            </div>
+          </div>
+
+          {/* Stats en ligne */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px'
+          }}>
+            {/* Réussis */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 16px',
+              background: '#ecfdf5',
+              borderRadius: '10px'
+            }}>
+              <CheckCircle2 size={18} color="#10b981" />
+              <div>
+                <div style={{ fontSize: '18px', fontWeight: '700', color: '#10b981', lineHeight: 1 }}>
+                  {correctCount}
+                </div>
+                <div style={{ fontSize: '11px', color: '#64748b' }}>Réussis</div>
               </div>
             </div>
 
+            {/* Manqués */}
             <div style={{
-              width: '1px',
-              background: '#e2e8f0'
-            }} />
-
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '17px', fontWeight: '700', color: '#3b82f6' }}>
-                {formatDuration(duration)}
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 16px',
+              background: '#fef2f2',
+              borderRadius: '10px'
+            }}>
+              <XCircle size={18} color="#ef4444" />
+              <div>
+                <div style={{ fontSize: '18px', fontWeight: '700', color: '#ef4444', lineHeight: 1 }}>
+                  {incorrectCount}
+                </div>
+                <div style={{ fontSize: '11px', color: '#64748b' }}>Manqués</div>
               </div>
-              <div style={{ fontSize: '9px', color: '#64748b', fontWeight: '600' }}>
-                Durée
+            </div>
+
+            {/* Durée */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 16px',
+              background: '#eff6ff',
+              borderRadius: '10px'
+            }}>
+              <Clock size={18} color="#3b82f6" />
+              <div>
+                <div style={{ fontSize: '18px', fontWeight: '700', color: '#3b82f6', lineHeight: 1 }}>
+                  {formatDuration(duration)}
+                </div>
+                <div style={{ fontSize: '11px', color: '#64748b' }}>Durée</div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Détails par exercice */}
+        {/* Section Détails par exercice */}
         <div style={{
           background: 'white',
-          borderRadius: '11px',
-          padding: '17px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          marginBottom: '17px'
+          borderRadius: '20px',
+          padding: '24px',
+          marginBottom: '24px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
         }}>
           <h2 style={{
-            fontSize: '13px',
+            fontSize: '18px',
             fontWeight: '700',
             color: '#1e293b',
-            marginBottom: '11px'
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px'
           }}>
+            <BookOpen size={20} color="#3b82f6" />
             Détails par exercice
           </h2>
 
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '8px'
-          }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {blockResults.map((result, index) => {
-              const blockInfo = BLOCK_LABELS[result.type] || { icon: '❓', label: 'Exercice' };
-              
+              const isCorrect = result.isCorrect;
+
               return (
                 <div
                   key={result.blockId}
                   style={{
-                    padding: '11px',
-                    background: result.isCorrect ? '#f0fdf4' : '#fef2f2',
-                    border: '1px solid',
-                    borderColor: result.isCorrect ? '#bbf7d0' : '#fecaca',
-                    borderRadius: '7px',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px'
+                    justifyContent: 'space-between',
+                    padding: '16px',
+                    background: isCorrect ? '#f0fdf4' : '#fef2f2',
+                    borderRadius: '12px',
+                    border: `1px solid ${isCorrect ? '#bbf7d0' : '#fecaca'}`,
+                    transition: 'all 0.2s'
                   }}
                 >
-                  {/* Icône résultat */}
-                  <div style={{
-                    width: '25px',
-                    height: '25px',
-                    borderRadius: '50%',
-                    background: result.isCorrect ? '#10b981' : '#ef4444',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
-                  }}>
-                    {result.isCorrect ? (
-                      <CheckCircle size={14} color="white" />
-                    ) : (
-                      <XCircle size={14} color="white" />
-                    )}
-                  </div>
-
-                  {/* Info exercice */}
-                  <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    {/* Icône statut */}
                     <div style={{
-                      fontSize: '10px',
-                      fontWeight: '600',
-                      color: '#1e293b',
-                      marginBottom: '1px'
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '10px',
+                      background: isCorrect ? '#10b981' : '#ef4444',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
                     }}>
-                      {blockInfo.icon} {index + 1}. {blockInfo.label}
+                      {isCorrect 
+                        ? <CheckCircle2 size={20} color="white" />
+                        : <XCircle size={20} color="white" />
+                      }
                     </div>
-                    <div style={{
-                      fontSize: '8px',
-                      color: '#64748b'
-                    }}>
-                      {result.isCorrect ? 'Bonne réponse !' : 'Réponse incorrecte'}
+
+                    {/* Infos exercice */}
+                    <div>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontSize: '15px',
+                        fontWeight: '600',
+                        color: '#1e293b',
+                        marginBottom: '4px'
+                      }}>
+                        <span style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '6px',
+                          background: isCorrect ? '#dcfce7' : '#fee2e2',
+                          color: isCorrect ? '#16a34a' : '#dc2626'
+                        }}>
+                          {getExerciseIcon(result.type)}
+                        </span>
+                        {index + 1}. {getExerciseLabel(result.type)}
+                      </div>
+                      <div style={{
+                        fontSize: '13px',
+                        color: isCorrect ? '#16a34a' : '#dc2626',
+                        fontWeight: '500'
+                      }}>
+                        {isCorrect ? 'Bonne réponse !' : 'Réponse incorrecte'}
+                      </div>
                     </div>
                   </div>
 
                   {/* Points */}
                   <div style={{
-                    padding: '4px 8px',
+                    padding: '8px 14px',
                     background: 'white',
-                    borderRadius: '4px',
-                    fontSize: '9px',
+                    borderRadius: '8px',
+                    fontSize: '14px',
                     fontWeight: '700',
-                    color: result.isCorrect ? '#10b981' : '#ef4444'
+                    color: isCorrect ? '#10b981' : '#ef4444'
                   }}>
-                    {Math.round(result.earnedPoints)}/{result.maxPoints} pts
+                    {Math.round(result.earnedPoints) || 0}/{result.maxPoints || 0} pts
                   </div>
                 </div>
               );
@@ -270,81 +452,99 @@ export default function ApprenantExercisesResults() {
           </div>
         </div>
 
-        {/* Actions */}
+        {/* Boutons d'action */}
         <div style={{
           display: 'flex',
-          gap: '8px',
-          justifyContent: 'center'
+          justifyContent: 'center',
+          gap: '12px',
+          flexWrap: 'wrap'
         }}>
+          {/* Retour au module */}
           <button
             onClick={() => navigate(`/apprenant/programs/${programId}/modules/${moduleId}`)}
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              padding: '8px 14px',
+              gap: '8px',
+              padding: '14px 24px',
               background: 'white',
+              color: '#64748b',
               border: '1px solid #e2e8f0',
-              borderRadius: '7px',
-              fontSize: '10px',
+              borderRadius: '12px',
+              fontSize: '15px',
               fontWeight: '600',
-              color: '#1e293b',
               cursor: 'pointer',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
               transition: 'all 0.2s'
             }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = '#3b82f6';
+              e.currentTarget.style.color = '#3b82f6';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#e2e8f0';
+              e.currentTarget.style.color = '#64748b';
+            }}
           >
-            <ArrowLeft size={13} />
+            <ArrowLeft size={18} />
             Retour au module
           </button>
 
+          {/* Historique */}
           <button
             onClick={() => navigate('/apprenant/historique')}
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              padding: '8px 14px',
+              gap: '8px',
+              padding: '14px 24px',
               background: 'white',
-              border: '2px solid #8b5cf6',
-              borderRadius: '7px',
-              fontSize: '10px',
+              color: '#3b82f6',
+              border: '1px solid #3b82f6',
+              borderRadius: '12px',
+              fontSize: '15px',
               fontWeight: '600',
-              color: '#8b5cf6',
               cursor: 'pointer',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
               transition: 'all 0.2s'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#f3e8ff';
+              e.currentTarget.style.background = '#eff6ff';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'white';
             }}
           >
-            <span style={{ fontSize: '13px' }}>📊</span>
+            <BarChart3 size={18} />
             Historique
           </button>
 
+          {/* Recommencer */}
           <button
-            onClick={() => navigate(`/apprenant/programs/${programId}/modules/${moduleId}/exercises`)}
+            onClick={handleRestart}
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              padding: '8px 14px',
-              background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
-              border: 'none',
-              borderRadius: '7px',
-              fontSize: '10px',
-              fontWeight: '600',
+              gap: '8px',
+              padding: '14px 24px',
+              background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
               color: 'white',
+              border: 'none',
+              borderRadius: '12px',
+              fontSize: '15px',
+              fontWeight: '600',
               cursor: 'pointer',
-              boxShadow: '0 2px 4px rgba(59,130,246,0.3)',
-              transition: 'all 0.2s'
+              transition: 'all 0.2s',
+              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 20px rgba(59, 130, 246, 0.4)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
             }}
           >
-            <RotateCcw size={13} />
+            <RotateCcw size={18} />
             Recommencer
           </button>
         </div>
