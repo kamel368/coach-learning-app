@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, increment } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useToast } from '../contexts/ToastContext';
 
 // Configuration XP
 const XP_CONFIG = {
@@ -115,6 +116,9 @@ export const useGamification = (userId) => {
   const [gamificationData, setGamificationData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [newBadges, setNewBadges] = useState([]);
+  
+  // Hook pour afficher les toasts
+  const { showBadgeUnlocked, showXPGained, showLevelUp } = useToast();
 
   // Charger les données de gamification
   useEffect(() => {
@@ -245,6 +249,7 @@ export const useGamification = (userId) => {
 
     const newXP = (gamificationData.xp || 0) + amount;
     const newLevel = calculateLevel(newXP);
+    const oldLevel = gamificationData.level;
 
     const gamifRef = doc(db, 'users', userId, 'gamification', 'data');
     await updateDoc(gamifRef, {
@@ -263,7 +268,23 @@ export const useGamification = (userId) => {
       level: newLevel.level
     }));
 
-    return { newXP, newLevel, levelUp: newLevel.level > gamificationData.level };
+    // 🎉 Afficher un toast pour les XP gagnés
+    const actionLabels = {
+      'lesson_completed': 'Leçon terminée',
+      'module_completed': 'Module terminé',
+      'exercise_passed': 'Exercice réussi',
+      'exercise_excellent': 'Exercice excellent',
+      'evaluation_passed': 'Évaluation réussie',
+      'program_completed': 'Programme terminé'
+    };
+    showXPGained(amount, actionLabels[action] || action);
+
+    // 🎊 Afficher un toast pour level up
+    if (newLevel.level > oldLevel) {
+      showLevelUp(newLevel);
+    }
+
+    return { newXP, newLevel, levelUp: newLevel.level > oldLevel };
   };
 
   // Mettre à jour une stat
@@ -319,6 +340,11 @@ export const useGamification = (userId) => {
       }));
 
       setNewBadges(newlyUnlocked);
+
+      // 🎉 Afficher un toast pour chaque nouveau badge débloqué
+      newlyUnlocked.forEach(badge => {
+        showBadgeUnlocked(badge);
+      });
     }
   };
 

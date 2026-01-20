@@ -1,6 +1,8 @@
 // src/App.jsx
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { ToastProvider } from "./contexts/ToastContext";
+import ToastContainer from "./components/Toast/ToastContainer";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Sidebar, { SIDEBAR_WIDTH, SIDEBAR_WIDTH_COLLAPSED } from "./components/Sidebar";
 import { useState, useEffect } from "react";
@@ -337,6 +339,9 @@ function AppContent() {
           <Route path="/learner/*" element={<Navigate to="/apprenant/dashboard" replace />} />
         </Routes>
       </div>
+
+      {/* Toast Container pour les notifications */}
+      <ToastContainer />
     </div>
   );
 }
@@ -345,9 +350,11 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <AppContent />
-      </Router>
+      <ToastProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </ToastProvider>
     </AuthProvider>
   );
 }
