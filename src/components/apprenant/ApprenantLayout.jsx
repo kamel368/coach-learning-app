@@ -169,6 +169,26 @@ export default function ApprenantLayout() {
                 <span>Mes programmes</span>
               </NavLink>
 
+              <NavLink
+                to="/apprenant/historique"
+                style={({ isActive }) => ({
+                  fontSize: apprenantTheme.fontSize.sm,
+                  fontWeight: '600',
+                  color: isActive ? apprenantTheme.colors.secondary : apprenantTheme.colors.textSecondary,
+                  textDecoration: 'none',
+                  padding: '8px 16px',
+                  borderRadius: apprenantTheme.radius.base,
+                  background: isActive ? `${apprenantTheme.colors.secondary}11` : 'transparent',
+                  transition: apprenantTheme.transitions.base,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                })}
+              >
+                <span style={{ fontSize: '16px' }}>📊</span>
+                <span>Historique</span>
+              </NavLink>
+
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -345,6 +365,27 @@ export default function ApprenantLayout() {
                 >
                   <BookOpen size={20} />
                   <span>Mes programmes</span>
+                </NavLink>
+
+                <NavLink
+                  to="/apprenant/historique"
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={({ isActive }) => ({
+                    padding: '14px 16px',
+                    borderRadius: apprenantTheme.radius.md,
+                    background: isActive ? `${apprenantTheme.colors.secondary}11` : apprenantTheme.colors.bgSecondary,
+                    color: isActive ? apprenantTheme.colors.secondary : apprenantTheme.colors.textSecondary,
+                    textDecoration: 'none',
+                    fontSize: apprenantTheme.fontSize.base,
+                    fontWeight: '600',
+                    transition: apprenantTheme.transitions.base,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px'
+                  })}
+                >
+                  <span style={{ fontSize: '20px' }}>📊</span>
+                  <span>Historique</span>
                 </NavLink>
 
                 <button

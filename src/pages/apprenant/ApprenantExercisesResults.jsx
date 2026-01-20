@@ -299,6 +299,34 @@ export default function ApprenantExercisesResults() {
           </button>
 
           <button
+            onClick={() => navigate('/apprenant/historique')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 14px',
+              background: 'white',
+              border: '2px solid #8b5cf6',
+              borderRadius: '7px',
+              fontSize: '10px',
+              fontWeight: '600',
+              color: '#8b5cf6',
+              cursor: 'pointer',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#f3e8ff';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'white';
+            }}
+          >
+            <span style={{ fontSize: '13px' }}>📊</span>
+            Historique
+          </button>
+
+          <button
             onClick={() => navigate(`/apprenant/programs/${programId}/modules/${moduleId}/exercises`)}
             style={{
               display: 'flex',

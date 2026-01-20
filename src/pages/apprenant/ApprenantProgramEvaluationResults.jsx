@@ -330,6 +330,36 @@ export default function ApprenantProgramEvaluationResults() {
           </button>
 
           <button
+            onClick={() => navigate('/apprenant/historique')}
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '5px',
+              padding: '10px',
+              background: 'white',
+              border: '2px solid #8b5cf6',
+              borderRadius: '7px',
+              fontSize: '11px',
+              fontWeight: '600',
+              color: '#8b5cf6',
+              cursor: 'pointer',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#f3e8ff';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'white';
+            }}
+          >
+            <span style={{ fontSize: '14px' }}>📊</span>
+            Historique
+          </button>
+
+          <button
             onClick={() => navigate(`/apprenant/program-evaluation/${programId}`)}
             style={{
               flex: 1,

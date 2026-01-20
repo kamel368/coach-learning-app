@@ -42,9 +42,41 @@ export default function ApprenantDashboard() {
       const allProgress = await getAllUserProgress(user.uid);
       setUserProgress(allProgress);
 
-      // Calculer progression globale
-      const globalProg = await calculateGlobalProgress(user.uid);
-      setGlobalProgress(globalProg);
+      // Calculer progression globale pour TOUS les programmes assignés (même ceux à 0%)
+      const userDocSnap = await getDoc(doc(db, 'users', user.uid));
+      const assignedProgramIds = userDocSnap.exists() ? (userDocSnap.data().assignedPrograms || []) : [];
+      
+      console.log('📚 Programmes assignés (IDs):', assignedProgramIds);
+      
+      // Pour CHAQUE programme, récupérer sa progression (0 si pas de document)
+      const progressions = await Promise.all(
+        assignedProgramIds.map(async (programId) => {
+          try {
+            const progressRef = doc(db, 'userProgress', user.uid, 'programs', programId);
+            const progressSnap = await getDoc(progressRef);
+            
+            if (progressSnap.exists() && progressSnap.data().percentage !== undefined) {
+              return progressSnap.data().percentage;
+            }
+            return 0; // Programme pas commencé = 0%
+          } catch (error) {
+            console.error('Erreur récupération progression pour', programId, error);
+            return 0;
+          }
+        })
+      );
+      
+      console.log('📊 Progressions individuelles:', progressions);
+      
+      // Calculer la MOYENNE (pas la somme !)
+      const globalProg = progressions.length > 0
+        ? Math.round(progressions.reduce((sum, p) => sum + p, 0) / progressions.length)
+        : 0;
+      
+      console.log('📈 Progression globale calculée:', globalProg);
+      
+      // Afficher avec protection max 100%
+      setGlobalProgress(Math.min(globalProg, 100));
 
     } catch (error) {
       console.error('Erreur chargement données:', error);
@@ -177,7 +209,7 @@ export default function ApprenantDashboard() {
                 fontWeight: '700',
                 color: apprenantTheme.colors.secondary
               }}>
-                {globalProgress}%
+                {Math.min(globalProgress, 100)}%
               </span>
             </div>
             
@@ -190,7 +222,7 @@ export default function ApprenantDashboard() {
               position: 'relative'
             }}>
               <div style={{
-                width: `${globalProgress}%`,
+                width: `${Math.min(globalProgress, 100)}%`,
                 height: '100%',
                 background: apprenantTheme.gradients.secondary,
                 transition: 'width 0.5s ease',

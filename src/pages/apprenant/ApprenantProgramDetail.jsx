@@ -261,7 +261,7 @@ export default function ApprenantProgramDetail() {
                   fontWeight: '700',
                   color: apprenantTheme.colors.secondary
                 }}>
-                  {userProgress.percentage || 0}%
+                  {Math.min(userProgress.percentage || 0, 100)}%
                 </span>
               </div>
               
@@ -273,7 +273,7 @@ export default function ApprenantProgramDetail() {
                 overflow: 'hidden'
               }}>
                 <div style={{
-                  width: `${userProgress.percentage || 0}%`,
+                  width: `${Math.min(userProgress.percentage || 0, 100)}%`,
                   height: '100%',
                   background: apprenantTheme.gradients.secondary,
                   transition: 'width 0.5s ease',

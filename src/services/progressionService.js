@@ -70,6 +70,8 @@ export async function getAllUserProgress(userId) {
  */
 export async function markLessonCompleted(userId, programId, lessonId, totalLessons) {
   try {
+    console.log('📝 markLessonCompleted appelé:', { userId, programId, lessonId, totalLessons });
+    
     const progressRef = doc(db, `userProgress/${userId}/programs/${programId}`);
     const progressSnap = await getDoc(progressRef);
     
@@ -77,14 +79,29 @@ export async function markLessonCompleted(userId, programId, lessonId, totalLess
     
     if (progressSnap.exists()) {
       completedLessons = progressSnap.data().completedLessons || [];
+      console.log('📚 Leçons déjà complétées:', completedLessons);
     }
     
     // Ajouter la leçon si pas déjà terminée
     if (!completedLessons.includes(lessonId)) {
       completedLessons.push(lessonId);
+      console.log('✅ Leçon ajoutée aux complétées');
+    } else {
+      console.log('⚠️  Leçon déjà complétée, pas d\'ajout');
     }
     
-    const percentage = Math.round((completedLessons.length / totalLessons) * 100);
+    // Calculer avec protection max 100%
+    const percentage = Math.min(
+      Math.round((completedLessons.length / totalLessons) * 100),
+      100
+    );
+    
+    console.log('📊 Nouveau pourcentage calculé:', {
+      completedLessons: completedLessons.length,
+      totalLessons,
+      percentage,
+      liste: completedLessons
+    });
     
     await setDoc(progressRef, {
       completedLessons,
@@ -92,6 +109,8 @@ export async function markLessonCompleted(userId, programId, lessonId, totalLess
       lastAccessedAt: new Date().toISOString(),
       percentage
     }, { merge: true });
+    
+    console.log('💾 Progression sauvegardée dans Firebase');
     
     return { completedLessons, percentage };
   } catch (error) {
@@ -131,7 +150,11 @@ export async function calculateGlobalProgress(userId) {
     const totalPercentage = Object.values(allProgress)
       .reduce((sum, prog) => sum + (prog.percentage || 0), 0);
     
-    return Math.round(totalPercentage / Object.keys(allProgress).length);
+    // Calculer la moyenne avec protection max 100%
+    return Math.min(
+      Math.round(totalPercentage / Object.keys(allProgress).length),
+      100
+    );
   } catch (error) {
     console.error('Erreur calculateGlobalProgress:', error);
     return 0;

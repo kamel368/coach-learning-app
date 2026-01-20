@@ -15,10 +15,30 @@ export default function ApprenantModuleDetail() {
   const [quiz, setQuiz] = useState(null);
   const [quizAttempts, setQuizAttempts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [completedLessons, setCompletedLessons] = useState([]);
 
   useEffect(() => {
     loadData();
+    loadProgress();
   }, [programId, moduleId]);
+  
+  // Charger la progression des leçons complétées
+  async function loadProgress() {
+    try {
+      const user = auth.currentUser;
+      if (!user || !programId) return;
+      
+      const progressRef = doc(db, 'userProgress', user.uid, 'programs', programId);
+      const progressSnap = await getDoc(progressRef);
+      
+      if (progressSnap.exists()) {
+        setCompletedLessons(progressSnap.data().completedLessons || []);
+        console.log('📚 Leçons complétées chargées:', progressSnap.data().completedLessons || []);
+      }
+    } catch (error) {
+      console.error('Erreur chargement progression:', error);
+    }
+  }
 
   async function loadData() {
     try {
@@ -213,16 +233,64 @@ export default function ApprenantModuleDetail() {
             </div>
           )}
 
-          <h1 style={{
-            fontSize: 'clamp(24px, 6vw, 36px)',
-            fontWeight: '700',
-            color: '#1e293b',
-            marginBottom: '12px',
-            letterSpacing: '-0.5px',
-            lineHeight: '1.2'
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 'clamp(12px, 3vw, 16px)',
+            marginBottom: '12px'
           }}>
-            {module.title}
-          </h1>
+            <h1 style={{
+              fontSize: 'clamp(24px, 6vw, 36px)',
+              fontWeight: '700',
+              color: '#1e293b',
+              letterSpacing: '-0.5px',
+              lineHeight: '1.2',
+              margin: 0
+            }}>
+              {module.title}
+            </h1>
+
+            {/* Badge progression module */}
+            {lessons.length > 0 && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'clamp(8px, 2vw, 12px)'
+              }}>
+                <span style={{
+                  padding: 'clamp(5px, 1.5vw, 6px) clamp(10px, 2.5vw, 12px)',
+                  background: completedLessons.filter(id => lessons.find(l => l.id === id)).length === lessons.length ? '#dcfce7' : '#f1f5f9',
+                  color: completedLessons.filter(id => lessons.find(l => l.id === id)).length === lessons.length ? '#16a34a' : '#64748b',
+                  borderRadius: '20px',
+                  fontSize: 'clamp(11px, 2.5vw, 12px)',
+                  fontWeight: '600',
+                  whiteSpace: 'nowrap'
+                }}>
+                  {completedLessons.filter(id => lessons.find(l => l.id === id)).length === lessons.length 
+                    ? '✅ Terminé' 
+                    : `${completedLessons.filter(id => lessons.find(l => l.id === id)).length}/${lessons.length} lu${completedLessons.filter(id => lessons.find(l => l.id === id)).length > 1 ? 's' : ''}`}
+                </span>
+                
+                {/* Mini barre de progression */}
+                <div style={{
+                  width: 'clamp(50px, 12vw, 60px)',
+                  height: 'clamp(5px, 1.5vw, 6px)',
+                  background: '#e2e8f0',
+                  borderRadius: '3px',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    width: `${lessons.length > 0 ? Math.round((completedLessons.filter(id => lessons.find(l => l.id === id)).length / lessons.length) * 100) : 0}%`,
+                    height: '100%',
+                    background: completedLessons.filter(id => lessons.find(l => l.id === id)).length === lessons.length ? '#10b981' : '#3b82f6',
+                    transition: 'width 0.3s'
+                  }} />
+                </div>
+              </div>
+            )}
+          </div>
 
           {module.description && (
             <p style={{
@@ -280,86 +348,132 @@ export default function ApprenantModuleDetail() {
                 flexDirection: 'column',
                 gap: 'clamp(10px, 2vw, 12px)'
               }}>
-                {lessons.map((lesson, index) => (
-                  <div
-                    key={lesson.id}
-                    style={{
-                      background: '#ffffff',
-                      borderRadius: 'clamp(12px, 2.5vw, 16px)',
-                      padding: 'clamp(16px, 3vw, 20px)',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s ease',
-                      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)',
-                      border: '2px solid transparent'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateX(8px)';
-                      e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.12)';
-                      e.currentTarget.style.borderColor = '#8b5cf6';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateX(0)';
-                      e.currentTarget.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.08)';
-                      e.currentTarget.style.borderColor = 'transparent';
-                    }}
-                    onClick={() => navigate(`/apprenant/programs/${programId}/modules/${moduleId}/lessons/${lesson.id}`)}
-                  >
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 'clamp(12px, 3vw, 16px)'
-                    }}>
-                      {/* Numéro leçon */}
-                      <div style={{
-                        width: 'clamp(36px, 8vw, 40px)',
-                        height: 'clamp(36px, 8vw, 40px)',
-                        borderRadius: apprenantTheme.radius.base,
-                        background: apprenantTheme.gradients.secondary,
+                {lessons.map((lesson, index) => {
+                  const isCompleted = completedLessons.includes(lesson.id);
+                  
+                  return (
+                    <div
+                      key={lesson.id}
+                      style={{
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: apprenantTheme.fontSize.base,
-                        fontWeight: '700',
-                        color: 'white',
-                        boxShadow: apprenantTheme.shadows.sm,
-                        flexShrink: 0
+                        justifyContent: 'space-between',
+                        padding: 'clamp(14px, 3vw, 16px)',
+                        background: isCompleted ? '#f0fdf4' : '#ffffff',
+                        borderRadius: 'clamp(10px, 2.5vw, 12px)',
+                        border: isCompleted ? '1px solid #bbf7d0' : '1px solid #e2e8f0',
+                        marginBottom: 'clamp(10px, 2vw, 12px)',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateX(4px)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateX(0)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                    >
+                      {/* Partie gauche : Icône + Titre */}
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: 'clamp(10px, 2.5vw, 12px)',
+                        flex: 1,
+                        minWidth: 0
                       }}>
-                        {index + 1}
-                      </div>
-
-                      {/* Contenu */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <h3 style={{
-                          fontSize: 'clamp(15px, 3vw, 18px)',
-                          fontWeight: '600',
-                          color: '#1e293b',
-                          marginBottom: '4px',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
-                        }}>
-                          {lesson.title || `Leçon ${index + 1}`}
-                        </h3>
-                        
+                        {/* Icône statut */}
                         <div style={{
-                          fontSize: 'clamp(12px, 2.5vw, 13px)',
-                          color: '#94a3b8'
+                          width: 'clamp(28px, 7vw, 32px)',
+                          height: 'clamp(28px, 7vw, 32px)',
+                          borderRadius: '50%',
+                          background: isCompleted ? '#10b981' : '#e2e8f0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: isCompleted ? 'white' : '#94a3b8',
+                          fontSize: 'clamp(12px, 3vw, 14px)',
+                          fontWeight: '700',
+                          flexShrink: 0
                         }}>
-                          {lesson.blocks?.length || 0} bloc{lesson.blocks?.length > 1 ? 's' : ''}
+                          {isCompleted ? '✓' : (index + 1)}
+                        </div>
+                        
+                        {/* Titre leçon */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontSize: 'clamp(13px, 3vw, 15px)',
+                            fontWeight: '600',
+                            color: '#1e293b',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}>
+                            {lesson.title || `Leçon ${index + 1}`}
+                          </div>
+                          {isCompleted && (
+                            <div style={{
+                              fontSize: 'clamp(10px, 2.5vw, 12px)',
+                              color: '#10b981',
+                              fontWeight: '500',
+                              marginTop: '2px'
+                            }}>
+                              ✅ Terminée
+                            </div>
+                          )}
                         </div>
                       </div>
-
-                      {/* Flèche */}
-                      <div style={{
-                        fontSize: 'clamp(18px, 4vw, 20px)',
-                        color: '#cbd5e1',
+                      
+                      {/* Partie droite : Badge Lu + Bouton */}
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: 'clamp(8px, 2vw, 12px)',
                         flexShrink: 0
                       }}>
-                        →
+                        {isCompleted && (
+                          <span style={{
+                            padding: '4px 10px',
+                            background: '#dcfce7',
+                            color: '#16a34a',
+                            borderRadius: '20px',
+                            fontSize: 'clamp(10px, 2.5vw, 11px)',
+                            fontWeight: '600',
+                            whiteSpace: 'nowrap',
+                            display: window.innerWidth > 500 ? 'inline' : 'none'
+                          }}>
+                            Lu
+                          </span>
+                        )}
+                        
+                        <button
+                          onClick={() => navigate(`/apprenant/programs/${programId}/modules/${moduleId}/lessons/${lesson.id}`)}
+                          style={{
+                            padding: 'clamp(6px, 2vw, 8px) clamp(12px, 3vw, 16px)',
+                            background: isCompleted ? 'white' : '#3b82f6',
+                            color: isCompleted ? '#3b82f6' : 'white',
+                            border: isCompleted ? '1px solid #3b82f6' : 'none',
+                            borderRadius: 'clamp(6px, 2vw, 8px)',
+                            fontSize: 'clamp(11px, 2.5vw, 13px)',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'scale(1.05)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'scale(1)';
+                          }}
+                        >
+                          {isCompleted ? 'Relire' : 'Lire'}
+                        </button>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
             

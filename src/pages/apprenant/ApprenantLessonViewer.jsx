@@ -80,8 +80,28 @@ export default function ApprenantLessonViewer() {
       setCompleting(true);
       const user = auth.currentUser;
       
-      // Marquer la leçon comme terminée
-      await markLessonCompleted(user.uid, programId, lessonId, allLessons.length);
+      // 📊 CORRECTION BUG : Calculer le nombre TOTAL de leçons du programme
+      // (pas seulement celles du module actuel)
+      console.log('🔍 Calcul du nombre total de leçons du programme...');
+      
+      let totalProgramLessons = 0;
+      
+      // Récupérer tous les modules du programme
+      const modulesRef = collection(db, `programs/${programId}/modules`);
+      const modulesSnap = await getDocs(modulesRef);
+      
+      // Pour chaque module, compter les leçons
+      for (const moduleDoc of modulesSnap.docs) {
+        const lessonsRef = collection(db, `programs/${programId}/modules/${moduleDoc.id}/lessons`);
+        const lessonsSnap = await getDocs(lessonsRef);
+        totalProgramLessons += lessonsSnap.size;
+      }
+      
+      console.log('📚 Nombre total de leçons du programme:', totalProgramLessons);
+      console.log('📖 Nombre de leçons du module actuel:', allLessons.length);
+      
+      // Marquer la leçon comme terminée avec le VRAI nombre total de leçons
+      await markLessonCompleted(user.uid, programId, lessonId, totalProgramLessons);
 
       // Vérifier s'il y a une leçon suivante
       if (currentIndex < allLessons.length - 1) {

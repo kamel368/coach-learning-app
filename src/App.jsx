@@ -39,6 +39,7 @@ import ApprenantModuleEvaluation from './pages/apprenant/ApprenantModuleEvaluati
 import ApprenantModuleEvaluationResults from './pages/apprenant/ApprenantModuleEvaluationResults';
 import ApprenantProgramEvaluation from './pages/apprenant/ApprenantProgramEvaluation';
 import ApprenantProgramEvaluationResults from './pages/apprenant/ApprenantProgramEvaluationResults';
+import ApprenantHistorique from './pages/apprenant/ApprenantHistorique';
 import ExerciseDebugPage from './pages/apprenant/ExerciseDebugPage';
 
 function AppContent() {
@@ -311,6 +312,13 @@ function AppContent() {
             <Route path="programs/:programId/modules/:moduleId/lessons/:lessonId" element={
               <ProtectedRoute>
                 <ApprenantLessonViewer />
+              </ProtectedRoute>
+            } />
+            
+            {/* 📊 Historique des tentatives */}
+            <Route path="historique" element={
+              <ProtectedRoute>
+                <ApprenantHistorique />
               </ProtectedRoute>
             } />
             
