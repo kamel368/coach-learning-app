@@ -40,6 +40,7 @@ import ApprenantModuleEvaluationResults from './pages/apprenant/ApprenantModuleE
 import ApprenantProgramEvaluation from './pages/apprenant/ApprenantProgramEvaluation';
 import ApprenantProgramEvaluationResults from './pages/apprenant/ApprenantProgramEvaluationResults';
 import ApprenantHistorique from './pages/apprenant/ApprenantHistorique';
+import ApprenantBadges from './pages/apprenant/ApprenantBadges';
 import ExerciseDebugPage from './pages/apprenant/ExerciseDebugPage';
 
 function AppContent() {
@@ -319,6 +320,13 @@ function AppContent() {
             <Route path="historique" element={
               <ProtectedRoute>
                 <ApprenantHistorique />
+              </ProtectedRoute>
+            } />
+            
+            {/* 🏆 Badges et gamification */}
+            <Route path="badges" element={
+              <ProtectedRoute>
+                <ApprenantBadges />
               </ProtectedRoute>
             } />
             

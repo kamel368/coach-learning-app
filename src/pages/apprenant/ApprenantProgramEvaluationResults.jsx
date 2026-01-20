@@ -1,4 +1,7 @@
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { auth } from '../../firebase';
+import { useGamification } from '../../hooks/useGamification';
 import { 
   Trophy,
   Target,
@@ -21,6 +24,24 @@ export default function ApprenantProgramEvaluationResults() {
   const { programId } = useParams();
   
   const { results, duration } = location.state || {};
+
+  // Hook gamification
+  const user = auth.currentUser;
+  const { onEvaluationCompleted } = useGamification(user?.uid);
+  const hasCalledGamification = useRef(false);
+
+  // Calculer le pourcentage
+  const { score, totalPoints, earnedPoints, results: exerciseResults } = results || {};
+  const displayPercentage = score || (totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0);
+
+  // 🎮 GAMIFICATION : Appeler une seule fois au chargement des résultats
+  useEffect(() => {
+    if (displayPercentage !== undefined && !hasCalledGamification.current && onEvaluationCompleted) {
+      hasCalledGamification.current = true;
+      onEvaluationCompleted(displayPercentage);
+      console.log('🎮 Gamification: XP ajoutés pour évaluation complétée avec', displayPercentage, '%');
+    }
+  }, [displayPercentage, onEvaluationCompleted]);
 
   if (!results) {
     return (
@@ -45,11 +66,6 @@ export default function ApprenantProgramEvaluationResults() {
       </div>
     );
   }
-
-  const { score, totalPoints, earnedPoints, results: exerciseResults } = results;
-  
-  // Calculer le pourcentage si non fourni
-  const displayPercentage = score || (totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0);
   
   // Compter les bonnes/mauvaises réponses
   const correctCount = exerciseResults?.filter(r => r.isCorrect).length || 0;

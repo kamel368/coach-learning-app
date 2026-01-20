@@ -1,4 +1,7 @@
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { auth } from '../../firebase';
+import { useGamification } from '../../hooks/useGamification';
 import { 
   Trophy,
   Target,
@@ -21,6 +24,39 @@ export default function ApprenantExercisesResults() {
   const { programId, moduleId } = useParams();
   
   const { results, duration } = location.state || {};
+
+  // Hook gamification
+  const user = auth.currentUser;
+  const { onExerciseCompleted } = useGamification(user?.uid);
+  const hasCalledGamification = useRef(false);
+
+  // Calculer le pourcentage avant le useEffect
+  const { score, maxScore, percentage: resultPercentage, results: blockResults } = results || {};
+  
+  const calculatedScore = score !== undefined 
+    ? score 
+    : blockResults?.reduce((total, r) => total + (r.earnedPoints || 0), 0) || 0;
+  
+  const calculatedMaxScore = maxScore !== undefined 
+    ? maxScore 
+    : blockResults?.reduce((total, r) => total + (r.maxPoints || 0), 0) || 0;
+  
+  const calculatedPercentage = calculatedMaxScore > 0 
+    ? Math.round((calculatedScore / calculatedMaxScore) * 100) 
+    : 0;
+  
+  const displayPercentage = resultPercentage !== undefined 
+    ? resultPercentage 
+    : calculatedPercentage;
+
+  // 🎮 GAMIFICATION : Appeler une seule fois au chargement des résultats
+  useEffect(() => {
+    if (displayPercentage !== undefined && !hasCalledGamification.current && onExerciseCompleted) {
+      hasCalledGamification.current = true;
+      onExerciseCompleted(displayPercentage);
+      console.log('🎮 Gamification: XP ajoutés pour exercice complété avec', displayPercentage, '%');
+    }
+  }, [displayPercentage, onExerciseCompleted]);
 
   if (!results) {
     return (
@@ -45,8 +81,6 @@ export default function ApprenantExercisesResults() {
       </div>
     );
   }
-
-  const { score, maxScore, percentage: resultPercentage, results: blockResults } = results;
   
   // Debug logs
   console.log('📊 Données résultats:', {
@@ -59,25 +93,6 @@ export default function ApprenantExercisesResults() {
   
   const correctCount = blockResults.filter(r => r.isCorrect).length;
   const incorrectCount = blockResults.filter(r => !r.isCorrect).length;
-  
-  // Calculer le score total si non fourni
-  const calculatedScore = score !== undefined 
-    ? score 
-    : blockResults.reduce((total, r) => total + (r.earnedPoints || 0), 0);
-  
-  const calculatedMaxScore = maxScore !== undefined 
-    ? maxScore 
-    : blockResults.reduce((total, r) => total + (r.maxPoints || 0), 0);
-  
-  // Calculer le pourcentage de manière sûre
-  const calculatedPercentage = calculatedMaxScore > 0 
-    ? Math.round((calculatedScore / calculatedMaxScore) * 100) 
-    : 0;
-  
-  // Utiliser la valeur existante ou la calculée
-  const displayPercentage = resultPercentage !== undefined 
-    ? resultPercentage 
-    : calculatedPercentage;
   
   console.log('✅ Pourcentage final:', {
     displayPercentage,

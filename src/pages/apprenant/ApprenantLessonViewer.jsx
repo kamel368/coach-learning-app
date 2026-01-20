@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { doc, getDoc, collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
 import { markLessonCompleted, updateCurrentLesson } from '../../services/progressionService';
+import { useGamification } from '../../hooks/useGamification';
 
 export default function ApprenantLessonViewer() {
   const { programId, moduleId, lessonId } = useParams();
@@ -15,6 +16,10 @@ export default function ApprenantLessonViewer() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState(false);
+
+  // Hook gamification
+  const user = auth.currentUser;
+  const { onLessonCompleted } = useGamification(user?.uid);
 
   useEffect(() => {
     loadData();
@@ -102,6 +107,11 @@ export default function ApprenantLessonViewer() {
       
       // Marquer la leçon comme terminée avec le VRAI nombre total de leçons
       await markLessonCompleted(user.uid, programId, lessonId, totalProgramLessons);
+
+      // 🎮 GAMIFICATION : Ajouter XP et badges pour leçon complétée
+      if (onLessonCompleted) {
+        await onLessonCompleted();
+      }
 
       // Vérifier s'il y a une leçon suivante
       if (currentIndex < allLessons.length - 1) {

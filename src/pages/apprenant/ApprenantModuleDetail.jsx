@@ -1,9 +1,10 @@
 import { useNavigate, useParams } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { collection, getDocs, doc, getDoc, query, where, orderBy } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
 import { ArrowLeft, BookOpen, CheckCircle, AlertCircle, ChevronRight, Clock, Award } from 'lucide-react';
 import { apprenantTheme, buttonStyles } from '../../styles/apprenantTheme';
+import { useGamification } from '../../hooks/useGamification';
 
 export default function ApprenantModuleDetail() {
   const { programId, moduleId } = useParams();
@@ -17,10 +18,30 @@ export default function ApprenantModuleDetail() {
   const [loading, setLoading] = useState(true);
   const [completedLessons, setCompletedLessons] = useState([]);
 
+  // Hook gamification
+  const user = auth.currentUser;
+  const { onModuleCompleted } = useGamification(user?.uid);
+  const moduleCompletionTracked = useRef(new Set());
+
   useEffect(() => {
     loadData();
     loadProgress();
   }, [programId, moduleId]);
+
+  // 🎮 GAMIFICATION : Détecter quand un module est 100% complété
+  useEffect(() => {
+    if (lessons.length > 0 && completedLessons.length > 0) {
+      const completedInThisModule = completedLessons.filter(id => lessons.find(l => l.id === id)).length;
+      const moduleProgress = (completedInThisModule / lessons.length) * 100;
+      
+      // Si le module est 100% complété et qu'on ne l'a pas encore compté
+      if (moduleProgress >= 100 && !moduleCompletionTracked.current.has(moduleId) && onModuleCompleted) {
+        moduleCompletionTracked.current.add(moduleId);
+        onModuleCompleted();
+        console.log('🎮 Gamification: Module complété !', moduleId);
+      }
+    }
+  }, [completedLessons, lessons, moduleId, onModuleCompleted]);
   
   // Charger la progression des leçons complétées
   async function loadProgress() {

@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
 import { getAllUserProgress, calculateGlobalProgress, getUserAssignedProgramsWithDetails } from '../../services/progressionService';
-import { BookOpen, TrendingUp, ArrowRight, Clock, CheckCircle2 } from 'lucide-react';
+import { BookOpen, TrendingUp, ArrowRight, Clock, CheckCircle2, Zap, Flame, Trophy, Award, ChevronRight } from 'lucide-react';
 import { apprenantTheme, cardStyles, buttonStyles } from '../../styles/apprenantTheme';
+import { useGamification, LEVELS, BADGES_CONFIG } from '../../hooks/useGamification';
 
 export default function ApprenantDashboard() {
   const navigate = useNavigate();
@@ -13,6 +14,16 @@ export default function ApprenantDashboard() {
   const [globalProgress, setGlobalProgress] = useState(0);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState('');
+
+  // Hook gamification
+  const user = auth.currentUser;
+  const { 
+    gamificationData, 
+    currentLevel, 
+    levelProgress, 
+    unlockedBadges,
+    loading: gamifLoading 
+  } = useGamification(user?.uid);
 
   useEffect(() => {
     loadData();
@@ -209,7 +220,208 @@ export default function ApprenantDashboard() {
           }}>
             Continuez votre apprentissage là où vous vous êtes arrêté
           </p>
+        </div>
 
+        {/* Section Gamification */}
+        {gamificationData && (
+          <div style={{
+            background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
+            borderRadius: '16px',
+            padding: '20px 24px',
+            marginBottom: '24px',
+            color: 'white'
+          }}>
+            {/* Header avec niveau */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '16px',
+              flexWrap: 'wrap',
+              gap: '12px'
+            }}>
+              {/* Niveau et XP */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                {/* Badge niveau */}
+                <div style={{
+                  width: '52px',
+                  height: '52px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '24px',
+                  fontWeight: '800',
+                  boxShadow: '0 4px 12px rgba(245, 158, 11, 0.4)'
+                }}>
+                  {currentLevel.level}
+                </div>
+                
+                <div>
+                  <div style={{
+                    fontSize: '18px',
+                    fontWeight: '700',
+                    marginBottom: '2px'
+                  }}>
+                    {currentLevel.title}
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '14px',
+                    color: 'rgba(255,255,255,0.7)'
+                  }}>
+                    <Zap size={16} color="#f59e0b" />
+                    {gamificationData.xp || 0} XP
+                  </div>
+                </div>
+              </div>
+
+              {/* Streak */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 16px',
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: '10px'
+              }}>
+                <Flame size={22} color="#ef4444" />
+                <div>
+                  <div style={{
+                    fontSize: '18px',
+                    fontWeight: '700',
+                    color: '#ef4444'
+                  }}>
+                    {gamificationData.currentStreak || 0}
+                  </div>
+                  <div style={{
+                    fontSize: '11px',
+                    color: 'rgba(255,255,255,0.6)'
+                  }}>
+                    jours
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Barre de progression niveau */}
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                fontSize: '12px',
+                color: 'rgba(255,255,255,0.6)',
+                marginBottom: '6px'
+              }}>
+                <span>Progression niveau {currentLevel.level}</span>
+                <span>{levelProgress}%</span>
+              </div>
+              <div style={{
+                height: '8px',
+                background: 'rgba(255,255,255,0.2)',
+                borderRadius: '4px',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  width: `${levelProgress}%`,
+                  height: '100%',
+                  background: 'linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%)',
+                  borderRadius: '4px',
+                  transition: 'width 0.5s ease'
+                }} />
+              </div>
+            </div>
+
+            {/* Badges récents */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <Trophy size={16} color="#fbbf24" />
+                <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)' }}>
+                  {unlockedBadges.length} badge{unlockedBadges.length > 1 ? 's' : ''} obtenu{unlockedBadges.length > 1 ? 's' : ''}
+                </span>
+                
+                {/* Derniers badges */}
+                <div style={{
+                  display: 'flex',
+                  gap: '4px',
+                  marginLeft: '8px'
+                }}>
+                  {unlockedBadges.slice(-5).map((badgeId) => {
+                    const badge = BADGES_CONFIG[badgeId];
+                    if (!badge) return null;
+                    return (
+                      <div
+                        key={badgeId}
+                        title={badge.name}
+                        style={{
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '6px',
+                          background: 'rgba(255,255,255,0.15)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '14px'
+                        }}
+                      >
+                        {badge.icon}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Lien voir tous les badges */}
+              <button
+                onClick={() => navigate('/apprenant/badges')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  background: 'none',
+                  border: 'none',
+                  color: 'rgba(255,255,255,0.7)',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  padding: '4px 8px',
+                  borderRadius: '6px',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                  e.currentTarget.style.color = 'white';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'none';
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.7)';
+                }}
+              >
+                Voir tout
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Carte de bienvenue avec progression globale */}
+        <div style={{
+          background: apprenantTheme.colors.bgPrimary,
+          borderRadius: apprenantTheme.radius.xl,
+          padding: apprenantTheme.spacing.xl,
+          marginBottom: apprenantTheme.spacing.lg,
+          boxShadow: apprenantTheme.shadows.xl
+        }}>
           {/* Progression globale */}
           <div style={{
             background: apprenantTheme.gradients.card,
