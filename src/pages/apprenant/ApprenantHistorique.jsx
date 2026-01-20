@@ -271,16 +271,294 @@ export default function ApprenantHistorique() {
           })}
         </div>
 
-        {/* Graphique à barres - Score moyen par programme */}
-        {programStats && programStats.length > 0 && (
+        {/* Container des 2 graphiques */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+          gap: '24px',
+          marginBottom: '24px'
+        }}>
+          {/* Graphique à barres - Score moyen par programme */}
+          {programStats && programStats.length > 0 && (
+            <div style={{
+              background: 'white',
+              borderRadius: '16px',
+              padding: '24px',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.06)'
+            }}>
+              {/* Titre */}
+              <h3 style={{
+                fontSize: '18px',
+                fontWeight: '700',
+                color: '#1e293b',
+                marginBottom: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px'
+              }}>
+                <BarChart3 size={20} color="#3b82f6" />
+                Performance par programme
+              </h3>
+              <p style={{
+                fontSize: '13px',
+                color: '#64748b',
+                marginBottom: '24px'
+              }}>
+                Progression lecture et score exercices par programme
+              </p>
+
+              {/* Container du graphique */}
+              <div style={{
+                position: 'relative',
+                paddingLeft: '45px',
+                paddingBottom: '60px'
+              }}>
+                {/* Lignes de grille horizontales + labels Y */}
+                {[0, 25, 50, 75, 100].map((value) => (
+                  <div
+                    key={value}
+                    style={{
+                      position: 'absolute',
+                      left: '0',
+                      right: '0',
+                      bottom: `${(value / 100) * 200 + 60}px`,
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <span style={{
+                      width: '40px',
+                      fontSize: '11px',
+                      color: '#94a3b8',
+                      fontWeight: '500',
+                      textAlign: 'right',
+                      paddingRight: '8px'
+                    }}>
+                      {value}%
+                    </span>
+                    <div style={{
+                      flex: 1,
+                      borderTop: value === 0 ? '2px solid #e2e8f0' : '1px dashed #e2e8f0'
+                    }} />
+                  </div>
+                ))}
+
+                {/* Zone des barres */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'flex-end',
+                  justifyContent: 'space-around',
+                  height: '220px',
+                  marginLeft: '5px',
+                  position: 'relative',
+                  zIndex: 1
+                }}>
+                  {programStats.map((program, index) => {
+                    const readingHeight = animated ? (Math.min(program.readingProgress, 100) / 100) * 200 : 0;
+                    const exerciseHeight = animated ? (Math.min(program.exerciseScore, 100) / 100) * 200 : 0;
+                    const isHovered = hoveredBar === index;
+                    
+                    return (
+                      <div
+                        key={program.programId}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          flex: 1,
+                          maxWidth: '160px',
+                          position: 'relative'
+                        }}
+                        onMouseEnter={() => setHoveredBar(index)}
+                        onMouseLeave={() => setHoveredBar(null)}
+                      >
+                        {/* Tooltip au hover */}
+                        {isHovered && (
+                          <div style={{
+                            position: 'absolute',
+                            bottom: `${Math.max(readingHeight, exerciseHeight) + 45}px`,
+                            background: '#1e293b',
+                            color: 'white',
+                            padding: '12px 16px',
+                            borderRadius: '10px',
+                            fontSize: '13px',
+                            fontWeight: '500',
+                            whiteSpace: 'nowrap',
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
+                            zIndex: 20
+                          }}>
+                            <div style={{ fontWeight: '700', marginBottom: '8px', fontSize: '14px' }}>
+                              {program.programName}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                              <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#3b82f6' }} />
+                              <span>Lecture: {Math.min(program.readingProgress, 100)}%</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#10b981' }} />
+                              <span>Exercices: {Math.min(program.exerciseScore, 100)}%</span>
+                            </div>
+                            <div style={{ fontSize: '11px', opacity: 0.7, marginTop: '6px' }}>
+                              🎯 {program.attemptCount} tentative{program.attemptCount > 1 ? 's' : ''}
+                            </div>
+                            {/* Flèche */}
+                            <div style={{
+                              position: 'absolute',
+                              bottom: '-6px',
+                              left: '50%',
+                              transform: 'translateX(-50%)',
+                              width: 0,
+                              height: 0,
+                              borderLeft: '6px solid transparent',
+                              borderRight: '6px solid transparent',
+                              borderTop: '6px solid #1e293b'
+                            }} />
+                          </div>
+                        )}
+
+                        {/* Container des 2 barres */}
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'flex-end',
+                          gap: '8px',
+                          marginBottom: '8px'
+                        }}>
+                          {/* Barre Lecture (bleu) */}
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <div style={{
+                              fontSize: '11px',
+                              fontWeight: '600',
+                              color: '#3b82f6',
+                              marginBottom: '4px',
+                              opacity: animated ? 1 : 0,
+                              transition: 'opacity 0.5s ease 0.3s'
+                            }}>
+                              {Math.min(program.readingProgress, 100)}%
+                            </div>
+                            <div
+                              style={{
+                                width: isHovered ? '48px' : '40px',
+                                height: `${readingHeight}px`,
+                                minHeight: program.readingProgress > 0 ? '4px' : '2px',
+                                background: program.readingProgress > 0 
+                                  ? 'linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%)' 
+                                  : '#e2e8f0',
+                                borderRadius: '6px 6px 0 0',
+                                transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                                boxShadow: isHovered && program.readingProgress > 0
+                                  ? '0 4px 12px rgba(59, 130, 246, 0.4)' 
+                                  : 'none'
+                              }}
+                            />
+                          </div>
+
+                          {/* Barre Exercices (vert) */}
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <div style={{
+                              fontSize: '11px',
+                              fontWeight: '600',
+                              color: '#10b981',
+                              marginBottom: '4px',
+                              opacity: animated ? 1 : 0,
+                              transition: 'opacity 0.5s ease 0.3s'
+                            }}>
+                              {Math.min(program.exerciseScore, 100)}%
+                            </div>
+                            <div
+                              style={{
+                                width: isHovered ? '48px' : '40px',
+                                height: `${exerciseHeight}px`,
+                                minHeight: program.exerciseScore > 0 ? '4px' : '2px',
+                                background: program.exerciseScore > 0 
+                                  ? 'linear-gradient(180deg, #10b981 0%, #059669 100%)' 
+                                  : '#e2e8f0',
+                                borderRadius: '6px 6px 0 0',
+                                transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                                boxShadow: isHovered && program.exerciseScore > 0
+                                  ? '0 4px 12px rgba(16, 185, 129, 0.4)' 
+                                  : 'none'
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Label programme (axe X) */}
+                        <div style={{
+                          position: 'absolute',
+                          bottom: '-45px',
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          color: isHovered ? '#1e293b' : '#64748b',
+                          textAlign: 'center',
+                          width: '100px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          transition: 'color 0.2s',
+                          transform: 'rotate(-20deg)',
+                          transformOrigin: 'top center'
+                        }}>
+                          {program.programName}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Légende mise à jour */}
+              <div style={{
+                marginTop: '24px',
+                paddingTop: '16px',
+                borderTop: '1px solid #f1f5f9',
+                display: 'flex',
+                justifyContent: 'center',
+                gap: '32px',
+                flexWrap: 'wrap'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontSize: '13px',
+                  color: '#64748b'
+                }}>
+                  <div style={{
+                    width: '16px',
+                    height: '16px',
+                    borderRadius: '4px',
+                    background: 'linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%)'
+                  }} />
+                  <BookOpen size={14} />
+                  <span>Progression lecture</span>
+                </div>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontSize: '13px',
+                  color: '#64748b'
+                }}>
+                  <div style={{
+                    width: '16px',
+                    height: '16px',
+                    borderRadius: '4px',
+                    background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)'
+                  }} />
+                  <Zap size={14} />
+                  <span>Score exercices</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* NOUVEAU : Graphique courbe évolution */}
           <div style={{
             background: 'white',
             borderRadius: '16px',
             padding: '24px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            marginBottom: '24px'
+            boxShadow: '0 2px 12px rgba(0,0,0,0.06)'
           }}>
-            {/* Titre */}
             <h3 style={{
               fontSize: '18px',
               fontWeight: '700',
@@ -288,24 +566,26 @@ export default function ApprenantHistorique() {
               marginBottom: '8px',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px'
+              gap: '10px'
             }}>
-              <BarChart3 size={20} color="#3b82f6" />
-              Performance par programme
+              <TrendingUp size={20} color="#8b5cf6" />
+              Courbe de Progression
             </h3>
             <p style={{
               fontSize: '13px',
               color: '#64748b',
               marginBottom: '24px'
             }}>
-              Progression lecture et score exercices par programme
+              Évolution de vos scores aux évaluations
             </p>
 
-            {/* Container du graphique */}
+            {/* Zone du graphique courbe */}
             <div style={{
               position: 'relative',
+              height: '250px',
               paddingLeft: '45px',
-              paddingBottom: '60px'
+              paddingBottom: '40px',
+              paddingRight: '20px'
             }}>
               {/* Lignes de grille horizontales + labels Y */}
               {[0, 25, 50, 75, 100].map((value) => (
@@ -314,8 +594,8 @@ export default function ApprenantHistorique() {
                   style={{
                     position: 'absolute',
                     left: '0',
-                    right: '0',
-                    bottom: `${(value / 100) * 200 + 60}px`,
+                    right: '20px',
+                    bottom: `${(value / 100) * 200 + 40}px`,
                     display: 'flex',
                     alignItems: 'center'
                   }}
@@ -337,63 +617,192 @@ export default function ApprenantHistorique() {
                 </div>
               ))}
 
-              {/* Zone des barres */}
+              {/* Zone verte de réussite (80-100%) - CORRIGÉE */}
               <div style={{
-                display: 'flex',
-                alignItems: 'flex-end',
-                justifyContent: 'space-around',
-                height: '220px',
-                marginLeft: '5px',
-                position: 'relative',
-                zIndex: 1
+                position: 'absolute',
+                top: '0',
+                left: '45px',
+                right: '20px',
+                height: '20%', // 20% du haut = zone 80-100%
+                background: 'linear-gradient(180deg, rgba(16, 185, 129, 0.2) 0%, rgba(16, 185, 129, 0.08) 100%)',
+                borderBottom: '2px dashed rgba(16, 185, 129, 0.5)',
+                pointerEvents: 'none',
+                borderRadius: '8px 8px 0 0',
+                zIndex: 0
+              }} />
+
+              {/* Label zone verte */}
+              <div style={{
+                position: 'absolute',
+                top: '8px',
+                right: '25px',
+                fontSize: '11px',
+                color: '#10b981',
+                fontWeight: '600',
+                background: 'rgba(255,255,255,0.9)',
+                padding: '3px 8px',
+                borderRadius: '4px',
+                zIndex: 5
               }}>
-                {programStats.map((program, index) => {
-                  const readingHeight = animated ? (Math.min(program.readingProgress, 100) / 100) * 200 : 0;
-                  const exerciseHeight = animated ? (Math.min(program.exerciseScore, 100) / 100) * 200 : 0;
-                  const isHovered = hoveredBar === index;
-                  
+                Zone de réussite
+              </div>
+
+              {/* SVG pour la courbe */}
+              {(() => {
+                const evaluations = attempts
+                  .filter(a => a.type === 'evaluation')
+                  .sort((a, b) => new Date(a.completedAt) - new Date(b.completedAt))
+                  .slice(-15);
+
+                if (evaluations.length === 0) {
                   return (
-                    <div
-                      key={program.programId}
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: '200px',
+                      color: '#94a3b8'
+                    }}>
+                      <Target size={40} style={{ marginBottom: '12px', opacity: 0.5 }} />
+                      <p style={{ fontSize: '14px' }}>Aucune évaluation pour le moment</p>
+                    </div>
+                  );
+                }
+
+                const chartWidth = 100; // pourcentage
+                const chartHeight = 200; // pixels
+                const padding = 5;
+
+                // Calculer les positions des points
+                const pointsData = evaluations.map((ev, index) => {
+                  const xPercent = evaluations.length > 1 
+                    ? padding + (index / (evaluations.length - 1)) * (chartWidth - padding * 2)
+                    : 50;
+                  const yPercent = 100 - ev.percentage; // inversé car Y=0 est en haut
+                  return { xPercent, yPercent, ...ev };
+                });
+
+                // Créer le path SVG pour la ligne
+                const linePath = pointsData
+                  .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.xPercent} ${p.yPercent}`)
+                  .join(' ');
+
+                return (
+                  <div style={{
+                    position: 'relative',
+                    height: `${chartHeight}px`,
+                    marginTop: '20px'
+                  }}>
+                    {/* SVG avec viewBox carré pour éviter la déformation */}
+                    <svg
+                      viewBox="0 0 100 100"
+                      preserveAspectRatio="none"
                       style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        flex: 1,
-                        maxWidth: '160px',
-                        position: 'relative'
+                        position: 'absolute',
+                        top: 0,
+                        left: '45px',
+                        right: '20px',
+                        height: '100%',
+                        width: 'calc(100% - 65px)',
+                        overflow: 'visible'
                       }}
-                      onMouseEnter={() => setHoveredBar(index)}
-                      onMouseLeave={() => setHoveredBar(null)}
                     >
-                      {/* Tooltip au hover */}
-                      {isHovered && (
+                      {/* LIGNE UNIQUEMENT - PAS D'AIRE */}
+                      <path
+                        d={linePath}
+                        fill="none"
+                        stroke="#8b5cf6"
+                        strokeWidth="0.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+
+                    {/* Zones de hover pour les tooltips */}
+                    {pointsData.map((point, index) => (
+                      <div
+                        key={point.id || index}
+                        style={{
+                          position: 'absolute',
+                          left: `calc(45px + (${point.xPercent} / 100) * (100% - 65px))`,
+                          top: `${point.yPercent}%`,
+                          transform: 'translate(-50%, -50%)',
+                          width: '24px',
+                          height: '24px',
+                          cursor: 'pointer',
+                          zIndex: 10,
+                          borderRadius: '50%'
+                        }}
+                        onMouseEnter={(e) => {
+                          const tooltip = e.currentTarget.querySelector('.curve-tooltip');
+                          if (tooltip) {
+                            tooltip.style.opacity = '1';
+                            tooltip.style.visibility = 'visible';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          const tooltip = e.currentTarget.querySelector('.curve-tooltip');
+                          if (tooltip) {
+                            tooltip.style.opacity = '0';
+                            tooltip.style.visibility = 'hidden';
+                          }
+                        }}
+                      >
+                        {/* Point visible au hover */}
                         <div style={{
                           position: 'absolute',
-                          bottom: `${Math.max(readingHeight, exerciseHeight) + 45}px`,
-                          background: '#1e293b',
-                          color: 'white',
-                          padding: '12px 16px',
-                          borderRadius: '10px',
-                          fontSize: '13px',
-                          fontWeight: '500',
-                          whiteSpace: 'nowrap',
-                          boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
-                          zIndex: 20
-                        }}>
-                          <div style={{ fontWeight: '700', marginBottom: '8px', fontSize: '14px' }}>
-                            {program.programName}
+                          top: '50%',
+                          left: '50%',
+                          transform: 'translate(-50%, -50%)',
+                          width: '8px',
+                          height: '8px',
+                          background: '#8b5cf6',
+                          borderRadius: '50%',
+                          border: '2px solid white',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                        }} />
+
+                        {/* Tooltip */}
+                        <div
+                          className="curve-tooltip"
+                          style={{
+                            opacity: 0,
+                            visibility: 'hidden',
+                            position: 'absolute',
+                            bottom: '30px',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            background: '#1e293b',
+                            color: 'white',
+                            padding: '10px 14px',
+                            borderRadius: '10px',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                            whiteSpace: 'nowrap',
+                            boxShadow: '0 4px 15px rgba(0,0,0,0.25)',
+                            transition: 'all 0.2s ease',
+                            zIndex: 30
+                          }}
+                        >
+                          <div style={{ 
+                            fontSize: '18px',
+                            fontWeight: '700', 
+                            marginBottom: '4px',
+                            color: point.percentage >= 80 ? '#10b981' : point.percentage >= 50 ? '#f59e0b' : '#ef4444'
+                          }}>
+                            {point.percentage}%
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                            <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#3b82f6' }} />
-                            <span>Lecture: {Math.min(program.readingProgress, 100)}%</span>
+                          <div style={{ opacity: 0.8, fontSize: '11px' }}>
+                            {new Date(point.completedAt?.seconds * 1000 || point.completedAt).toLocaleDateString('fr-FR', {
+                              weekday: 'short',
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric'
+                            })}
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#10b981' }} />
-                            <span>Exercices: {Math.min(program.exerciseScore, 100)}%</span>
-                          </div>
-                          <div style={{ fontSize: '11px', opacity: 0.7, marginTop: '6px' }}>
-                            🎯 {program.attemptCount} tentative{program.attemptCount > 1 ? 's' : ''}
+                          <div style={{ opacity: 0.6, fontSize: '10px', marginTop: '2px' }}>
+                            {point.programName}
                           </div>
                           {/* Flèche */}
                           <div style={{
@@ -408,143 +817,136 @@ export default function ApprenantHistorique() {
                             borderTop: '6px solid #1e293b'
                           }} />
                         </div>
-                      )}
-
-                      {/* Container des 2 barres */}
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'flex-end',
-                        gap: '8px',
-                        marginBottom: '8px'
-                      }}>
-                        {/* Barre Lecture (bleu) */}
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                          <div style={{
-                            fontSize: '11px',
-                            fontWeight: '600',
-                            color: '#3b82f6',
-                            marginBottom: '4px',
-                            opacity: animated ? 1 : 0,
-                            transition: 'opacity 0.5s ease 0.3s'
-                          }}>
-                            {Math.min(program.readingProgress, 100)}%
-                          </div>
-                          <div
-                            style={{
-                              width: isHovered ? '48px' : '40px',
-                              height: `${readingHeight}px`,
-                              minHeight: program.readingProgress > 0 ? '4px' : '2px',
-                              background: program.readingProgress > 0 
-                                ? 'linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%)' 
-                                : '#e2e8f0',
-                              borderRadius: '6px 6px 0 0',
-                              transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-                              boxShadow: isHovered && program.readingProgress > 0
-                                ? '0 4px 12px rgba(59, 130, 246, 0.4)' 
-                                : 'none'
-                            }}
-                          />
-                        </div>
-
-                        {/* Barre Exercices (vert) */}
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                          <div style={{
-                            fontSize: '11px',
-                            fontWeight: '600',
-                            color: '#10b981',
-                            marginBottom: '4px',
-                            opacity: animated ? 1 : 0,
-                            transition: 'opacity 0.5s ease 0.3s'
-                          }}>
-                            {Math.min(program.exerciseScore, 100)}%
-                          </div>
-                          <div
-                            style={{
-                              width: isHovered ? '48px' : '40px',
-                              height: `${exerciseHeight}px`,
-                              minHeight: program.exerciseScore > 0 ? '4px' : '2px',
-                              background: program.exerciseScore > 0 
-                                ? 'linear-gradient(180deg, #10b981 0%, #059669 100%)' 
-                                : '#e2e8f0',
-                              borderRadius: '6px 6px 0 0',
-                              transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-                              boxShadow: isHovered && program.exerciseScore > 0
-                                ? '0 4px 12px rgba(16, 185, 129, 0.4)' 
-                                : 'none'
-                            }}
-                          />
-                        </div>
                       </div>
+                    ))}
+                  </div>
+                );
+              })()}
 
-                      {/* Label programme (axe X) */}
-                      <div style={{
+              {/* Dates en bas (axe X) */}
+              {(() => {
+                const evaluations = attempts
+                  .filter(a => a.type === 'evaluation')
+                  .sort((a, b) => new Date(a.completedAt) - new Date(b.completedAt))
+                  .slice(-15);
+
+                if (evaluations.length === 0) return null;
+
+                // Afficher seulement quelques dates pour éviter le chevauchement
+                const step = Math.max(1, Math.floor(evaluations.length / 5));
+                const displayDates = evaluations.filter((_, i) => i % step === 0 || i === evaluations.length - 1);
+
+                return displayDates.map((ev, index) => {
+                  const originalIndex = evaluations.indexOf(ev);
+                  const padding = 5;
+                  const x = evaluations.length > 1 
+                    ? padding + (originalIndex / (evaluations.length - 1)) * (100 - padding * 2)
+                    : 50;
+
+                  return (
+                    <div
+                      key={ev.id}
+                      style={{
                         position: 'absolute',
-                        bottom: '-45px',
-                        fontSize: '11px',
-                        fontWeight: '600',
-                        color: isHovered ? '#1e293b' : '#64748b',
-                        textAlign: 'center',
-                        width: '100px',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        transition: 'color 0.2s',
-                        transform: 'rotate(-20deg)',
-                        transformOrigin: 'top center'
-                      }}>
-                        {program.programName}
-                      </div>
+                        left: `calc(45px + ${x}% * (100% - 65px) / 100)`,
+                        bottom: '10px',
+                        transform: 'translateX(-50%)',
+                        fontSize: '10px',
+                        color: '#94a3b8',
+                        fontWeight: '500',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {new Date(ev.completedAt?.seconds * 1000 || ev.completedAt).toLocaleDateString('fr-FR', {
+                        day: 'numeric',
+                        month: 'short'
+                      })}
                     </div>
                   );
-                })}
-              </div>
+                });
+              })()}
+
+              {/* Ligne moyenne */}
+              {(() => {
+                const evaluations = attempts.filter(a => a.type === 'evaluation');
+                if (evaluations.length === 0) return null;
+
+                const average = Math.round(
+                  evaluations.reduce((sum, ev) => sum + ev.percentage, 0) / evaluations.length
+                );
+                const yPercent = 100 - average; // inversé car Y=0 est en haut
+
+                return (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: '45px',
+                      right: '20px',
+                      top: `${yPercent}%`,
+                      borderTop: '2px dashed #f59e0b',
+                      opacity: 0.6
+                    }}
+                  >
+                    <span style={{
+                      position: 'absolute',
+                      right: '0',
+                      top: '-20px',
+                      fontSize: '11px',
+                      color: '#f59e0b',
+                      fontWeight: '600',
+                      background: 'white',
+                      padding: '2px 6px',
+                      borderRadius: '4px'
+                    }}>
+                      Moy: {average}%
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
 
-            {/* Légende mise à jour */}
+            {/* Légende */}
             <div style={{
-              marginTop: '24px',
+              marginTop: '16px',
               paddingTop: '16px',
               borderTop: '1px solid #f1f5f9',
               display: 'flex',
               justifyContent: 'center',
-              gap: '32px',
-              flexWrap: 'wrap'
+              gap: '20px',
+              flexWrap: 'wrap',
+              fontSize: '12px',
+              color: '#64748b'
             }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                fontSize: '13px',
-                color: '#64748b'
-              }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <div style={{
-                  width: '16px',
-                  height: '16px',
-                  borderRadius: '4px',
-                  background: 'linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%)'
+                  width: '20px',
+                  height: '3px',
+                  background: '#8b5cf6',
+                  borderRadius: '2px'
                 }} />
-                <BookOpen size={14} />
-                <span>Progression lecture</span>
+                Score évaluation
               </div>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                fontSize: '13px',
-                color: '#64748b'
-              }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <div style={{
-                  width: '16px',
-                  height: '16px',
-                  borderRadius: '4px',
-                  background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)'
+                  width: '20px',
+                  height: '12px',
+                  background: 'linear-gradient(180deg, rgba(16, 185, 129, 0.3) 0%, rgba(16, 185, 129, 0.1) 100%)',
+                  borderRadius: '2px',
+                  border: '1px solid rgba(16, 185, 129, 0.5)'
                 }} />
-                <Zap size={14} />
-                <span>Score exercices</span>
+                Réussite (≥80%)
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{
+                  width: '20px',
+                  height: '2px',
+                  borderTop: '2px dashed #f59e0b'
+                }} />
+                Moyenne
               </div>
             </div>
           </div>
-        )}
+        </div>
 
         {/* Filtres modernisés */}
         <div style={{

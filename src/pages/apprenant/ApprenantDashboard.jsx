@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
 import { getAllUserProgress, calculateGlobalProgress, getUserAssignedProgramsWithDetails } from '../../services/progressionService';
-import { BookOpen, TrendingUp, ArrowRight, Clock } from 'lucide-react';
+import { BookOpen, TrendingUp, ArrowRight, Clock, CheckCircle2 } from 'lucide-react';
 import { apprenantTheme, cardStyles, buttonStyles } from '../../styles/apprenantTheme';
 
 export default function ApprenantDashboard() {
@@ -36,7 +36,39 @@ export default function ApprenantDashboard() {
       console.log('🔍 Fetching assigned programs for user:', user.uid);
       const assignedPrograms = await getUserAssignedProgramsWithDetails(user.uid);
       console.log('✅ Assigned programs:', assignedPrograms);
-      setPrograms(assignedPrograms);
+
+      // Enrichir chaque programme avec sa progression de lecture
+      const programsWithProgress = await Promise.all(
+        assignedPrograms.map(async (program) => {
+          try {
+            const progressRef = doc(db, 'userProgress', user.uid, 'programs', program.id);
+            const progressSnap = await getDoc(progressRef);
+            
+            if (progressSnap.exists()) {
+              const data = progressSnap.data();
+              return {
+                ...program,
+                completedLessons: data.completedLessons?.length || 0,
+                readingProgress: data.percentage || 0
+              };
+            }
+            return {
+              ...program,
+              completedLessons: 0,
+              readingProgress: 0
+            };
+          } catch (error) {
+            console.error('Erreur récupération progression pour', program.id, error);
+            return {
+              ...program,
+              completedLessons: 0,
+              readingProgress: 0
+            };
+          }
+        })
+      );
+
+      setPrograms(programsWithProgress);
 
       // Charger la progression utilisateur
       const allProgress = await getAllUserProgress(user.uid);
@@ -309,60 +341,141 @@ export default function ApprenantDashboard() {
                   }}
                   onClick={() => navigate(`/apprenant/programs/${program.id}`)}
                 >
-                  {/* Icône programme */}
+                  {/* Header : Icône + Infos + Indicateur */}
                   <div style={{
-                    width: 'clamp(40px, 8vw, 48px)',
-                    height: 'clamp(40px, 8vw, 48px)',
-                    borderRadius: apprenantTheme.radius.lg,
-                    background: apprenantTheme.gradients.secondary,
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginBottom: apprenantTheme.spacing.md,
-                    boxShadow: apprenantTheme.shadows.md,
-                    flexShrink: 0
+                    alignItems: 'flex-start',
+                    gap: '14px',
+                    marginBottom: '16px'
                   }}>
-                    <BookOpen size={22} color="white" strokeWidth={2} />
-                  </div>
-
-                  {/* Contenu */}
-                  <div style={{ flex: 1 }}>
-                    <h3 style={{
-                      fontSize: 'clamp(14px, 3vw, 15px)',
-                      fontWeight: '700',
-                      color: apprenantTheme.colors.textPrimary,
-                      marginBottom: '6px',
-                      lineHeight: '1.3'
-                    }}>
-                      {program.name}
-                    </h3>
-
-                    {program.description && (
-                      <p style={{
-                        fontSize: apprenantTheme.fontSize.sm,
-                        color: apprenantTheme.colors.textSecondary,
-                        marginBottom: '16px',
-                        lineHeight: '1.5',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden'
-                      }}>
-                        {program.description}
-                      </p>
-                    )}
-
+                    {/* Icône programme */}
                     <div style={{
+                      width: 'clamp(40px, 8vw, 48px)',
+                      height: 'clamp(40px, 8vw, 48px)',
+                      borderRadius: apprenantTheme.radius.lg,
+                      background: apprenantTheme.gradients.secondary,
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '6px',
-                      fontSize: apprenantTheme.fontSize.sm,
-                      color: apprenantTheme.colors.textTertiary,
-                      marginBottom: '16px'
+                      justifyContent: 'center',
+                      boxShadow: apprenantTheme.shadows.md,
+                      flexShrink: 0
                     }}>
-                      <Clock size={14} />
-                      <span>{program.totalLessons} leçon{program.totalLessons > 1 ? 's' : ''}</span>
+                      <BookOpen size={22} color="white" strokeWidth={2} />
                     </div>
+
+                    {/* Nom et description */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <h3 style={{
+                        fontSize: 'clamp(14px, 3vw, 15px)',
+                        fontWeight: '700',
+                        color: apprenantTheme.colors.textPrimary,
+                        marginBottom: '4px',
+                        lineHeight: '1.3',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}>
+                        {program.name}
+                      </h3>
+                      {program.description && (
+                        <p style={{
+                          fontSize: apprenantTheme.fontSize.sm,
+                          color: apprenantTheme.colors.textSecondary,
+                          lineHeight: '1.4',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}>
+                          {program.description}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* INDICATEUR DISCRET À DROITE */}
+                    {(() => {
+                      const progress = program.readingProgress || 0;
+                      const completed = program.completedLessons || 0;
+                      const total = program.totalLessons || 0;
+
+                      // Terminé (100%)
+                      if (progress >= 100) {
+                        return (
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '4px 8px',
+                            background: '#dcfce7',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            color: '#16a34a',
+                            flexShrink: 0
+                          }}>
+                            <CheckCircle2 size={12} />
+                            Terminé
+                          </div>
+                        );
+                      }
+
+                      // En cours (1-99%)
+                      if (progress > 0 || completed > 0) {
+                        return (
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            flexShrink: 0
+                          }}>
+                            <span style={{
+                              fontSize: '11px',
+                              fontWeight: '600',
+                              color: '#64748b'
+                            }}>
+                              {completed}/{total}
+                            </span>
+                            <div style={{
+                              width: '40px',
+                              height: '4px',
+                              background: '#e2e8f0',
+                              borderRadius: '2px',
+                              overflow: 'hidden'
+                            }}>
+                              <div style={{
+                                width: `${Math.min(progress, 100)}%`,
+                                height: '100%',
+                                background: '#3b82f6',
+                                borderRadius: '2px'
+                              }} />
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // Non commencé (0%)
+                      return (
+                        <span style={{
+                          fontSize: '10px',
+                          color: '#cbd5e1',
+                          flexShrink: 0
+                        }}>
+                          Nouveau
+                        </span>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Nombre de leçons */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: apprenantTheme.fontSize.sm,
+                    color: apprenantTheme.colors.textTertiary,
+                    marginBottom: '16px'
+                  }}>
+                    <Clock size={14} />
+                    <span>{program.totalLessons} leçon{program.totalLessons > 1 ? 's' : ''}</span>
                   </div>
 
                   {/* Bouton */}
