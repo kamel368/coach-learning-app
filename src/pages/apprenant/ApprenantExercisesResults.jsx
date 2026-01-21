@@ -56,18 +56,22 @@ export default function ApprenantExercisesResults() {
     : calculatedPercentage;
 
   // 🎮 GAMIFICATION : Appeler une seule fois au chargement des résultats
+  // NE PAS ajouter d'XP si on vient de l'historique !
   useEffect(() => {
     if (
       displayPercentage !== undefined && 
       !hasCalledGamification.current && 
       !gamifLoading && 
-      gamificationData
+      gamificationData &&
+      !fromHistory  // ← Ne pas ajouter d'XP pour une consultation de l'historique
     ) {
       hasCalledGamification.current = true;
       onExerciseCompleted(displayPercentage);
-      console.log('🎮 Gamification: XP ajoutés pour exercice complété avec', displayPercentage, '%');
+      console.log('🎮 Gamification: XP ajoutés pour NOUVELLE tentative avec', displayPercentage, '%');
+    } else if (fromHistory) {
+      console.log('📊 Historique: Consultation d\'un résultat existant, pas d\'XP ajoutés');
     }
-  }, [displayPercentage, onExerciseCompleted, gamifLoading, gamificationData]);
+  }, [displayPercentage, onExerciseCompleted, gamifLoading, gamificationData, fromHistory]);
 
   if (!results && !stateData) {
     return (

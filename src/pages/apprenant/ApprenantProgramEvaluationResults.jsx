@@ -41,18 +41,22 @@ export default function ApprenantProgramEvaluationResults() {
   const displayPercentage = score || (totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0);
 
   // 🎮 GAMIFICATION : Appeler une seule fois au chargement des résultats
+  // NE PAS ajouter d'XP si on vient de l'historique !
   useEffect(() => {
     if (
       displayPercentage !== undefined && 
       !hasCalledGamification.current && 
       !gamifLoading && 
-      gamificationData
+      gamificationData &&
+      !fromHistory  // ← Ne pas ajouter d'XP pour une consultation de l'historique
     ) {
       hasCalledGamification.current = true;
       onEvaluationCompleted(displayPercentage);
-      console.log('🎮 Gamification: XP ajoutés pour évaluation complétée avec', displayPercentage, '%');
+      console.log('🎮 Gamification: XP ajoutés pour NOUVELLE évaluation avec', displayPercentage, '%');
+    } else if (fromHistory) {
+      console.log('📊 Historique: Consultation d\'un résultat existant, pas d\'XP ajoutés');
     }
-  }, [displayPercentage, onEvaluationCompleted, gamifLoading, gamificationData]);
+  }, [displayPercentage, onEvaluationCompleted, gamifLoading, gamificationData, fromHistory]);
 
   if (!results && !stateData) {
     return (

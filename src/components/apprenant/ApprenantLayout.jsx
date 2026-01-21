@@ -3,13 +3,18 @@ import { auth } from '../../firebase';
 import { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { Menu, X, BookOpen, User, LogOut, BarChart3 } from 'lucide-react';
+import { Menu, X, BookOpen, User, LogOut, BarChart3, Zap, Flame } from 'lucide-react';
 import { apprenantTheme } from '../../styles/apprenantTheme';
+import { useGamification } from '../../hooks/useGamification';
 
 export default function ApprenantLayout() {
   const navigate = useNavigate();
   const [userName, setUserName] = useState('Apprenant');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const user = auth.currentUser;
+  
+  // 🎮 GAMIFICATION : Charger les données XP et streak
+  const { gamificationData, currentLevel, loading: gamifLoading } = useGamification(user?.uid);
 
   useEffect(() => {
     async function loadUserName() {
@@ -189,6 +194,138 @@ export default function ApprenantLayout() {
                 <span>Historique</span>
               </NavLink>
 
+              {/* 🎮 WIDGET XP/STREAK */}
+              {!gamifLoading && gamificationData && (
+                <div 
+                  onClick={() => navigate('/apprenant/badges')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '6px 12px',
+                    borderRadius: apprenantTheme.radius.md,
+                    background: apprenantTheme.colors.bgSecondary,
+                    border: `1px solid ${apprenantTheme.colors.border}`,
+                    cursor: 'pointer',
+                    transition: apprenantTheme.transitions.base,
+                    marginLeft: '12px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = apprenantTheme.shadows.md;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  {/* XP */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    <div style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: apprenantTheme.radius.base,
+                      background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Zap size={14} color="white" fill="white" strokeWidth={2} />
+                    </div>
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0px'
+                    }}>
+                      <span style={{
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        color: apprenantTheme.colors.textPrimary,
+                        lineHeight: '1'
+                      }}>
+                        {gamificationData.xp || 0}
+                      </span>
+                      <span style={{
+                        fontSize: '8px',
+                        fontWeight: '500',
+                        color: apprenantTheme.colors.textSecondary,
+                        lineHeight: '1',
+                        textTransform: 'uppercase'
+                      }}>
+                        XP
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Séparateur */}
+                  <div style={{
+                    width: '1px',
+                    height: '24px',
+                    background: apprenantTheme.colors.border
+                  }} />
+
+                  {/* Streak */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    <div style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: apprenantTheme.radius.base,
+                      background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Flame size={14} color="white" fill="white" strokeWidth={2} />
+                    </div>
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0px'
+                    }}>
+                      <span style={{
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        color: apprenantTheme.colors.textPrimary,
+                        lineHeight: '1'
+                      }}>
+                        {gamificationData.currentStreak || 0}
+                      </span>
+                      <span style={{
+                        fontSize: '8px',
+                        fontWeight: '500',
+                        color: apprenantTheme.colors.textSecondary,
+                        lineHeight: '1',
+                        textTransform: 'uppercase'
+                      }}>
+                        Jours
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Level badge (optionnel, compact) */}
+                  <div style={{
+                    padding: '3px 8px',
+                    borderRadius: apprenantTheme.radius.base,
+                    background: apprenantTheme.gradients.secondary,
+                    fontSize: '9px',
+                    fontWeight: '700',
+                    color: 'white',
+                    lineHeight: '1',
+                    marginLeft: '4px'
+                  }}>
+                    Niv. {currentLevel?.level || 1}
+                  </div>
+                </div>
+              )}
+
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -338,6 +475,192 @@ export default function ApprenantLayout() {
                   <span>{userName}</span>
                 </div>
               </div>
+
+              {/* 🎮 WIDGET XP/STREAK (Mobile) */}
+              {!gamifLoading && gamificationData && (
+                <div 
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate('/apprenant/badges');
+                  }}
+                  style={{
+                    margin: '20px',
+                    padding: '16px',
+                    borderRadius: apprenantTheme.radius.lg,
+                    background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                    border: `2px solid ${apprenantTheme.colors.border}`,
+                    cursor: 'pointer',
+                    transition: apprenantTheme.transitions.base
+                  }}
+                >
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-around',
+                    gap: '16px'
+                  }}>
+                    {/* XP */}
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '8px',
+                      flex: 1
+                    }}>
+                      <div style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: apprenantTheme.radius.lg,
+                        background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 4px 12px rgba(251, 191, 36, 0.3)'
+                      }}>
+                        <Zap size={24} color="white" fill="white" strokeWidth={2} />
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '2px'
+                      }}>
+                        <span style={{
+                          fontSize: '18px',
+                          fontWeight: '800',
+                          color: apprenantTheme.colors.textPrimary
+                        }}>
+                          {gamificationData.xp || 0}
+                        </span>
+                        <span style={{
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          color: apprenantTheme.colors.textSecondary,
+                          textTransform: 'uppercase'
+                        }}>
+                          Points XP
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Séparateur */}
+                    <div style={{
+                      width: '2px',
+                      height: '60px',
+                      background: apprenantTheme.colors.border,
+                      borderRadius: '2px'
+                    }} />
+
+                    {/* Streak */}
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '8px',
+                      flex: 1
+                    }}>
+                      <div style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: apprenantTheme.radius.lg,
+                        background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 4px 12px rgba(249, 115, 22, 0.3)'
+                      }}>
+                        <Flame size={24} color="white" fill="white" strokeWidth={2} />
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '2px'
+                      }}>
+                        <span style={{
+                          fontSize: '18px',
+                          fontWeight: '800',
+                          color: apprenantTheme.colors.textPrimary
+                        }}>
+                          {gamificationData.currentStreak || 0}
+                        </span>
+                        <span style={{
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          color: apprenantTheme.colors.textSecondary,
+                          textTransform: 'uppercase'
+                        }}>
+                          Jours de suite
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Séparateur */}
+                    <div style={{
+                      width: '2px',
+                      height: '60px',
+                      background: apprenantTheme.colors.border,
+                      borderRadius: '2px'
+                    }} />
+
+                    {/* Level */}
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '8px',
+                      flex: 1
+                    }}>
+                      <div style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: apprenantTheme.radius.lg,
+                        background: apprenantTheme.gradients.secondary,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)'
+                      }}>
+                        <span style={{
+                          fontSize: '20px',
+                          fontWeight: '900',
+                          color: 'white'
+                        }}>
+                          {currentLevel?.level || 1}
+                        </span>
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '2px'
+                      }}>
+                        <span style={{
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          color: apprenantTheme.colors.textSecondary,
+                          textTransform: 'uppercase'
+                        }}>
+                          Niveau
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Lien "Voir mes badges" */}
+                  <div style={{
+                    marginTop: '12px',
+                    padding: '8px',
+                    textAlign: 'center',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    color: apprenantTheme.colors.secondary,
+                    borderTop: `1px solid ${apprenantTheme.colors.border}`
+                  }}>
+                    Touche pour voir mes badges →
+                  </div>
+                </div>
+              )}
 
               {/* Navigation */}
               <div style={{

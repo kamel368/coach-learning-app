@@ -1,6 +1,9 @@
-import { useState, useEffect } from 'react';
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { useState, useEffect, useRef } from 'react';
+import { collection, getDocs, doc, getDoc, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebase';
+
+// ⚡ CONSTANTE : Limite de tentatives par programme pour améliorer les performances
+const MAX_ATTEMPTS_PER_PROGRAM = 20;
 
 export function useHistorique(userId) {
   const [loading, setLoading] = useState(true);
@@ -13,6 +16,152 @@ export function useHistorique(userId) {
   });
   const [programStats, setProgramStats] = useState([]);
   const [filter, setFilter] = useState('all');
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  
+  // 🚀 CACHE : Évite de recharger les mêmes données plusieurs fois
+  const cacheRef = useRef({ 
+    programs: {},  // { programId: programName }
+    modules: {},   // { moduleId: moduleName }
+    readingProgress: {} // { programId: percentage }
+  });
+
+  // 🚀 FONCTION HELPER : Récupérer le nom d'un programme avec cache
+  const getProgramName = async (programId) => {
+    if (cacheRef.current.programs[programId]) {
+      return cacheRef.current.programs[programId];
+    }
+    
+    try {
+      const programDoc = await getDoc(doc(db, 'programs', programId));
+      const name = programDoc.exists() ? (programDoc.data().title || programDoc.data().name || 'Programme') : 'Programme';
+      cacheRef.current.programs[programId] = name;
+      return name;
+    } catch (error) {
+      console.error('⚠️ Erreur récupération programme:', programId, error);
+      return 'Programme';
+    }
+  };
+
+  // 🚀 FONCTION HELPER : Récupérer le nom d'un module avec cache
+  const getModuleName = async (programId, moduleId) => {
+    const cacheKey = `${programId}_${moduleId}`;
+    if (cacheRef.current.modules[cacheKey]) {
+      return cacheRef.current.modules[cacheKey];
+    }
+    
+    try {
+      const moduleDoc = await getDoc(doc(db, 'programs', programId, 'modules', moduleId));
+      const name = moduleDoc.exists() ? (moduleDoc.data().title || 'Module') : 'Module';
+      cacheRef.current.modules[cacheKey] = name;
+      return name;
+    } catch (error) {
+      console.error('⚠️ Erreur récupération module:', moduleId, error);
+      return 'Module';
+    }
+  };
+
+  // 🚀 FONCTION HELPER : Récupérer la progression de lecture avec cache
+  const getReadingProgress = async (programId) => {
+    if (cacheRef.current.readingProgress[programId] !== undefined) {
+      return cacheRef.current.readingProgress[programId];
+    }
+    
+    try {
+      const progressRef = doc(db, 'userProgress', userId, 'programs', programId);
+      const progressSnap = await getDoc(progressRef);
+      const progress = progressSnap.exists() ? (progressSnap.data().percentage || 0) : 0;
+      cacheRef.current.readingProgress[programId] = progress;
+      return progress;
+    } catch (error) {
+      console.log('Pas de progression pour', programId);
+      return 0;
+    }
+  };
+
+  // 🚀 FONCTION : Charger les évaluations d'un programme
+  const loadEvaluationsForProgram = async (programId, programName) => {
+    try {
+      const evaluationsRef = collection(db, 'users', userId, 'programs', programId, 'evaluations');
+      // ⚡ OPTIMISATION : Limiter le nombre d'évaluations chargées
+      const q = query(evaluationsRef, orderBy('completedAt', 'desc'), limit(MAX_ATTEMPTS_PER_PROGRAM));
+      const evaluationsSnapshot = await getDocs(q);
+      
+      console.log('📊 Évaluations trouvées pour', programId, ':', evaluationsSnapshot.size);
+
+      return evaluationsSnapshot.docs.map((evalDoc) => {
+        const evalData = evalDoc.data();
+        return {
+          id: evalDoc.id,
+          type: 'evaluation',
+          programId: programId,
+          programName: programName,
+          moduleId: null,
+          moduleName: null,
+          score: evalData.earnedPoints || evalData.score || 0,
+          maxScore: evalData.totalPoints || evalData.maxScore || 100,
+          percentage: evalData.score || evalData.percentage || 0,
+          duration: evalData.duration || 0,
+          completedAt: evalData.completedAt,
+          passed: (evalData.score || evalData.percentage || 0) >= 50,
+          results: evalData.results || []
+        };
+      });
+    } catch (error) {
+      console.error('⚠️ Erreur récupération évaluations pour', programId, ':', error);
+      return [];
+    }
+  };
+
+  // 🚀 FONCTION : Charger les tentatives d'exercices d'un programme
+  const loadExercisesForProgram = async (programId, programName) => {
+    try {
+      const modulesSnapshot = await getDocs(collection(db, 'programs', programId, 'modules'));
+      console.log('📘 Modules trouvés pour programme', programId, ':', modulesSnapshot.size);
+      
+      // ⚡ PARALLÉLISATION : Charger toutes les tentatives de modules en parallèle
+      const moduleAttemptsPromises = modulesSnapshot.docs.map(async (moduleDoc) => {
+        const moduleName = await getModuleName(programId, moduleDoc.id);
+        
+        try {
+          const moduleAttemptsRef = collection(db, 'users', userId, 'programs', programId, 'modules', moduleDoc.id, 'attempts');
+          // ⚡ OPTIMISATION : Limiter le nombre de tentatives par module
+          const q = query(moduleAttemptsRef, orderBy('completedAt', 'desc'), limit(MAX_ATTEMPTS_PER_PROGRAM));
+          const moduleAttemptsSnapshot = await getDocs(q);
+          
+          console.log('  📝 Tentatives module', moduleDoc.id, ':', moduleAttemptsSnapshot.size);
+          
+          return moduleAttemptsSnapshot.docs.map((attemptDoc) => {
+            const attemptData = attemptDoc.data();
+            return {
+              id: attemptDoc.id,
+              type: 'exercise',
+              programId: programId,
+              programName: programName,
+              moduleId: moduleDoc.id,
+              moduleName: moduleName,
+              score: attemptData.earnedPoints || attemptData.score || 0,
+              maxScore: attemptData.totalPoints || attemptData.maxScore || 100,
+              percentage: attemptData.score || attemptData.percentage || 0,
+              duration: attemptData.duration || 0,
+              completedAt: attemptData.completedAt,
+              passed: (attemptData.score || attemptData.percentage || 0) >= 50,
+              results: attemptData.results || []
+            };
+          });
+        } catch (error) {
+          console.error('  ⚠️ Erreur récupération tentatives module', moduleDoc.id, ':', error);
+          return [];
+        }
+      });
+
+      const allModuleAttempts = await Promise.all(moduleAttemptsPromises);
+      return allModuleAttempts.flat();
+    } catch (error) {
+      console.error('⚠️ Erreur récupération modules pour', programId, ':', error);
+      return [];
+    }
+  };
 
   useEffect(() => {
     async function loadHistorique() {
@@ -24,7 +173,7 @@ export function useHistorique(userId) {
 
       try {
         console.log('🚀 Chargement historique pour userId:', userId);
-        const allAttempts = [];
+        console.time('⏱️ Temps de chargement total');
 
         // 1. Récupérer le document utilisateur pour avoir les programmes assignés
         const userDoc = await getDoc(doc(db, 'users', userId));
@@ -39,111 +188,27 @@ export function useHistorique(userId) {
         const assignedPrograms = userData.assignedPrograms || [];
         console.log('📚 Programmes assignés:', assignedPrograms);
 
-        // 2. Pour chaque programme, récupérer les évaluations
-        for (const programId of assignedPrograms) {
-          console.log('🔍 Recherche évaluations pour programme:', programId);
-          
-          // Récupérer le nom du programme
-          let programName = 'Programme';
-          try {
-            const programDoc = await getDoc(doc(db, 'programs', programId));
-            if (programDoc.exists()) {
-              programName = programDoc.data().name || 'Programme';
-            }
-          } catch (error) {
-            console.error('⚠️ Erreur récupération programme:', programId, error);
-          }
-
-          // Récupérer les évaluations
-          try {
-            const evaluationsRef = collection(db, 'users', userId, 'programs', programId, 'evaluations');
-            const evaluationsSnapshot = await getDocs(evaluationsRef);
+        // ⚡ OPTIMISATION MAJEURE : Charger tous les programmes EN PARALLÈLE
+        console.time('⏱️ Chargement parallèle des tentatives');
+        const programResults = await Promise.all(
+          assignedPrograms.map(async (programId) => {
+            const programName = await getProgramName(programId);
             
-            console.log('📊 Évaluations trouvées pour', programId, ':', evaluationsSnapshot.size);
-
-            evaluationsSnapshot.forEach((evalDoc) => {
-              const evalData = evalDoc.data();
-              
-              // 📝 LOG DEBUG : Données brutes de l'évaluation
-              console.log('📝 Données brutes évaluation:', {
-                id: evalDoc.id,
-                programId: programId,
-                type: 'evaluation',
-                ...evalData
-              });
-              
-              allAttempts.push({
-                id: evalDoc.id,
-                type: 'evaluation',
-                programId: programId,           // ✅ IMPORTANT : programId présent
-                programName: programName,
-                moduleId: null,                  // ✅ CORRIGÉ : moduleId au lieu de chapterId
-                moduleName: null,                // ✅ CORRIGÉ : moduleName au lieu de chapterName
-                score: evalData.earnedPoints || evalData.score || 0,
-                maxScore: evalData.totalPoints || evalData.maxScore || 100,
-                percentage: evalData.score || evalData.percentage || 0,
-                duration: evalData.duration || 0,
-                completedAt: evalData.completedAt,
-                passed: (evalData.score || evalData.percentage || 0) >= 50,
-                results: evalData.results || []
-              });
-            });
-          } catch (error) {
-            console.error('⚠️ Erreur récupération évaluations pour', programId, ':', error);
-          }
-
-          // 3. Récupérer aussi les tentatives par module si elles existent
-          try {
-            const modulesSnapshot = await getDocs(collection(db, 'programs', programId, 'modules'));
+            // Pour chaque programme, charger évaluations et exercices EN PARALLÈLE
+            const [evaluations, exercises] = await Promise.all([
+              loadEvaluationsForProgram(programId, programName),
+              loadExercisesForProgram(programId, programName)
+            ]);
             
-            console.log('📘 Modules trouvés pour programme', programId, ':', modulesSnapshot.size);
-            
-            for (const moduleDoc of modulesSnapshot.docs) {
-              const moduleData = moduleDoc.data();
-              const moduleName = moduleData.title || 'Module';
-              
-              // Vérifier si des tentatives existent pour ce module
-              try {
-                const moduleAttemptsRef = collection(db, 'users', userId, 'programs', programId, 'modules', moduleDoc.id, 'attempts');
-                const moduleAttemptsSnapshot = await getDocs(moduleAttemptsRef);
-                
-                console.log('  📝 Tentatives module', moduleDoc.id, ':', moduleAttemptsSnapshot.size);
-                
-                moduleAttemptsSnapshot.forEach((attemptDoc) => {
-                  const attemptData = attemptDoc.data();
-                  
-                  // 📝 LOG DEBUG : Données brutes de la tentative
-                  console.log('📝 Données brutes tentative:', {
-                    id: attemptDoc.id,
-                    moduleId: moduleDoc.id,
-                    programId: programId,
-                    ...attemptData
-                  });
-                  
-                  allAttempts.push({
-                    id: attemptDoc.id,
-                    type: 'exercise',
-                    programId: programId,
-                    programName: programName,
-                    moduleId: moduleDoc.id,        // ✅ CORRIGÉ : moduleId au lieu de chapterId
-                    moduleName: moduleName,         // ✅ CORRIGÉ : moduleName au lieu de chapterName
-                    score: attemptData.earnedPoints || attemptData.score || 0,
-                    maxScore: attemptData.totalPoints || attemptData.maxScore || 100,
-                    percentage: attemptData.score || attemptData.percentage || 0,
-                    duration: attemptData.duration || 0,
-                    completedAt: attemptData.completedAt,
-                    passed: (attemptData.score || attemptData.percentage || 0) >= 50,
-                    results: attemptData.results || []
-                  });
-                });
-              } catch (error) {
-                console.error('  ⚠️ Erreur récupération tentatives module', moduleDoc.id, ':', error);
-              }
-            }
-          } catch (error) {
-            console.error('⚠️ Erreur récupération modules pour', programId, ':', error);
-          }
-        }
+            return { programId, programName, evaluations, exercises };
+          })
+        );
+        console.timeEnd('⏱️ Chargement parallèle des tentatives');
+
+        // Fusionner toutes les tentatives
+        const allAttempts = programResults.flatMap(({ evaluations, exercises }) => 
+          [...evaluations, ...exercises]
+        );
 
         // 4. Trier par date (plus récent en premier)
         allAttempts.sort((a, b) => {
@@ -153,9 +218,8 @@ export function useHistorique(userId) {
         });
 
         console.log('✅ Total tentatives chargées:', allAttempts.length);
-        console.log('📋 Tentatives:', allAttempts);
 
-        // 5. Calculer les stats
+        // 5. Calculer les stats globales
         const totalAttempts = allAttempts.length;
         const averageScore = totalAttempts > 0 
           ? Math.round(allAttempts.reduce((sum, a) => sum + (a.percentage || 0), 0) / totalAttempts)
@@ -168,56 +232,49 @@ export function useHistorique(userId) {
         const stats = { totalAttempts, averageScore, bestScore, totalTime };
         console.log('📊 Statistiques calculées:', stats);
 
-        // 6. Calculer les stats pour TOUS les programmes assignés (même ceux sans tentatives)
-        const programStats = [];
+        // ⚡ OPTIMISATION : Calculer les stats par programme EN PARALLÈLE
+        console.time('⏱️ Calcul des stats par programme');
+        const programStats = await Promise.all(
+          assignedPrograms.map(async (programId) => {
+            const programName = await getProgramName(programId);
+            const readingProgress = await getReadingProgress(programId);
+            
+            // Filtrer les tentatives de ce programme
+            const programAttempts = allAttempts.filter(a => a.programId === programId);
+            
+            // Calculer le score moyen (0 si aucune tentative)
+            const averageExerciseScore = programAttempts.length > 0
+              ? Math.round(programAttempts.reduce((sum, a) => sum + (a.percentage || 0), 0) / programAttempts.length)
+              : 0;
 
-        for (const programId of assignedPrograms) {
-          // Récupérer le nom du programme
-          let programName = 'Programme';
-          try {
-            const programDoc = await getDoc(doc(db, 'programs', programId));
-            if (programDoc.exists()) {
-              programName = programDoc.data().name || 'Programme';
-            }
-          } catch (error) {
-            console.error('⚠️ Erreur récupération nom programme:', programId, error);
-          }
-
-          // NOUVEAU: Récupérer la progression de lecture
-          let readingProgress = 0;
-          try {
-            const progressRef = doc(db, 'userProgress', userId, 'programs', programId);
-            const progressSnap = await getDoc(progressRef);
-            if (progressSnap.exists()) {
-              readingProgress = progressSnap.data().percentage || 0;
-            }
-          } catch (error) {
-            console.log('Pas de progression pour', programId);
-          }
-
-          // Filtrer les tentatives de ce programme
-          const programAttempts = allAttempts.filter(a => a.programId === programId);
-          
-          // Calculer le score moyen (0 si aucune tentative)
-          const averageExerciseScore = programAttempts.length > 0
-            ? Math.round(programAttempts.reduce((sum, a) => sum + (a.percentage || 0), 0) / programAttempts.length)
-            : 0;
-
-          programStats.push({
-            programId,
-            programName,
-            readingProgress,      // ← NOUVEAU : progression lecture
-            exerciseScore: averageExerciseScore,
-            attemptCount: programAttempts.length
-          });
-        }
+            return {
+              programId,
+              programName,
+              readingProgress,
+              exerciseScore: averageExerciseScore,
+              attemptCount: programAttempts.length
+            };
+          })
+        );
+        console.timeEnd('⏱️ Calcul des stats par programme');
 
         console.log('📊 Stats par programme (tous):', programStats);
+
+        // Vérifier s'il y a potentiellement plus de tentatives
+        const maxAttemptsLoaded = allAttempts.length >= MAX_ATTEMPTS_PER_PROGRAM * assignedPrograms.length;
+        setHasMore(maxAttemptsLoaded);
 
         setAttempts(allAttempts);
         setStatistics(stats);
         setProgramStats(programStats);
         setLoading(false);
+        
+        console.timeEnd('⏱️ Temps de chargement total');
+        console.log('🎯 Cache actuel:', {
+          programs: Object.keys(cacheRef.current.programs).length,
+          modules: Object.keys(cacheRef.current.modules).length,
+          readingProgress: Object.keys(cacheRef.current.readingProgress).length
+        });
 
       } catch (error) {
         console.error('❌ Erreur chargement historique:', error);
@@ -244,6 +301,12 @@ export function useHistorique(userId) {
     statistics,
     programStats,
     filter,
-    setFilter
+    setFilter,
+    hasMore,
+    loadingMore,
+    // 🚀 BONUS : Exposer les fonctions de cache pour réutilisation
+    getProgramName,
+    getModuleName,
+    getReadingProgress
   };
 }
