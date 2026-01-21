@@ -31,6 +31,16 @@ export default function ApprenantExercisesResults() {
   const results = fromHistory ? stateData?.results : stateData?.results;
   const duration = fromHistory ? stateData?.duration : stateData?.duration;
 
+  // 🐛 DEBUG : Afficher toutes les données reçues
+  console.log('📊 Données reçues ApprenantExercisesResults:', {
+    stateData,
+    fromHistory,
+    results,
+    score: stateData?.score,
+    maxScore: stateData?.maxScore,
+    percentage: stateData?.percentage
+  });
+
   // Hook gamification
   const user = auth.currentUser;
   const { onExerciseCompleted, loading: gamifLoading, gamificationData } = useGamification(user?.uid);
@@ -54,6 +64,14 @@ export default function ApprenantExercisesResults() {
   const displayPercentage = resultPercentage !== undefined 
     ? resultPercentage 
     : calculatedPercentage;
+
+  console.log('📊 Valeurs calculées:', { 
+    displayPercentage, 
+    calculatedScore, 
+    calculatedMaxScore,
+    resultPercentage,
+    calculatedPercentage
+  });
 
   // 🎮 GAMIFICATION : Appeler une seule fois au chargement des résultats
   // NE PAS ajouter d'XP si on vient de l'historique !

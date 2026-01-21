@@ -393,21 +393,27 @@ const AttemptRow = ({ attempt, navigate }) => {
       }}
       onClick={() => {
         const url = getResultsUrl();
-        // Passer les données de l'attempt dans le state
+        
+        console.log('📤 Navigation avec données:', attempt);
+        
+        // Passer TOUTES les données de l'attempt dans le state
         navigate(url, { 
           state: { 
             fromHistory: true,
             attempt: attempt,
-            // Données pour la page résultats
-            results: {
-              score: attempt.score,
-              maxScore: attempt.maxScore,
-              percentage: attempt.percentage,
-              results: attempt.results
-            },
+            // Données explicites pour évaluation
+            score: attempt.score,
+            maxScore: attempt.maxScore,
+            percentage: attempt.percentage,
             duration: attempt.duration,
+            earnedPoints: attempt.earnedPoints,
+            totalPoints: attempt.totalPoints,
             programName: attempt.programName,
-            moduleName: attempt.moduleName
+            moduleName: attempt.moduleName,
+            completedAt: attempt.completedAt,
+            answers: attempt.answers,
+            results: attempt.results,
+            exerciseResults: attempt.exerciseResults
           } 
         });
       }}

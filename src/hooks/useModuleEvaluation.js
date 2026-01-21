@@ -243,7 +243,8 @@ export function useModuleEvaluation(userId, programId, moduleId) {
         `users/${userId}/programs/${programId}/modules/${moduleId}/evaluations/${evaluationId}`
       );
 
-      await setDoc(evaluationRef, {
+      // Préparer les données à sauvegarder
+      const evaluationData = {
         evaluationId,
         programId,
         moduleId,
@@ -256,7 +257,12 @@ export function useModuleEvaluation(userId, programId, moduleId) {
         duration,
         completedAt: Timestamp.now(),
         createdAt: Timestamp.now()
-      });
+      };
+
+      // Nettoyer les valeurs undefined (Firebase ne les accepte pas)
+      const cleanData = JSON.parse(JSON.stringify(evaluationData));
+
+      await setDoc(evaluationRef, cleanData);
 
       console.log('✅ Évaluation soumise avec succès:', {
         score: results.score,

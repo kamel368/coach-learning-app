@@ -203,7 +203,8 @@ export function useExerciseSession(userId, programId, moduleId) {
         `users/${userId}/programs/${programId}/modules/${moduleId}/attempts/${Date.now()}`
       );
 
-      await setDoc(attemptRef, {
+      // Préparer les données à sauvegarder
+      const attemptData = {
         userId,
         programId,
         moduleId,
@@ -214,7 +215,12 @@ export function useExerciseSession(userId, programId, moduleId) {
         answers,
         results: resultsData.results,
         completedAt: Timestamp.now()
-      });
+      };
+
+      // Nettoyer les valeurs undefined (Firebase ne les accepte pas)
+      const cleanData = JSON.parse(JSON.stringify(attemptData));
+
+      await setDoc(attemptRef, cleanData);
 
       return { 
         success: true, 

@@ -140,6 +140,13 @@ export const useGamification = (userId) => {
             maxStreak: 0,
             lastActiveDate: null,
             badges: [],
+            rewardedActions: {
+              lessons: [],      // IDs des leçons déjà récompensées
+              exercises: [],    // IDs des exercices déjà récompensés
+              evaluations: [],  // IDs des évaluations déjà récompensées
+              modules: [],      // IDs des modules déjà récompensés
+              programs: []      // IDs des programmes déjà récompensés
+            },
             stats: {
               lessonsCompleted: 0,
               modulesCompleted: 0,
@@ -361,14 +368,21 @@ export const useGamification = (userId) => {
   };
 
   // Actions spécifiques
-  const onLessonCompleted = async () => {
+  const onLessonCompleted = async (lessonId) => {
     if (!userId || !gamificationData) {
       console.warn('⚠️ onLessonCompleted appelé avant chargement des données');
       return null;
     }
 
+    // Vérifier si déjà récompensé
+    const rewardedLessons = gamificationData.rewardedActions?.lessons || [];
+    if (lessonId && rewardedLessons.includes(lessonId)) {
+      console.log('ℹ️ Leçon déjà récompensée:', lessonId);
+      return null;
+    }
+
     await updateStreak();
-    await addXP(XP_CONFIG.LESSON_COMPLETED, 'lesson_completed');
+    const result = await addXP(XP_CONFIG.LESSON_COMPLETED, 'lesson_completed');
     await updateStat('lessonsCompleted');
 
     // Vérifier early bird
@@ -376,6 +390,16 @@ export const useGamification = (userId) => {
     if (hour < 8) {
       await updateStat('earlyBird', 1);
     }
+
+    // Marquer comme récompensé
+    if (lessonId) {
+      const gamifRef = doc(db, 'users', userId, 'gamification', 'data');
+      await updateDoc(gamifRef, {
+        'rewardedActions.lessons': arrayUnion(lessonId)
+      });
+    }
+
+    return result;
   };
 
   const onModuleCompleted = async () => {
@@ -388,40 +412,80 @@ export const useGamification = (userId) => {
     await updateStat('modulesCompleted');
   };
 
-  const onExerciseCompleted = async (percentage) => {
+  const onExerciseCompleted = async (percentage, attemptId) => {
     if (!userId || !gamificationData) {
       console.warn('⚠️ onExerciseCompleted appelé avant chargement des données');
       return null;
     }
 
+    // Vérifier si déjà récompensé
+    const rewardedExercises = gamificationData.rewardedActions?.exercises || [];
+    if (attemptId && rewardedExercises.includes(attemptId)) {
+      console.log('ℹ️ Exercice déjà récompensé:', attemptId);
+      return null;
+    }
+
     await updateStreak();
+    
     if (percentage >= 80) {
       await addXP(XP_CONFIG.EXERCISE_EXCELLENT, 'exercise_excellent');
       await updateStat('excellentScores');
     } else if (percentage >= 50) {
       await addXP(XP_CONFIG.EXERCISE_PASSED, 'exercise_passed');
     }
+    
     await updateStat('exercisesCompleted');
+    
     if (percentage === 100) {
       await updateStat('perfectScores');
     }
+
+    // Marquer comme récompensé
+    if (attemptId) {
+      const gamifRef = doc(db, 'users', userId, 'gamification', 'data');
+      await updateDoc(gamifRef, {
+        'rewardedActions.exercises': arrayUnion(attemptId)
+      });
+    }
+
+    return { percentage };
   };
 
-  const onEvaluationCompleted = async (percentage) => {
+  const onEvaluationCompleted = async (percentage, evaluationId) => {
     if (!userId || !gamificationData) {
       console.warn('⚠️ onEvaluationCompleted appelé avant chargement des données');
       return null;
     }
 
+    // Vérifier si déjà récompensé
+    const rewardedEvaluations = gamificationData.rewardedActions?.evaluations || [];
+    if (evaluationId && rewardedEvaluations.includes(evaluationId)) {
+      console.log('ℹ️ Évaluation déjà récompensée:', evaluationId);
+      return null;
+    }
+
     await updateStreak();
+    
     if (percentage >= 80) {
       await addXP(XP_CONFIG.EVALUATION_PASSED, 'evaluation_passed');
       await updateStat('excellentScores');
     }
+    
     await updateStat('evaluationsCompleted');
+    
     if (percentage === 100) {
       await updateStat('perfectScores');
     }
+
+    // Marquer comme récompensé
+    if (evaluationId) {
+      const gamifRef = doc(db, 'users', userId, 'gamification', 'data');
+      await updateDoc(gamifRef, {
+        'rewardedActions.evaluations': arrayUnion(evaluationId)
+      });
+    }
+
+    return { percentage };
   };
 
   const onProgramCompleted = async () => {

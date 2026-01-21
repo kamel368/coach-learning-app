@@ -26,19 +26,41 @@ export default function ApprenantProgramEvaluationResults() {
   // Récupérer les données soit du state normal, soit de l'historique
   const stateData = location.state;
   const fromHistory = stateData?.fromHistory;
-  
-  // Si on vient de l'historique, extraire les données de l'attempt
-  const results = fromHistory ? stateData?.results : stateData?.results;
-  const duration = fromHistory ? stateData?.duration : stateData?.duration;
+  const attempt = stateData?.attempt;
+
+  // 🐛 DEBUG : Afficher toutes les données reçues
+  console.log('📊 Données reçues ApprenantProgramEvaluationResults:', { 
+    stateData, 
+    fromHistory, 
+    attempt 
+  });
 
   // Hook gamification
   const user = auth.currentUser;
   const { onEvaluationCompleted, loading: gamifLoading, gamificationData } = useGamification(user?.uid);
   const hasCalledGamification = useRef(false);
 
-  // Calculer le pourcentage
-  const { score, totalPoints, earnedPoints, results: exerciseResults } = results || {};
-  const displayPercentage = score || (totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0);
+  // Si on vient de l'historique, utiliser les données de attempt en priorité
+  const percentage = attempt?.percentage ?? stateData?.percentage ?? 0;
+  const score = attempt?.score ?? attempt?.earnedPoints ?? stateData?.score ?? 0;
+  const maxScore = attempt?.maxScore ?? attempt?.totalPoints ?? stateData?.maxScore ?? 0;
+  const earnedPoints = attempt?.earnedPoints ?? score;
+  const totalPoints = attempt?.totalPoints ?? maxScore;
+  const duration = attempt?.duration ?? stateData?.duration ?? 0;
+  const exerciseResults = attempt?.results ?? stateData?.results ?? [];
+
+  // Pour l'affichage
+  const displayPercentage = percentage;
+
+  console.log('📊 Valeurs finales:', { 
+    percentage, 
+    score, 
+    maxScore, 
+    earnedPoints, 
+    totalPoints,
+    displayPercentage,
+    exerciseResults: exerciseResults?.length
+  });
 
   // 🎮 GAMIFICATION : Appeler une seule fois au chargement des résultats
   // NE PAS ajouter d'XP si on vient de l'historique !
@@ -58,7 +80,8 @@ export default function ApprenantProgramEvaluationResults() {
     }
   }, [displayPercentage, onEvaluationCompleted, gamifLoading, gamificationData, fromHistory]);
 
-  if (!results && !stateData) {
+  // Vérification de sécurité
+  if (!stateData) {
     return (
       <div style={{ 
         display: 'flex', 
@@ -361,12 +384,12 @@ export default function ApprenantProgramEvaluationResults() {
           </h2>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {exerciseResults.map((result, index) => {
-              const isCorrect = result.isCorrect;
+            {(exerciseResults || []).map((result, index) => {
+              const isCorrect = result?.isCorrect;
 
-              return (
+                return (
                 <div
-                  key={result.blockId || index}
+                  key={result?.blockId || index}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -418,12 +441,12 @@ export default function ApprenantProgramEvaluationResults() {
                           color: isCorrect ? '#16a34a' : '#dc2626',
                           flexShrink: 0
                         }}>
-                          {getExerciseIcon(result.type)}
+                          {getExerciseIcon(result?.type)}
                         </span>
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           Question {index + 1}
                         </span>
-                        {result.sourceModuleName && (
+                        {result?.sourceModuleName && (
                           <span style={{ 
                             fontSize: '12px', 
                             color: '#94a3b8',
@@ -453,7 +476,7 @@ export default function ApprenantProgramEvaluationResults() {
                     flexShrink: 0,
                     whiteSpace: 'nowrap'
                   }}>
-                    {result.earnedPoints || 0}/{result.points || 0} pts
+                    {result?.earnedPoints || 0}/{result?.points || 0} pts
                   </div>
                 </div>
               );
