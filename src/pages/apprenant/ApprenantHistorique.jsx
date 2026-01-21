@@ -83,18 +83,35 @@ const ApprenantHistorique = () => {
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-        gap: '24px'
+        gap: '24px',
+        alignItems: 'stretch'  // ← Alignement des hauteurs
       }}>
         {/* COLONNE GAUCHE : 3 Graphiques empilés */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: '16px',
+          height: 'fit-content'  // ← Hauteur auto selon contenu
+        }}>
           
           {/* Graphique 1 : Progression lecture */}
-          <div style={{ background: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+          <div style={{ 
+            background: 'white', 
+            borderRadius: '16px', 
+            padding: '20px', 
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+          }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
               <BookOpen size={18} color="#3b82f6" />
               <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#1e293b' }}>Progression lecture</h3>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '8px', 
+              maxHeight: '180px', 
+              overflowY: 'auto'
+            }}>
               {programStats.map((prog, index) => (
                 <BarRow
                   key={`read-${prog.programId}`}
@@ -113,12 +130,23 @@ const ApprenantHistorique = () => {
           </div>
 
           {/* Graphique 2 : Score exercices */}
-          <div style={{ background: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+          <div style={{ 
+            background: 'white', 
+            borderRadius: '16px', 
+            padding: '20px', 
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+          }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
               <Zap size={18} color="#10b981" />
               <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#1e293b' }}>Score exercices</h3>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '8px', 
+              maxHeight: '180px', 
+              overflowY: 'auto'
+            }}>
               {programStats.map((prog, index) => (
                 <BarRow
                   key={`ex-${prog.programId}`}
@@ -147,7 +175,16 @@ const ApprenantHistorique = () => {
         </div>
 
         {/* COLONNE DROITE : Liste des tentatives */}
-        <div style={{ background: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ 
+          background: 'white', 
+          borderRadius: '16px', 
+          padding: '20px', 
+          boxShadow: '0 2px 8px rgba(0,0,0,0.04)', 
+          display: 'flex', 
+          flexDirection: 'column',
+          minHeight: '100%',      // ← S'étire pour matcher la hauteur de gauche
+          maxHeight: '800px'      // ← Limite max pour scroll si trop d'éléments
+        }}>
           {/* Header avec filtres */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -185,7 +222,14 @@ const ApprenantHistorique = () => {
           </div>
 
           {/* Liste scrollable */}
-          <div style={{ flex: 1, overflowY: 'auto', maxHeight: '500px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ 
+            flex: 1,               // ← Prend tout l'espace disponible
+            overflowY: 'auto', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '8px',
+            paddingRight: '4px'    // ← Espace pour la scrollbar
+          }}>
             {filteredAttempts.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
                 <Target size={40} style={{ marginBottom: '12px', opacity: 0.5 }} />
@@ -231,7 +275,7 @@ const StatCard = ({ icon: Icon, label, value, color }) => (
   </div>
 );
 
-// Composant BarRow (barre horizontale)
+// Composant BarRow avec hover stylé
 const BarRow = ({ label, value, color, isHovered, onHover, onLeave }) => (
   <div
     style={{
@@ -240,49 +284,68 @@ const BarRow = ({ label, value, color, isHovered, onHover, onLeave }) => (
       gap: '12px',
       padding: '8px 10px',
       borderRadius: '8px',
-      background: isHovered ? '#f8fafc' : 'transparent',
+      background: isHovered ? '#f1f5f9' : 'transparent',
       transition: 'all 0.2s',
-      cursor: 'default',
-      position: 'relative'
+      cursor: 'default'
     }}
     onMouseEnter={onHover}
     onMouseLeave={onLeave}
+    title={label}
   >
-    {/* Barre */}
-    <div style={{ flex: 1, height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+    {/* Badge nom du programme au hover */}
+    <div style={{
+      minWidth: isHovered ? '100px' : '0px',
+      maxWidth: isHovered ? '140px' : '0px',
+      overflow: 'hidden',
+      transition: 'all 0.2s ease',
+      opacity: isHovered ? 1 : 0
+    }}>
+      <span style={{
+        display: 'inline-block',
+        fontSize: '11px',
+        color: 'white',
+        fontWeight: '600',
+        padding: '4px 10px',
+        borderRadius: '6px',
+        background: color,
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        maxWidth: '130px',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+      }}>
+        {label}
+      </span>
+    </div>
+
+    {/* Barre de progression */}
+    <div style={{ 
+      flex: 1, 
+      height: '10px', 
+      background: '#e2e8f0', 
+      borderRadius: '5px', 
+      overflow: 'hidden',
+      transition: 'all 0.2s'
+    }}>
       <div style={{
         width: `${Math.min(value, 100)}%`,
         height: '100%',
         background: color,
-        borderRadius: '4px',
+        borderRadius: '5px',
         transition: 'width 0.3s'
       }} />
     </div>
     
     {/* Pourcentage */}
-    <span style={{ fontSize: '13px', fontWeight: '600', color, minWidth: '40px', textAlign: 'right' }}>
+    <span style={{ 
+      fontSize: '14px', 
+      fontWeight: '700', 
+      color: color, 
+      minWidth: '50px', 
+      textAlign: 'right' 
+    }}>
       {value}%
     </span>
-
-    {/* Tooltip au hover */}
-    {isHovered && (
-      <div style={{
-        position: 'absolute',
-        left: '10px',
-        top: '-35px',
-        background: '#1e293b',
-        color: 'white',
-        padding: '6px 10px',
-        borderRadius: '6px',
-        fontSize: '12px',
-        fontWeight: '500',
-        whiteSpace: 'nowrap',
-        zIndex: 10,
-        boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-      }}>
-        {label}
-      </div>
-    )}
   </div>
 );
 
