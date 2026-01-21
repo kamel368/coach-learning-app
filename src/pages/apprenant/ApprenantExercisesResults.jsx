@@ -23,11 +23,17 @@ export default function ApprenantExercisesResults() {
   const navigate = useNavigate();
   const { programId, moduleId } = useParams();
   
-  const { results, duration } = location.state || {};
+  // Récupérer les données soit du state normal, soit de l'historique
+  const stateData = location.state;
+  const fromHistory = stateData?.fromHistory;
+  
+  // Si on vient de l'historique, extraire les données de l'attempt
+  const results = fromHistory ? stateData?.results : stateData?.results;
+  const duration = fromHistory ? stateData?.duration : stateData?.duration;
 
   // Hook gamification
   const user = auth.currentUser;
-  const { onExerciseCompleted } = useGamification(user?.uid);
+  const { onExerciseCompleted, loading: gamifLoading, gamificationData } = useGamification(user?.uid);
   const hasCalledGamification = useRef(false);
 
   // Calculer le pourcentage avant le useEffect
@@ -51,32 +57,45 @@ export default function ApprenantExercisesResults() {
 
   // 🎮 GAMIFICATION : Appeler une seule fois au chargement des résultats
   useEffect(() => {
-    if (displayPercentage !== undefined && !hasCalledGamification.current && onExerciseCompleted) {
+    if (
+      displayPercentage !== undefined && 
+      !hasCalledGamification.current && 
+      !gamifLoading && 
+      gamificationData
+    ) {
       hasCalledGamification.current = true;
       onExerciseCompleted(displayPercentage);
       console.log('🎮 Gamification: XP ajoutés pour exercice complété avec', displayPercentage, '%');
     }
-  }, [displayPercentage, onExerciseCompleted]);
+  }, [displayPercentage, onExerciseCompleted, gamifLoading, gamificationData]);
 
-  if (!results) {
+  if (!results && !stateData) {
     return (
-      <div style={{ padding: '40px', textAlign: 'center' }}>
-        <div style={{ fontSize: '16px', color: '#64748b' }}>
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: 'column',
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        minHeight: '400px',
+        gap: '16px'
+      }}>
+        <p style={{ fontSize: '16px', color: '#64748b', fontWeight: '500' }}>
           Aucun résultat disponible
-        </div>
-        <button
-          onClick={() => navigate(-1)}
+        </p>
+        <button 
+          onClick={() => navigate(fromHistory ? '/apprenant/historique' : -1)}
           style={{
-            marginTop: '16px',
-            padding: '10px 20px',
+            padding: '12px 24px',
             background: '#3b82f6',
             color: 'white',
             border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer'
+            borderRadius: '10px',
+            cursor: 'pointer',
+            fontWeight: '600',
+            fontSize: '14px'
           }}
         >
-          Retour
+          {fromHistory ? 'Retour à l\'historique' : 'Retour'}
         </button>
       </div>
     );

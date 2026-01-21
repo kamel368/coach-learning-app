@@ -20,7 +20,7 @@ export default function ApprenantModuleDetail() {
 
   // Hook gamification
   const user = auth.currentUser;
-  const { onModuleCompleted } = useGamification(user?.uid);
+  const { onModuleCompleted, loading: gamifLoading, gamificationData } = useGamification(user?.uid);
   const moduleCompletionTracked = useRef(new Set());
 
   useEffect(() => {
@@ -30,7 +30,7 @@ export default function ApprenantModuleDetail() {
 
   // 🎮 GAMIFICATION : Détecter quand un module est 100% complété
   useEffect(() => {
-    if (lessons.length > 0 && completedLessons.length > 0) {
+    if (lessons.length > 0 && completedLessons.length > 0 && !gamifLoading && gamificationData) {
       const completedInThisModule = completedLessons.filter(id => lessons.find(l => l.id === id)).length;
       const moduleProgress = (completedInThisModule / lessons.length) * 100;
       
@@ -41,7 +41,7 @@ export default function ApprenantModuleDetail() {
         console.log('🎮 Gamification: Module complété !', moduleId);
       }
     }
-  }, [completedLessons, lessons, moduleId, onModuleCompleted]);
+  }, [completedLessons, lessons, moduleId, onModuleCompleted, gamifLoading, gamificationData]);
   
   // Charger la progression des leçons complétées
   async function loadProgress() {

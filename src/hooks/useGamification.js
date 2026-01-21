@@ -198,7 +198,10 @@ export const useGamification = (userId) => {
 
   // Mettre à jour le streak
   const updateStreak = async () => {
-    if (!userId || !gamificationData) return;
+    if (!userId || !gamificationData) {
+      console.warn('⚠️ updateStreak appelé avant chargement des données');
+      return;
+    }
 
     const today = new Date().toISOString().split('T')[0];
     const lastActive = gamificationData.lastActiveDate;
@@ -245,7 +248,10 @@ export const useGamification = (userId) => {
 
   // Ajouter des XP
   const addXP = async (amount, action) => {
-    if (!userId || !gamificationData) return;
+    if (!userId || !gamificationData) {
+      console.warn('⚠️ addXP appelé avant chargement des données');
+      return null;
+    }
 
     const newXP = (gamificationData.xp || 0) + amount;
     const newLevel = calculateLevel(newXP);
@@ -289,7 +295,10 @@ export const useGamification = (userId) => {
 
   // Mettre à jour une stat
   const updateStat = async (statName, value = 1) => {
-    if (!userId) return;
+    if (!userId || !gamificationData) {
+      console.warn('⚠️ updateStat appelé avant chargement des données');
+      return;
+    }
 
     const gamifRef = doc(db, 'users', userId, 'gamification', 'data');
     await updateDoc(gamifRef, {
@@ -312,7 +321,10 @@ export const useGamification = (userId) => {
 
   // Vérifier et débloquer les badges
   const checkAndUnlockBadges = async (stats) => {
-    if (!userId || !gamificationData) return;
+    if (!userId || !gamificationData) {
+      console.warn('⚠️ checkAndUnlockBadges appelé avant chargement des données');
+      return [];
+    }
 
     const currentBadges = gamificationData.badges || [];
     const newlyUnlocked = [];
@@ -350,6 +362,11 @@ export const useGamification = (userId) => {
 
   // Actions spécifiques
   const onLessonCompleted = async () => {
+    if (!userId || !gamificationData) {
+      console.warn('⚠️ onLessonCompleted appelé avant chargement des données');
+      return null;
+    }
+
     await updateStreak();
     await addXP(XP_CONFIG.LESSON_COMPLETED, 'lesson_completed');
     await updateStat('lessonsCompleted');
@@ -362,11 +379,21 @@ export const useGamification = (userId) => {
   };
 
   const onModuleCompleted = async () => {
+    if (!userId || !gamificationData) {
+      console.warn('⚠️ onModuleCompleted appelé avant chargement des données');
+      return null;
+    }
+
     await addXP(XP_CONFIG.MODULE_COMPLETED, 'module_completed');
     await updateStat('modulesCompleted');
   };
 
   const onExerciseCompleted = async (percentage) => {
+    if (!userId || !gamificationData) {
+      console.warn('⚠️ onExerciseCompleted appelé avant chargement des données');
+      return null;
+    }
+
     await updateStreak();
     if (percentage >= 80) {
       await addXP(XP_CONFIG.EXERCISE_EXCELLENT, 'exercise_excellent');
@@ -381,6 +408,11 @@ export const useGamification = (userId) => {
   };
 
   const onEvaluationCompleted = async (percentage) => {
+    if (!userId || !gamificationData) {
+      console.warn('⚠️ onEvaluationCompleted appelé avant chargement des données');
+      return null;
+    }
+
     await updateStreak();
     if (percentage >= 80) {
       await addXP(XP_CONFIG.EVALUATION_PASSED, 'evaluation_passed');
@@ -393,6 +425,11 @@ export const useGamification = (userId) => {
   };
 
   const onProgramCompleted = async () => {
+    if (!userId || !gamificationData) {
+      console.warn('⚠️ onProgramCompleted appelé avant chargement des données');
+      return null;
+    }
+
     await addXP(XP_CONFIG.MODULE_COMPLETED * 2, 'program_completed');
     await updateStat('programsCompleted');
   };

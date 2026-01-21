@@ -63,15 +63,22 @@ export function useHistorique(userId) {
 
             evaluationsSnapshot.forEach((evalDoc) => {
               const evalData = evalDoc.data();
-              console.log('📝 Évaluation:', evalDoc.id, evalData);
+              
+              // 📝 LOG DEBUG : Données brutes de l'évaluation
+              console.log('📝 Données brutes évaluation:', {
+                id: evalDoc.id,
+                programId: programId,
+                type: 'evaluation',
+                ...evalData
+              });
               
               allAttempts.push({
                 id: evalDoc.id,
                 type: 'evaluation',
-                programId: programId,
+                programId: programId,           // ✅ IMPORTANT : programId présent
                 programName: programName,
-                chapterId: null,
-                chapterName: null,
+                moduleId: null,                  // ✅ CORRIGÉ : moduleId au lieu de chapterId
+                moduleName: null,                // ✅ CORRIGÉ : moduleName au lieu de chapterName
                 score: evalData.earnedPoints || evalData.score || 0,
                 maxScore: evalData.totalPoints || evalData.maxScore || 100,
                 percentage: evalData.score || evalData.percentage || 0,
@@ -105,13 +112,21 @@ export function useHistorique(userId) {
                 moduleAttemptsSnapshot.forEach((attemptDoc) => {
                   const attemptData = attemptDoc.data();
                   
+                  // 📝 LOG DEBUG : Données brutes de la tentative
+                  console.log('📝 Données brutes tentative:', {
+                    id: attemptDoc.id,
+                    moduleId: moduleDoc.id,
+                    programId: programId,
+                    ...attemptData
+                  });
+                  
                   allAttempts.push({
                     id: attemptDoc.id,
                     type: 'exercise',
                     programId: programId,
                     programName: programName,
-                    chapterId: moduleDoc.id,
-                    chapterName: moduleName,
+                    moduleId: moduleDoc.id,        // ✅ CORRIGÉ : moduleId au lieu de chapterId
+                    moduleName: moduleName,         // ✅ CORRIGÉ : moduleName au lieu de chapterName
                     score: attemptData.earnedPoints || attemptData.score || 0,
                     maxScore: attemptData.totalPoints || attemptData.maxScore || 100,
                     percentage: attemptData.score || attemptData.percentage || 0,

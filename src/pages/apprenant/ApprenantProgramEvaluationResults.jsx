@@ -23,11 +23,17 @@ export default function ApprenantProgramEvaluationResults() {
   const navigate = useNavigate();
   const { programId } = useParams();
   
-  const { results, duration } = location.state || {};
+  // Récupérer les données soit du state normal, soit de l'historique
+  const stateData = location.state;
+  const fromHistory = stateData?.fromHistory;
+  
+  // Si on vient de l'historique, extraire les données de l'attempt
+  const results = fromHistory ? stateData?.results : stateData?.results;
+  const duration = fromHistory ? stateData?.duration : stateData?.duration;
 
   // Hook gamification
   const user = auth.currentUser;
-  const { onEvaluationCompleted } = useGamification(user?.uid);
+  const { onEvaluationCompleted, loading: gamifLoading, gamificationData } = useGamification(user?.uid);
   const hasCalledGamification = useRef(false);
 
   // Calculer le pourcentage
@@ -36,32 +42,45 @@ export default function ApprenantProgramEvaluationResults() {
 
   // 🎮 GAMIFICATION : Appeler une seule fois au chargement des résultats
   useEffect(() => {
-    if (displayPercentage !== undefined && !hasCalledGamification.current && onEvaluationCompleted) {
+    if (
+      displayPercentage !== undefined && 
+      !hasCalledGamification.current && 
+      !gamifLoading && 
+      gamificationData
+    ) {
       hasCalledGamification.current = true;
       onEvaluationCompleted(displayPercentage);
       console.log('🎮 Gamification: XP ajoutés pour évaluation complétée avec', displayPercentage, '%');
     }
-  }, [displayPercentage, onEvaluationCompleted]);
+  }, [displayPercentage, onEvaluationCompleted, gamifLoading, gamificationData]);
 
-  if (!results) {
+  if (!results && !stateData) {
     return (
-      <div style={{ padding: '40px', textAlign: 'center' }}>
-        <div style={{ fontSize: '16px', color: '#64748b' }}>
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: 'column',
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        minHeight: '400px',
+        gap: '16px'
+      }}>
+        <p style={{ fontSize: '16px', color: '#64748b', fontWeight: '500' }}>
           Aucun résultat disponible
-        </div>
-        <button
-          onClick={() => navigate(`/apprenant/programs/${programId}`)}
+        </p>
+        <button 
+          onClick={() => navigate(fromHistory ? '/apprenant/historique' : `/apprenant/programs/${programId}`)}
           style={{
-            marginTop: '16px',
-            padding: '10px 20px',
+            padding: '12px 24px',
             background: '#3b82f6',
             color: 'white',
             border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer'
+            borderRadius: '10px',
+            cursor: 'pointer',
+            fontWeight: '600',
+            fontSize: '14px'
           }}
         >
-          Retour
+          {fromHistory ? 'Retour à l\'historique' : 'Retour'}
         </button>
       </div>
     );
