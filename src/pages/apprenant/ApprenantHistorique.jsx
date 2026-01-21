@@ -164,11 +164,11 @@ const ApprenantHistorique = () => {
             </div>
           </div>
 
-          {/* Graphique 3 : Courbe de progression */}
+          {/* Graphique 3 : Progression Évaluations */}
           <div style={{ background: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
               <TrendingUp size={18} color="#8b5cf6" />
-              <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#1e293b' }}>Courbe de progression</h3>
+              <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#1e293b' }}>Progression Évaluations</h3>
             </div>
             <CurveChart evaluations={evaluations} average={averageEval} />
           </div>
@@ -523,8 +523,10 @@ const AttemptRow = ({ attempt, navigate }) => {
   );
 };
 
-// Composant CurveChart (simplifié)
+// Composant CurveChart élégant
 const CurveChart = ({ evaluations, average }) => {
+  const [hoveredPoint, setHoveredPoint] = useState(null);
+
   if (evaluations.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8' }}>
@@ -534,61 +536,172 @@ const CurveChart = ({ evaluations, average }) => {
     );
   }
 
-  const height = 120;
+  const chartHeight = 160;
+  const chartPadding = { top: 10, right: 15, bottom: 25, left: 35 };
+
+  // Calculer positions des points (en pixels relatifs)
   const points = evaluations.map((ev, index) => {
-    const x = evaluations.length > 1 ? 10 + (index / (evaluations.length - 1)) * 80 : 50;
-    const y = 100 - ev.percentage;
-    return { x, y, ...ev };
+    const x = evaluations.length > 1 
+      ? chartPadding.left + (index / (evaluations.length - 1)) * (100 - chartPadding.left - chartPadding.right)
+      : 50;
+    return { x, ...ev };
   });
 
-  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-
   return (
-    <div style={{ position: 'relative', height: `${height}px` }}>
-      {/* Zone de réussite */}
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: '20%',
-        background: 'rgba(16, 185, 129, 0.1)',
-        borderBottom: '1px dashed rgba(16, 185, 129, 0.4)',
-        borderRadius: '8px 8px 0 0'
-      }} />
+    <div style={{ position: 'relative', height: `${chartHeight}px`, width: '100%' }}>
+      <svg 
+        viewBox="0 0 100 60"
+        preserveAspectRatio="xMidYMid meet"
+        style={{ 
+          width: '100%', 
+          height: '100%',
+          overflow: 'visible'
+        }}
+      >
+        {/* Zone verte 80-100% - ajustée pour viewBox 0-60 */}
+        <rect
+          x={chartPadding.left}
+          y={0}
+          width={100 - chartPadding.left - chartPadding.right}
+          height={12}
+          fill="rgba(16, 185, 129, 0.12)"
+          rx="2"
+        />
 
-      {/* SVG */}
-      <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
+        {/* Grille horizontale subtile */}
+        {[0, 25, 50, 75, 100].map((percent) => {
+          const y = ((100 - percent) / 100) * 60;
+          return (
+            <line
+              key={percent}
+              x1={chartPadding.left}
+              y1={y}
+              x2={100 - chartPadding.right}
+              y2={y}
+              stroke="#f1f5f9"
+              strokeWidth="0.5"
+              vectorEffect="non-scaling-stroke"
+            />
+          );
+        })}
+
         {/* Ligne moyenne */}
         <line
-          x1="0" y1={100 - average}
-          x2="100" y2={100 - average}
+          x1={chartPadding.left}
+          y1={((100 - average) / 100) * 60}
+          x2={100 - chartPadding.right}
+          y2={((100 - average) / 100) * 60}
           stroke="#f59e0b"
-          strokeWidth="0.5"
-          strokeDasharray="3,3"
+          strokeWidth="1"
+          strokeDasharray="4,3"
+          vectorEffect="non-scaling-stroke"
+          opacity="0.7"
         />
         
-        {/* Courbe */}
-        <path d={linePath} fill="none" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round" />
+        {/* Courbe - plus fine et élégante */}
+        <path 
+          d={points.map((p, i) => {
+            const y = ((100 - p.percentage) / 100) * 60;
+            return `${i === 0 ? 'M' : 'L'} ${p.x} ${y}`;
+          }).join(' ')}
+          fill="none" 
+          stroke="#8b5cf6" 
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        />
         
-        {/* Points */}
-        {points.map((p, i) => (
-          <circle key={i} cx={p.x} cy={p.y} r="2.5" fill="#8b5cf6" />
-        ))}
+        {/* Points élégants - petits avec bordure */}
+        {points.map((p, i) => {
+          const y = ((100 - p.percentage) / 100) * 60;
+          return (
+            <circle 
+              key={i} 
+              cx={p.x} 
+              cy={y} 
+              r={hoveredPoint === i ? "2.5" : "2"}
+              fill="white"
+              stroke="#8b5cf6"
+              strokeWidth="1.5"
+              vectorEffect="non-scaling-stroke"
+              style={{ cursor: 'pointer', transition: 'all 0.2s' }}
+              onMouseEnter={() => setHoveredPoint(i)}
+              onMouseLeave={() => setHoveredPoint(null)}
+            />
+          );
+        })}
       </svg>
 
-      {/* Label moyenne */}
-      <div style={{
-        position: 'absolute',
-        right: '4px',
-        top: `${100 - average}%`,
-        transform: 'translateY(-50%)',
-        fontSize: '10px',
-        color: '#f59e0b',
-        fontWeight: '600'
-      }}>
-        {average}%
-      </div>
+      {/* Axe Y - Pourcentages - simplifié */}
+      {[0, 50, 100].map((percent) => (
+        <span
+          key={percent}
+          style={{
+            position: 'absolute',
+            left: '0',
+            top: `${((100 - percent) / 100) * 100}%`,
+            transform: 'translateY(-50%)',
+            fontSize: '10px',
+            color: '#94a3b8',
+            fontWeight: '500'
+          }}
+        >
+          {percent}%
+        </span>
+      ))}
+
+      {/* Axe X - Dates */}
+      {points.filter((_, i) => evaluations.length <= 5 || i % Math.ceil(evaluations.length / 4) === 0 || i === evaluations.length - 1).map((p, i) => (
+        <span
+          key={i}
+          style={{
+            position: 'absolute',
+            left: `${p.x}%`,
+            bottom: '0',
+            transform: 'translateX(-50%)',
+            fontSize: '9px',
+            color: '#94a3b8',
+            fontWeight: '500',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          {new Date(p.completedAt?.seconds * 1000 || p.completedAt).toLocaleDateString('fr-FR', {
+            day: 'numeric',
+            month: 'short'
+          })}
+        </span>
+      ))}
+
+      {/* Tooltip au hover - ajusté */}
+      {hoveredPoint !== null && points[hoveredPoint] && (
+        <div style={{
+          position: 'absolute',
+          left: `${points[hoveredPoint].x}%`,
+          top: `${((100 - points[hoveredPoint].percentage) / 100) * 100}%`,
+          transform: 'translate(-50%, -120%)',
+          background: '#1e293b',
+          color: 'white',
+          padding: '6px 10px',
+          borderRadius: '6px',
+          fontSize: '11px',
+          fontWeight: '500',
+          whiteSpace: 'nowrap',
+          zIndex: 20,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          pointerEvents: 'none'
+        }}>
+          <span style={{ 
+            fontWeight: '700',
+            color: points[hoveredPoint].percentage >= 80 ? '#10b981' : points[hoveredPoint].percentage >= 50 ? '#f59e0b' : '#ef4444'
+          }}>
+            {points[hoveredPoint].percentage}%
+          </span>
+          <span style={{ opacity: 0.7, marginLeft: '6px', fontSize: '10px' }}>
+            {new Date(points[hoveredPoint].completedAt?.seconds * 1000 || points[hoveredPoint].completedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+          </span>
+        </div>
+      )}
     </div>
   );
 };
