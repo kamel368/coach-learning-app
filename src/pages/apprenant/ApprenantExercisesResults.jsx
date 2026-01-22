@@ -1,6 +1,7 @@
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { useEffect, useRef } from 'react';
-import { auth } from '../../firebase';
+import { useEffect, useRef, useState } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../../firebase';
 import { useGamification } from '../../hooks/useGamification';
 import { 
   Trophy,
@@ -23,19 +24,20 @@ export default function ApprenantExercisesResults() {
   const navigate = useNavigate();
   const { programId, moduleId } = useParams();
   
-  // Récupérer les données soit du state normal, soit de l'historique
-  const stateData = location.state;
-  const fromHistory = stateData?.fromHistory;
+  // States pour le chargement
+  const [loadedData, setLoadedData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   
-  // Si on vient de l'historique, extraire les données de l'attempt
-  const results = fromHistory ? stateData?.results : stateData?.results;
-  const duration = fromHistory ? stateData?.duration : stateData?.duration;
+  // Récupérer les données depuis location.state
+  const stateData = location.state || {};
+  const fromHistory = stateData.fromHistory || false;
+  const attemptFromState = stateData.attempt || null;
 
   // 🐛 DEBUG : Afficher toutes les données reçues
   console.log('📊 Données reçues ApprenantExercisesResults:', {
     stateData,
     fromHistory,
-    results,
+    attemptFromState,
     score: stateData?.score,
     maxScore: stateData?.maxScore,
     percentage: stateData?.percentage
@@ -46,37 +48,115 @@ export default function ApprenantExercisesResults() {
   const { onExerciseCompleted, loading: gamifLoading, gamificationData } = useGamification(user?.uid);
   const hasCalledGamification = useRef(false);
 
-  // Calculer le pourcentage avant le useEffect
-  const { score, maxScore, percentage: resultPercentage, results: blockResults } = results || {};
+  // ✅ useEffect pour charger les données depuis Firebase si nécessaire
+  useEffect(() => {
+    const loadDataFromFirebase = async () => {
+      // Si on a déjà les résultats dans state, pas besoin de charger
+      if (stateData.results?.length > 0 || attemptFromState?.results?.length > 0) {
+        console.log('📊 Données disponibles dans state avec results');
+        console.log('   - stateData.results:', stateData.results?.length || 0, 'exercices');
+        console.log('   - attemptFromState.results:', attemptFromState?.results?.length || 0, 'exercices');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Si on vient de l'historique avec un attempt complet
+      if (fromHistory && attemptFromState) {
+        console.log('📊 Données de l\'historique:', {
+          score: attemptFromState.score,
+          maxScore: attemptFromState.maxScore,
+          results: attemptFromState.results?.length || 0
+        });
+        setLoadedData(attemptFromState);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Sinon, essayer de charger depuis Firebase
+      if (user?.uid && programId && moduleId) {
+        console.log('📊 Chargement depuis Firebase');
+        console.log('   - userId:', user.uid);
+        console.log('   - programId:', programId);
+        console.log('   - moduleId:', moduleId);
+        
+        try {
+          // Essayer l'ancienne structure
+          const attemptDoc = await getDoc(
+            doc(db, 'users', user.uid, 'programs', programId, 'modules', moduleId, 'attempts', stateData.attemptId || Date.now().toString())
+          );
+          
+          if (attemptDoc.exists()) {
+            const data = attemptDoc.data();
+            console.log('✅ Données chargées depuis Firebase:', {
+              score: data.score,
+              maxScore: data.maxScore,
+              results: data.results?.length || 0,
+              duration: data.duration
+            });
+            setLoadedData(data);
+          } else {
+            console.log('⚠️ Aucune donnée trouvée dans Firebase');
+          }
+        } catch (error) {
+          console.error('❌ Erreur chargement Firebase:', error);
+        }
+      }
+      
+      setIsLoading(false);
+    };
+    
+    loadDataFromFirebase();
+  }, [user?.uid, stateData.attemptId, stateData.results, fromHistory, attemptFromState, programId, moduleId]);
   
-  const calculatedScore = score !== undefined 
-    ? score 
-    : blockResults?.reduce((total, r) => total + (r.earnedPoints || 0), 0) || 0;
+  // ✅ Fusionner les données : priorité à state, puis attemptFromState, puis loadedData
+  const attempt = attemptFromState || loadedData || {};
   
-  const calculatedMaxScore = maxScore !== undefined 
-    ? maxScore 
-    : blockResults?.reduce((total, r) => total + (r.maxPoints || 0), 0) || 0;
+  // 📊 Structure attendue depuis useExerciseSession.js :
+  // {
+  //   score: number,
+  //   maxScore: number,
+  //   percentage: number,
+  //   duration: number,
+  //   answers: {...},
+  //   results: [{blockId, type, isCorrect, earnedPoints, maxPoints, userAnswer, correctAnswer}]
+  // }
   
-  const calculatedPercentage = calculatedMaxScore > 0 
-    ? Math.round((calculatedScore / calculatedMaxScore) * 100) 
+  // Extraire les blockResults (c'est directement attempt.results)
+  const blockResults = attempt.results || stateData.results?.results || stateData.results || [];
+  const duration = attempt.duration || stateData.duration || 0;
+  
+  // Calculer le score
+  const score = attempt.score ?? stateData.score ?? 
+    (blockResults || []).reduce((total, r) => total + (r?.earnedPoints || 0), 0);
+  
+  const maxScore = attempt.maxScore ?? stateData.maxScore ?? 
+    (blockResults || []).reduce((total, r) => total + (r?.maxPoints || 0), 0);
+  
+  const resultPercentage = attempt.percentage ?? stateData.percentage;
+  
+  const calculatedPercentage = maxScore > 0 
+    ? Math.round((score / maxScore) * 100) 
     : 0;
   
   const displayPercentage = resultPercentage !== undefined 
     ? resultPercentage 
     : calculatedPercentage;
 
-  console.log('📊 Valeurs calculées:', { 
+  console.log('📊 Valeurs finales:', { 
     displayPercentage, 
-    calculatedScore, 
-    calculatedMaxScore,
+    score, 
+    maxScore,
     resultPercentage,
-    calculatedPercentage
+    calculatedPercentage,
+    blockResults: blockResults?.length,
+    isLoading
   });
 
   // 🎮 GAMIFICATION : Appeler une seule fois au chargement des résultats
   // NE PAS ajouter d'XP si on vient de l'historique !
   useEffect(() => {
     if (
+      !isLoading &&
       displayPercentage !== undefined && 
       !hasCalledGamification.current && 
       !gamifLoading && 
@@ -89,9 +169,41 @@ export default function ApprenantExercisesResults() {
     } else if (fromHistory) {
       console.log('📊 Historique: Consultation d\'un résultat existant, pas d\'XP ajoutés');
     }
-  }, [displayPercentage, onExerciseCompleted, gamifLoading, gamificationData, fromHistory]);
+  }, [displayPercentage, onExerciseCompleted, gamifLoading, gamificationData, fromHistory, isLoading]);
 
-  if (!results && !stateData) {
+  // ✅ Affichage du loading pendant le chargement
+  if (isLoading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '400px',
+        flexDirection: 'column',
+        gap: '16px'
+      }}>
+        <div style={{ 
+          fontSize: '48px',
+          animation: 'pulse 2s ease-in-out infinite'
+        }}>
+          ⏳
+        </div>
+        <p style={{ 
+          fontSize: '16px', 
+          color: '#64748b', 
+          fontWeight: '500' 
+        }}>
+          Chargement des résultats...
+        </p>
+      </div>
+    );
+  }
+
+  // ✅ Vérification améliorée : afficher un message si pas de données valides
+  const totalQuestions = blockResults?.length || 0;
+  const hasValidData = score > 0 || maxScore > 0 || totalQuestions > 0 || attempt.completedAt;
+  
+  if (!hasValidData) {
     return (
       <div style={{ 
         display: 'flex', 
@@ -99,13 +211,19 @@ export default function ApprenantExercisesResults() {
         alignItems: 'center', 
         justifyContent: 'center', 
         minHeight: '400px',
-        gap: '16px'
+        gap: '16px',
+        padding: '40px'
       }}>
-        <p style={{ fontSize: '16px', color: '#64748b', fontWeight: '500' }}>
-          Aucun résultat disponible
+        <div style={{ fontSize: '48px' }}>📊</div>
+        <h2 style={{ color: '#1e293b', margin: 0, fontSize: '20px', fontWeight: '700' }}>
+          Résultats non disponibles
+        </h2>
+        <p style={{ color: '#64748b', textAlign: 'center', margin: 0 }}>
+          Les détails de cet exercice ne sont plus disponibles.<br/>
+          Le score est visible dans l'historique.
         </p>
         <button 
-          onClick={() => navigate(fromHistory ? '/apprenant/historique' : -1)}
+          onClick={() => navigate('/apprenant/historique')}
           style={{
             padding: '12px 24px',
             background: '#3b82f6',
@@ -114,32 +232,27 @@ export default function ApprenantExercisesResults() {
             borderRadius: '10px',
             cursor: 'pointer',
             fontWeight: '600',
-            fontSize: '14px'
+            fontSize: '14px',
+            marginTop: '8px'
           }}
         >
-          {fromHistory ? 'Retour à l\'historique' : 'Retour'}
+          Retour à l'historique
         </button>
       </div>
     );
   }
   
-  // Debug logs
-  console.log('📊 Données résultats:', {
+  // ✅ Calculer les stats depuis blockResults
+  const correctCount = (blockResults || []).filter(r => r?.isCorrect).length;
+  const incorrectCount = (blockResults || []).filter(r => !r?.isCorrect).length;
+  
+  console.log('✅ Stats finales affichage:', {
+    displayPercentage,
     score,
     maxScore,
-    resultPercentage,
-    blockResults,
-    results
-  });
-  
-  const correctCount = blockResults.filter(r => r.isCorrect).length;
-  const incorrectCount = blockResults.filter(r => !r.isCorrect).length;
-  
-  console.log('✅ Pourcentage final:', {
-    displayPercentage,
-    calculatedScore,
-    calculatedMaxScore,
-    calculatedPercentage
+    correctCount,
+    incorrectCount,
+    totalQuestions: blockResults?.length
   });
 
   const formatDuration = (seconds) => {
@@ -327,7 +440,7 @@ export default function ApprenantExercisesResults() {
                 color: '#1e293b',
                 marginBottom: '2px'
               }}>
-                {calculatedScore}/{calculatedMaxScore} points
+                {score}/{maxScore} points
               </div>
               <div style={{
                 fontSize: '13px',
@@ -392,7 +505,7 @@ export default function ApprenantExercisesResults() {
               <Clock size={18} color="#3b82f6" />
               <div>
                 <div style={{ fontSize: '18px', fontWeight: '700', color: '#3b82f6', lineHeight: 1 }}>
-                  {formatDuration(duration)}
+                  {formatDuration(duration || 0)}
                 </div>
                 <div style={{ fontSize: '11px', color: '#64748b' }}>Durée</div>
               </div>
@@ -422,89 +535,101 @@ export default function ApprenantExercisesResults() {
           </h2>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {blockResults.map((result, index) => {
-              const isCorrect = result.isCorrect;
+            {/* ✅ Protection contre undefined avec valeur par défaut */}
+            {blockResults && blockResults.length > 0 ? (
+              blockResults.map((result, index) => {
+                const isCorrect = result?.isCorrect;
 
-              return (
-                <div
-                  key={result.blockId}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '16px',
-                    background: isCorrect ? '#f0fdf4' : '#fef2f2',
-                    borderRadius: '12px',
-                    border: `1px solid ${isCorrect ? '#bbf7d0' : '#fecaca'}`,
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                    {/* Icône statut */}
-                    <div style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '10px',
-                      background: isCorrect ? '#10b981' : '#ef4444',
+                return (
+                  <div
+                    key={result?.blockId || index}
+                    style={{
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      {isCorrect 
-                        ? <CheckCircle2 size={20} color="white" />
-                        : <XCircle size={20} color="white" />
-                      }
-                    </div>
-
-                    {/* Infos exercice */}
-                    <div>
+                      justifyContent: 'space-between',
+                      padding: '16px',
+                      background: isCorrect ? '#f0fdf4' : '#fef2f2',
+                      borderRadius: '12px',
+                      border: `1px solid ${isCorrect ? '#bbf7d0' : '#fecaca'}`,
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      {/* Icône statut */}
                       <div style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '10px',
+                        background: isCorrect ? '#10b981' : '#ef4444',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '8px',
-                        fontSize: '15px',
-                        fontWeight: '600',
-                        color: '#1e293b',
-                        marginBottom: '4px'
+                        justifyContent: 'center'
                       }}>
-                        <span style={{
+                        {isCorrect 
+                          ? <CheckCircle2 size={20} color="white" />
+                          : <XCircle size={20} color="white" />
+                        }
+                      </div>
+
+                      {/* Infos exercice */}
+                      <div>
+                        <div style={{
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center',
-                          width: '24px',
-                          height: '24px',
-                          borderRadius: '6px',
-                          background: isCorrect ? '#dcfce7' : '#fee2e2',
-                          color: isCorrect ? '#16a34a' : '#dc2626'
+                          gap: '8px',
+                          fontSize: '15px',
+                          fontWeight: '600',
+                          color: '#1e293b',
+                          marginBottom: '4px'
                         }}>
-                          {getExerciseIcon(result.type)}
-                        </span>
-                        {index + 1}. {getExerciseLabel(result.type)}
-                      </div>
-                      <div style={{
-                        fontSize: '13px',
-                        color: isCorrect ? '#16a34a' : '#dc2626',
-                        fontWeight: '500'
-                      }}>
-                        {isCorrect ? 'Bonne réponse !' : 'Réponse incorrecte'}
+                          <span style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '6px',
+                            background: isCorrect ? '#dcfce7' : '#fee2e2',
+                            color: isCorrect ? '#16a34a' : '#dc2626'
+                          }}>
+                            {getExerciseIcon(result?.type)}
+                          </span>
+                          {index + 1}. {getExerciseLabel(result?.type)}
+                        </div>
+                        <div style={{
+                          fontSize: '13px',
+                          color: isCorrect ? '#16a34a' : '#dc2626',
+                          fontWeight: '500'
+                        }}>
+                          {isCorrect ? 'Bonne réponse !' : 'Réponse incorrecte'}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Points */}
-                  <div style={{
-                    padding: '8px 14px',
-                    background: 'white',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '700',
-                    color: isCorrect ? '#10b981' : '#ef4444'
-                  }}>
-                    {Math.round(result.earnedPoints) || 0}/{result.maxPoints || 0} pts
+                    {/* Points */}
+                    <div style={{
+                      padding: '8px 14px',
+                      background: 'white',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '700',
+                      color: isCorrect ? '#10b981' : '#ef4444'
+                    }}>
+                      {Math.round(result?.earnedPoints) || 0}/{result?.maxPoints || 0} pts
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            ) : (
+              <p style={{ 
+                color: '#64748b', 
+                textAlign: 'center', 
+                padding: '40px 20px',
+                fontSize: '15px'
+              }}>
+                Aucun détail disponible pour cet exercice.
+              </p>
+            )}
           </div>
         </div>
 

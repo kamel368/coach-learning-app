@@ -18,34 +18,31 @@ import {
 const ApprenantHistorique = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { attempts, programStats, loading } = useHistorique(user?.uid);
-  const [filter, setFilter] = useState('all');
+  // ✅ Utiliser filter et setFilter du hook pour éviter le double filtrage
+  const { attempts, allAttempts, programStats, loading, filter, setFilter } = useHistorique(user?.uid);
   const [hoveredBar, setHoveredBar] = useState(null);
 
-  // Filtrer les tentatives
-  const filteredAttempts = attempts.filter(a => {
-    if (filter === 'all') return true;
-    if (filter === 'exercises') return a.type === 'exercise';
-    if (filter === 'evaluations') return a.type === 'evaluation';
-    return true;
-  });
-
-  // Stats globales
+  // Les tentatives sont déjà filtrées par le hook
+  const filteredAttempts = attempts;
+  
+  // Stats globales (sur TOUTES les tentatives, pas seulement les filtrées)
   const stats = {
-    totalAttempts: attempts.length,
-    averageScore: attempts.length > 0 
-      ? Math.round(attempts.reduce((sum, a) => sum + (a.percentage || 0), 0) / attempts.length)
+    totalAttempts: allAttempts.length,
+    averageScore: allAttempts.length > 0 
+      ? Math.round(allAttempts.reduce((sum, a) => sum + (a.percentage || 0), 0) / allAttempts.length)
       : 0,
-    bestScore: attempts.length > 0 
-      ? Math.max(...attempts.map(a => a.percentage || 0))
+    bestScore: allAttempts.length > 0 
+      ? Math.max(...allAttempts.map(a => a.percentage || 0))
       : 0
   };
 
-  // Évaluations pour la courbe
-  const evaluations = attempts
+  // Évaluations pour la courbe (sur toutes les tentatives)
+  // allAttempts est déjà trié par date décroissante (plus récent en premier)
+  // On prend les 10 plus récentes et on inverse pour avoir l'ordre chronologique pour la courbe
+  const evaluations = allAttempts
     .filter(a => a.type === 'evaluation')
-    .sort((a, b) => new Date(a.completedAt) - new Date(b.completedAt))
-    .slice(-10);
+    .slice(0, 10)
+    .reverse(); // Inverser pour avoir le plus ancien en premier dans la courbe
 
   const averageEval = evaluations.length > 0
     ? Math.round(evaluations.reduce((sum, e) => sum + e.percentage, 0) / evaluations.length)

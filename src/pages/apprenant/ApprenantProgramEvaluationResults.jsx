@@ -24,9 +24,9 @@ export default function ApprenantProgramEvaluationResults() {
   const { programId } = useParams();
   
   // Récupérer les données soit du state normal, soit de l'historique
-  const stateData = location.state;
-  const fromHistory = stateData?.fromHistory;
-  const attempt = stateData?.attempt;
+  const stateData = location.state || {};
+  const fromHistory = stateData.fromHistory || false;
+  const attempt = stateData.attempt;
 
   // 🐛 DEBUG : Afficher toutes les données reçues
   console.log('📊 Données reçues ApprenantProgramEvaluationResults:', { 
@@ -40,22 +40,52 @@ export default function ApprenantProgramEvaluationResults() {
   const { onEvaluationCompleted, loading: gamifLoading, gamificationData } = useGamification(user?.uid);
   const hasCalledGamification = useRef(false);
 
-  // Si on vient de l'historique, utiliser les données de attempt en priorité
-  const percentage = attempt?.percentage ?? stateData?.percentage ?? 0;
-  const score = attempt?.score ?? attempt?.earnedPoints ?? stateData?.score ?? 0;
-  const maxScore = attempt?.maxScore ?? attempt?.totalPoints ?? stateData?.maxScore ?? 0;
-  const earnedPoints = attempt?.earnedPoints ?? score;
-  const totalPoints = attempt?.totalPoints ?? maxScore;
-  const duration = attempt?.duration ?? stateData?.duration ?? 0;
-  const exerciseResults = attempt?.results ?? stateData?.results ?? [];
+  // ✅ CORRECTION : Gérer les deux structures de données différentes
+  let percentage, earnedPoints, totalPoints, duration, exerciseResults;
+
+  if (fromHistory && attempt) {
+    // CAS 1 : Depuis l'historique
+    percentage = attempt.percentage ?? 0;
+    earnedPoints = attempt.earnedPoints ?? attempt.score ?? 0;
+    totalPoints = attempt.totalPoints ?? attempt.maxScore ?? 0;
+    duration = attempt.duration ?? 0;
+    exerciseResults = attempt.results ?? [];
+    
+    console.log('📊 Source: Historique', { percentage, earnedPoints, totalPoints, exerciseResults: exerciseResults.length });
+  } else if (stateData.results) {
+    // CAS 2 : Depuis l'évaluation normale
+    // stateData.results contient l'objet retourné par submitEvaluation
+    const resultsObj = stateData.results;
+    
+    percentage = resultsObj.score ?? 0;
+    earnedPoints = resultsObj.earnedPoints ?? 0;
+    totalPoints = resultsObj.totalPoints ?? 0;
+    duration = stateData.duration ?? 0;
+    exerciseResults = resultsObj.results ?? [];
+    
+    console.log('📊 Source: Évaluation normale', { percentage, earnedPoints, totalPoints, exerciseResults: exerciseResults.length });
+  } else {
+    // CAS 3 : Pas de données valides
+    percentage = 0;
+    earnedPoints = 0;
+    totalPoints = 0;
+    duration = 0;
+    exerciseResults = [];
+    
+    console.warn('⚠️ Aucune donnée valide trouvée');
+  }
+
+  // S'assurer que exerciseResults est un tableau
+  if (!Array.isArray(exerciseResults)) {
+    console.warn('⚠️ exerciseResults n\'est pas un tableau, conversion...', typeof exerciseResults);
+    exerciseResults = Object.values(exerciseResults || {});
+  }
 
   // Pour l'affichage
   const displayPercentage = percentage;
-
+  
   console.log('📊 Valeurs finales:', { 
     percentage, 
-    score, 
-    maxScore, 
     earnedPoints, 
     totalPoints,
     displayPercentage,
@@ -80,8 +110,8 @@ export default function ApprenantProgramEvaluationResults() {
     }
   }, [displayPercentage, onEvaluationCompleted, gamifLoading, gamificationData, fromHistory]);
 
-  // Vérification de sécurité
-  if (!stateData) {
+  // ✅ Vérification améliorée : afficher un message si pas de données valides
+  if (percentage === 0 && earnedPoints === 0 && totalPoints === 0 && exerciseResults.length === 0) {
     return (
       <div style={{ 
         display: 'flex', 
@@ -89,10 +119,16 @@ export default function ApprenantProgramEvaluationResults() {
         alignItems: 'center', 
         justifyContent: 'center', 
         minHeight: '400px',
-        gap: '16px'
+        gap: '16px',
+        padding: '40px'
       }}>
-        <p style={{ fontSize: '16px', color: '#64748b', fontWeight: '500' }}>
-          Aucun résultat disponible
+        <div style={{ fontSize: '48px' }}>🏆</div>
+        <h2 style={{ color: '#1e293b', margin: 0, fontSize: '20px', fontWeight: '700' }}>
+          Résultats non disponibles
+        </h2>
+        <p style={{ color: '#64748b', textAlign: 'center', margin: 0 }}>
+          Les données de cette évaluation ne sont plus disponibles.<br/>
+          Consultez l'historique pour voir vos résultats.
         </p>
         <button 
           onClick={() => navigate(fromHistory ? '/apprenant/historique' : `/apprenant/programs/${programId}`)}
@@ -104,18 +140,23 @@ export default function ApprenantProgramEvaluationResults() {
             borderRadius: '10px',
             cursor: 'pointer',
             fontWeight: '600',
-            fontSize: '14px'
+            fontSize: '14px',
+            marginTop: '8px'
           }}
         >
-          {fromHistory ? 'Retour à l\'historique' : 'Retour'}
+          {fromHistory ? 'Retour à l\'historique' : 'Retour au programme'}
         </button>
       </div>
     );
   }
   
-  // Compter les bonnes/mauvaises réponses
-  const correctCount = exerciseResults?.filter(r => r.isCorrect).length || 0;
-  const incorrectCount = exerciseResults?.filter(r => !r.isCorrect).length || 0;
+  // ✅ Compter les bonnes/mauvaises réponses avec protection contre les objets
+  const correctCount = Array.isArray(exerciseResults) 
+    ? exerciseResults.filter(r => r?.isCorrect).length 
+    : 0;
+  const incorrectCount = Array.isArray(exerciseResults) 
+    ? exerciseResults.filter(r => !r?.isCorrect).length 
+    : 0;
 
   const formatDuration = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -384,8 +425,10 @@ export default function ApprenantProgramEvaluationResults() {
           </h2>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {(exerciseResults || []).map((result, index) => {
-              const isCorrect = result?.isCorrect;
+            {/* ✅ Protection contre les objets : vérifier que c'est bien un tableau */}
+            {Array.isArray(exerciseResults) && exerciseResults.length > 0 ? (
+              exerciseResults.map((result, index) => {
+                const isCorrect = result?.isCorrect;
 
                 return (
                 <div
@@ -480,7 +523,17 @@ export default function ApprenantProgramEvaluationResults() {
                   </div>
                 </div>
               );
-            })}
+            })
+            ) : (
+              <p style={{ 
+                color: '#64748b', 
+                textAlign: 'center', 
+                padding: '40px 20px',
+                fontSize: '15px'
+              }}>
+                Aucun détail disponible pour cette évaluation.
+              </p>
+            )}
           </div>
         </div>
 

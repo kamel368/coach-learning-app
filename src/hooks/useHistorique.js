@@ -102,13 +102,17 @@ export function useHistorique(userId) {
           programName: programName,
           moduleId: null,
           moduleName: null,
+          // ✅ CORRECTION : Inclure tous les champs nécessaires
           score: evalData.earnedPoints || evalData.score || 0,
           maxScore: evalData.totalPoints || evalData.maxScore || 100,
+          earnedPoints: evalData.earnedPoints || evalData.score || 0,
+          totalPoints: evalData.totalPoints || evalData.maxScore || 100,
           percentage: evalData.score || evalData.percentage || 0,
           duration: evalData.duration || 0,
           completedAt: evalData.completedAt,
           passed: (evalData.score || evalData.percentage || 0) >= 50,
-          results: evalData.results || []
+          results: evalData.results || [],
+          answers: evalData.answers || {}
         };
       });
     } catch (error) {
@@ -219,12 +223,56 @@ export function useHistorique(userId) {
 
         // 4. Trier par date (plus récent en premier)
         allAttempts.sort((a, b) => {
-          const dateA = a.completedAt?.toDate?.() || a.completedAt || new Date(0);
-          const dateB = b.completedAt?.toDate?.() || b.completedAt || new Date(0);
-          return dateB - dateA;
+          // 🔧 Fonction helper pour convertir en timestamp
+          const getTimestamp = (completedAt) => {
+            if (!completedAt) return 0;
+            
+            // Cas 1 : Firebase Timestamp avec toDate()
+            if (typeof completedAt.toDate === 'function') {
+              return completedAt.toDate().getTime();
+            }
+            
+            // Cas 2 : Objet Date JavaScript
+            if (completedAt instanceof Date) {
+              return completedAt.getTime();
+            }
+            
+            // Cas 3 : Timestamp Firebase avec seconds
+            if (completedAt.seconds !== undefined) {
+              return completedAt.seconds * 1000;
+            }
+            
+            // Cas 4 : String ISO
+            if (typeof completedAt === 'string') {
+              return new Date(completedAt).getTime();
+            }
+            
+            // Cas 5 : Nombre (timestamp)
+            if (typeof completedAt === 'number') {
+              return completedAt;
+            }
+            
+            return 0;
+          };
+          
+          const timestampA = getTimestamp(a.completedAt);
+          const timestampB = getTimestamp(b.completedAt);
+          
+          return timestampB - timestampA; // Plus récent en premier
         });
 
         console.log('✅ Total tentatives chargées:', allAttempts.length);
+        
+        // 🐛 DEBUG : Vérifier le tri (afficher les 5 premières dates)
+        if (allAttempts.length > 0) {
+          console.log('📅 Ordre chronologique (5 premiers):', 
+            allAttempts.slice(0, 5).map(a => ({
+              type: a.type,
+              date: a.completedAt?.toDate?.() || a.completedAt,
+              percentage: a.percentage
+            }))
+          );
+        }
 
         // 5. Calculer les stats globales
         const totalAttempts = allAttempts.length;
