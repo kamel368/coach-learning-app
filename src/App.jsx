@@ -9,7 +9,15 @@ import { useState, useEffect } from "react";
 
 // Pages Auth
 import Login from "./pages/login";
+import RegisterPage from "./pages/RegisterPage";
 import { Menu } from "lucide-react";
+
+// Pages Super Admin
+import SuperAdminLayout from "./layouts/SuperAdminLayout";
+import SuperAdminDashboard from "./pages/superadmin/SuperAdminDashboard";
+import SuperAdminOrganizations from "./pages/superadmin/SuperAdminOrganizations";
+import SuperAdminUsers from "./pages/superadmin/SuperAdminUsers";
+import SuperAdminSettings from "./pages/superadmin/SuperAdminSettings";
 
 // Pages Admin
 import Dashboard from "./pages/Dashboard";
@@ -20,6 +28,7 @@ import AdminQuiz from "./pages/AdminQuiz";
 import AdminAIExercises from "./pages/AdminAIExercises";
 import AdminUsers from "./pages/AdminUsers";
 import MigrationPage from "./pages/admin/MigrationPage";
+import EmployeeDetailPage from "./pages/admin/EmployeeDetailPage";
 
 // ✅ Nouvelle page Teachizy-like
 import LessonEditorPage from "./pages/LessonEditorPage";
@@ -55,7 +64,9 @@ function AppContent() {
   const isFullScreen = 
   (location.pathname.includes('/lessons/') && location.pathname.includes('/edit')) ||
   location.pathname.startsWith('/apprenant') || // ✅ Masquer sidebar sur pages apprenant
+  location.pathname.startsWith('/superadmin') || // ✅ Masquer sidebar sur pages super admin
   location.pathname === '/login' ||
+  location.pathname === '/register' ||
   location.pathname === '/';
 
   // Détecter la taille d'écran et ajuster le comportement
@@ -138,6 +149,22 @@ function AppContent() {
           {/* Toutes tes routes existantes... */}
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<RegisterPage />} />
+
+          {/* Routes Super Admin avec layout spécifique */}
+          <Route
+            path="/superadmin"
+            element={
+              <ProtectedRoute allowedRoles={['superadmin']}>
+                <SuperAdminLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="dashboard" element={<SuperAdminDashboard />} />
+            <Route path="organizations" element={<SuperAdminOrganizations />} />
+            <Route path="users" element={<SuperAdminUsers />} />
+            <Route path="settings" element={<SuperAdminSettings />} />
+          </Route>
 
           {/* Routes Admin */}
           <Route
@@ -237,6 +264,14 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <AdminUsers />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/employees/:employeeId"
+            element={
+              <ProtectedRoute>
+                <EmployeeDetailPage />
               </ProtectedRoute>
             }
           />

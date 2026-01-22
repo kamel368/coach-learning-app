@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { auth, db } from "../firebase";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
 
 export default function Login() {
@@ -24,13 +24,22 @@ export default function Login() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
 
-      // 2. Charger le rôle depuis Firestore
+      // 2. Vérifier si Super Admin EN PREMIER (priorité absolue)
+      const superAdminDoc = await getDoc(doc(db, "platformAdmins", firebaseUser.uid));
+      
+      if (superAdminDoc.exists() && superAdminDoc.data().role === "superadmin") {
+        console.log("🛡️ Super Admin détecté, redirection vers /superadmin/dashboard");
+        navigate("/superadmin/dashboard");
+        return;
+      }
+
+      // 3. Sinon, charger le rôle depuis Firestore
       const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
       const userRole = userDoc.exists() ? userDoc.data().role : "learner";
 
-      // 3. Rediriger selon le rôle
+      // 4. Rediriger selon le rôle
       console.log("🔄 Redirection utilisateur - Rôle:", userRole);
-      if (userRole === "admin") {
+      if (userRole === "admin" || userRole === "trainer") {
         console.log("→ Redirection vers /admin");
         navigate("/admin");
       } else {
@@ -240,6 +249,26 @@ export default function Login() {
             Mot de passe oublié ?
           </button>
         </div>
+
+        {/* Lien inscription */}
+        <p style={{ 
+          textAlign: "center", 
+          marginTop: 24, 
+          color: "#64748b", 
+          fontSize: 14 
+        }}>
+          Pas encore de compte ?{' '}
+          <Link 
+            to="/register" 
+            style={{ 
+              color: "#667eea", 
+              fontWeight: 600, 
+              textDecoration: "none" 
+            }}
+          >
+            Créer mon espace
+          </Link>
+        </p>
       </div>
     </div>
   );

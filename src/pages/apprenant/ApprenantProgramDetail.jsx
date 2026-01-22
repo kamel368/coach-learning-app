@@ -5,10 +5,15 @@ import { db, auth } from '../../firebase';
 import { getUserProgramProgress } from '../../services/progressionService';
 import { ArrowLeft, BookOpen, TrendingUp, ChevronRight, Lock, PlayCircle } from 'lucide-react';
 import { apprenantTheme, cardStyles } from '../../styles/apprenantTheme';
+import { useViewAs } from '../../hooks/useViewAs';
+import ViewAsBanner from '../../components/ViewAsBanner';
 
 export default function ApprenantProgramDetail() {
   const { programId } = useParams();
   const navigate = useNavigate();
+  
+  // Mode "Voir comme"
+  const { targetUserId } = useViewAs();
   
   const [program, setProgram] = useState(null);
   const [modules, setModules] = useState([]);
@@ -22,7 +27,7 @@ export default function ApprenantProgramDetail() {
   async function loadData() {
     try {
       const user = auth.currentUser;
-      if (!user) {
+      if (!user && !targetUserId) {
         navigate('/login');
         return;
       }
@@ -60,8 +65,8 @@ export default function ApprenantProgramDetail() {
 
       setModules(modulesData);
 
-      // Récupérer la progression utilisateur
-      const progress = await getUserProgramProgress(user.uid, programId);
+      // Récupérer la progression utilisateur (utiliser targetUserId en mode viewAs)
+      const progress = await getUserProgramProgress(targetUserId, programId);
       setUserProgress(progress);
 
     } catch (error) {
@@ -132,9 +137,13 @@ export default function ApprenantProgramDetail() {
   }
 
   return (
-    <div style={{
-      minHeight: '100%',
-      background: apprenantTheme.colors.bgApp
+    <>
+      {/* Bandeau Mode Voir comme */}
+      <ViewAsBanner />
+      
+      <div style={{
+        minHeight: '100%',
+        background: apprenantTheme.colors.bgApp
     }}>
       <div style={{
         maxWidth: '1000px',
@@ -583,5 +592,6 @@ export default function ApprenantProgramDetail() {
         </div>
       </div>
     </div>
+    </>
   );
 }

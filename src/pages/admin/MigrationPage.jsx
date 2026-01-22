@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { migrationStep1 } from '../../scripts/migration/migrationStep1';
 import { migrationStep2 } from '../../scripts/migration/migrationStep2';
 import { migrationStep3 } from '../../scripts/migration/migrationStep3';
+import { migrationAddEmployeeFields } from '../../scripts/migration/migrationAddEmployeeFields';
 
 const MigrationPage = () => {
   const [logs, setLogs] = useState([]);
@@ -64,6 +65,25 @@ const MigrationPage = () => {
         if (result.errors > 0) {
           addLog(`⚠️ ${result.errors} erreur(s) rencontrée(s).`, 'error');
         }
+      } else {
+        addLog('❌ Erreur: ' + result.error?.message, 'error');
+      }
+    } catch (error) {
+      addLog('❌ Erreur: ' + error.message, 'error');
+    }
+    
+    setRunning(false);
+  };
+
+  const runAddFields = async () => {
+    setRunning(true);
+    setLogs([]);
+    addLog('🚀 Ajout des champs poste/contrat...', 'info');
+    
+    try {
+      const result = await migrationAddEmployeeFields();
+      if (result.success) {
+        addLog(`✅ Terminé ! ${result.employees} employees + ${result.users} users mis à jour.`, 'success');
       } else {
         addLog('❌ Erreur: ' + result.error?.message, 'error');
       }
@@ -144,6 +164,22 @@ const MigrationPage = () => {
           }}
         >
           {running ? '⏳ En cours...' : '▶️ Exécuter Step 3 (Programs)'}
+        </button>
+
+        <button
+          onClick={runAddFields}
+          disabled={running}
+          style={{
+            padding: '12px 24px',
+            background: running ? '#94a3b8' : '#f59e0b',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontWeight: '600',
+            cursor: running ? 'not-allowed' : 'pointer'
+          }}
+        >
+          {running ? '⏳ En cours...' : '▶️ Ajouter champs poste/contrat'}
         </button>
       </div>
 

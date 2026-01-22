@@ -3,15 +3,17 @@ import { auth } from '../../firebase';
 import { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { Menu, X, BookOpen, User, LogOut, BarChart3, Zap, Flame } from 'lucide-react';
+import { Menu, X, BookOpen, User, LogOut, BarChart3, Zap, Flame, Eye } from 'lucide-react';
 import { apprenantTheme } from '../../styles/apprenantTheme';
 import { useGamification } from '../../hooks/useGamification';
+import { useAuth } from '../../context/AuthContext';
 
 export default function ApprenantLayout() {
   const navigate = useNavigate();
   const [userName, setUserName] = useState('Apprenant');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const user = auth.currentUser;
+  const { viewAsUserId, disableViewAs } = useAuth();
   
   // 🎮 GAMIFICATION : Charger les données XP et streak
   const { gamificationData, currentLevel, loading: gamifLoading } = useGamification(user?.uid);
@@ -91,6 +93,52 @@ export default function ApprenantLayout() {
         background: apprenantTheme.colors.bgSecondary,
         overflow: 'hidden'
       }}>
+        {/* Bandeau Mode "Voir comme" */}
+        {viewAsUserId && (
+          <div style={{
+            background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+            color: 'white',
+            padding: '10px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '12px',
+            fontSize: '14px',
+            fontWeight: '600',
+            boxShadow: '0 2px 10px rgba(139, 92, 246, 0.3)',
+            zIndex: 101
+          }}>
+            <Eye size={18} />
+            <span>Mode "Voir comme" activé - Vous consultez le compte de {localStorage.getItem('viewAsUserEmail')}</span>
+            <button
+              onClick={() => {
+                if (window.confirm('Quitter le mode "Voir comme" et revenir à votre compte admin ?')) {
+                  disableViewAs();
+                }
+              }}
+              style={{
+                padding: '6px 12px',
+                background: 'rgba(255, 255, 255, 0.2)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '6px',
+                color: 'white',
+                fontSize: '13px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+              }}
+            >
+              ✕ Quitter
+            </button>
+          </div>
+        )}
+        
         {/* Header */}
         <header style={{
           background: apprenantTheme.colors.bgPrimary,

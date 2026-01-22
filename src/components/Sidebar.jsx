@@ -18,12 +18,12 @@ export const SIDEBAR_WIDTH_COLLAPSED = 60;
 export default function Sidebar({ isOpen, setIsOpen }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout, currentUser } = useContext(AuthContext);
+  const { logout, user } = useContext(AuthContext);
 
 const handleLogout = async () => {
   console.log('🚪 Logout clicked!');
   console.log('🔍 logout function:', typeof logout);
-  console.log('🔍 currentUser:', currentUser);
+  console.log('🔍 user:', user);
   
   try {
     if (!logout) {
@@ -219,7 +219,7 @@ const handleLogout = async () => {
 
       {/* Footer */}
       <div style={{ marginTop: '24px' }}>
-        {currentUser && (
+        {user && (
           <span
             style={{
               display: 'block',
@@ -231,7 +231,7 @@ const handleLogout = async () => {
               transition: 'all 0.3s',
             }}
           >
-            {isOpen ? currentUser.email : '👤'}
+            {isOpen ? user.email : '👤'}
           </span>
         )}
         <button

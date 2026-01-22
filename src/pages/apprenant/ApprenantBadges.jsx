@@ -2,6 +2,8 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../../firebase';
 import { useGamification, BADGES_CONFIG, LEVELS } from '../../hooks/useGamification';
+import { useViewAs } from '../../hooks/useViewAs';
+import ViewAsBanner from '../../components/ViewAsBanner';
 import { 
   Trophy, 
   Zap, 
@@ -15,13 +17,17 @@ import {
 const ApprenantBadges = () => {
   const navigate = useNavigate();
   const user = auth.currentUser;
+  
+  // Mode "Voir comme"
+  const { targetUserId } = useViewAs();
+  
   const { 
     gamificationData, 
     currentLevel, 
     levelProgress, 
     unlockedBadges,
     loading 
-  } = useGamification(user?.uid);
+  } = useGamification(targetUserId);
 
   if (loading) {
     return (
@@ -56,8 +62,12 @@ const ApprenantBadges = () => {
   const totalCount = allBadges.length;
 
   return (
-    <div style={{
-      minHeight: '100vh',
+    <>
+      {/* Bandeau Mode Voir comme */}
+      <ViewAsBanner />
+      
+      <div style={{
+        minHeight: '100vh',
       background: '#f8fafc',
       padding: '24px'
     }}>
@@ -440,6 +450,7 @@ const ApprenantBadges = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

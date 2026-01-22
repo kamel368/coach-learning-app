@@ -25,20 +25,33 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // Super Admin a accès à tout
-  if (isSuperAdmin) {
-    return children;
+  // Vérifier le rôle si des rôles sont spécifiés
+  if (allowedRoles.length > 0) {
+    // Si 'superadmin' est dans les rôles requis, seul un Super Admin peut accéder
+    if (allowedRoles.includes('superadmin') && !isSuperAdmin) {
+      return <Navigate to="/login" replace />;
+    }
+    
+    // Si Super Admin et que 'superadmin' est requis, laisser passer
+    if (allowedRoles.includes('superadmin') && isSuperAdmin) {
+      return children;
+    }
+    
+    // Pour les autres rôles, vérifier normalement
+    if (!allowedRoles.includes(userRole) && !isSuperAdmin) {
+      // Rediriger selon le rôle
+      if (userRole === 'learner') {
+        return <Navigate to="/apprenant/dashboard" replace />;
+      } else if (userRole === 'admin' || userRole === 'trainer') {
+        return <Navigate to="/admin" replace />;
+      }
+      return <Navigate to="/login" replace />;
+    }
   }
 
-  // Vérifier le rôle si des rôles sont spécifiés
-  if (allowedRoles.length > 0 && !allowedRoles.includes(userRole)) {
-    // Rediriger selon le rôle
-    if (userRole === 'learner') {
-      return <Navigate to="/apprenant/dashboard" replace />;
-    } else if (userRole === 'admin' || userRole === 'trainer') {
-      return <Navigate to="/admin" replace />;
-    }
-    return <Navigate to="/login" replace />;
+  // Super Admin a accès à tout (sauf si 'superadmin' était explicitement requis et traité plus haut)
+  if (isSuperAdmin) {
+    return children;
   }
 
   // Redirection automatique selon le rôle (si pas de allowedRoles spécifié)

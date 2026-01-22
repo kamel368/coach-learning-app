@@ -4,6 +4,8 @@ import { doc, getDoc, collection, getDocs, query, orderBy } from 'firebase/fires
 import { db, auth } from '../../firebase';
 import { markLessonCompleted, updateCurrentLesson } from '../../services/progressionService';
 import { useGamification } from '../../hooks/useGamification';
+import { useViewAs } from '../../hooks/useViewAs';
+import ViewAsBanner from '../../components/ViewAsBanner';
 
 export default function ApprenantLessonViewer() {
   const { programId, moduleId, lessonId } = useParams();
@@ -17,9 +19,12 @@ export default function ApprenantLessonViewer() {
   const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState(false);
 
-  // Hook gamification
+  // Mode "Voir comme"
   const user = auth.currentUser;
-  const { onLessonCompleted } = useGamification(user?.uid);
+  const { targetUserId, isViewingAs } = useViewAs();
+  
+  // Hook gamification
+  const { onLessonCompleted } = useGamification(targetUserId);
 
   useEffect(() => {
     loadData();
@@ -69,8 +74,10 @@ export default function ApprenantLessonViewer() {
       if (currentLesson) {
         setLesson(currentLesson);
         
-        // Marquer comme leçon en cours
-        await updateCurrentLesson(user.uid, programId, lessonId);
+        // Marquer comme leçon en cours (sauf en mode viewAs)
+        if (!isViewingAs) {
+          await updateCurrentLesson(targetUserId, programId, lessonId);
+        }
       }
 
     } catch (error) {
@@ -106,7 +113,7 @@ export default function ApprenantLessonViewer() {
       console.log('📖 Nombre de leçons du module actuel:', allLessons.length);
       
       // Marquer la leçon comme terminée avec le VRAI nombre total de leçons
-      await markLessonCompleted(user.uid, programId, lessonId, totalProgramLessons);
+      await markLessonCompleted(targetUserId, programId, lessonId, totalProgramLessons);
 
       // 🎮 GAMIFICATION : Ajouter XP et badges pour leçon complétée
       if (onLessonCompleted) {
@@ -420,6 +427,9 @@ export default function ApprenantLessonViewer() {
 
   return (
     <>
+      {/* Bandeau Mode Voir comme */}
+      <ViewAsBanner />
+      
       <style>
         {`
           @keyframes fadeIn {

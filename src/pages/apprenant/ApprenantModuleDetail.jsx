@@ -5,6 +5,8 @@ import { db, auth } from '../../firebase';
 import { ArrowLeft, BookOpen, CheckCircle, AlertCircle, ChevronRight, Clock, Award } from 'lucide-react';
 import { apprenantTheme, buttonStyles } from '../../styles/apprenantTheme';
 import { useGamification } from '../../hooks/useGamification';
+import { useViewAs } from '../../hooks/useViewAs';
+import ViewAsBanner from '../../components/ViewAsBanner';
 
 export default function ApprenantModuleDetail() {
   const { programId, moduleId } = useParams();
@@ -18,9 +20,12 @@ export default function ApprenantModuleDetail() {
   const [loading, setLoading] = useState(true);
   const [completedLessons, setCompletedLessons] = useState([]);
 
-  // Hook gamification
+  // Mode "Voir comme"
   const user = auth.currentUser;
-  const { onModuleCompleted, loading: gamifLoading, gamificationData } = useGamification(user?.uid);
+  const { targetUserId } = useViewAs();
+  
+  // Hook gamification
+  const { onModuleCompleted, loading: gamifLoading, gamificationData } = useGamification(targetUserId);
   const moduleCompletionTracked = useRef(new Set());
 
   useEffect(() => {
@@ -47,9 +52,9 @@ export default function ApprenantModuleDetail() {
   async function loadProgress() {
     try {
       const user = auth.currentUser;
-      if (!user || !programId) return;
+      if ((!user && !targetUserId) || !programId) return;
       
-      const progressRef = doc(db, 'userProgress', user.uid, 'programs', programId);
+      const progressRef = doc(db, 'userProgress', targetUserId, 'programs', programId);
       const progressSnap = await getDoc(progressRef);
       
       if (progressSnap.exists()) {
@@ -113,7 +118,7 @@ export default function ApprenantModuleDetail() {
       const attemptsRef = collection(db, 'quizAttempts');
       const attemptsQuery = query(
         attemptsRef,
-        where('userId', '==', user.uid),
+        where('userId', '==', targetUserId),
         where('moduleId', '==', moduleId),
         orderBy('createdAt', 'desc')
       );
@@ -181,9 +186,13 @@ export default function ApprenantModuleDetail() {
   const quizPassed = lastAttempt && lastAttempt.passed;
 
   return (
-    <div style={{
-      minHeight: '100%',
-      background: apprenantTheme.colors.bgApp
+    <>
+      {/* Bandeau Mode Voir comme */}
+      <ViewAsBanner />
+      
+      <div style={{
+        minHeight: '100%',
+        background: apprenantTheme.colors.bgApp
     }}>
       <div style={{
         maxWidth: '1200px',
@@ -745,5 +754,6 @@ export default function ApprenantModuleDetail() {
         </div>
       </div>
     </div>
+    </>
   );
 }

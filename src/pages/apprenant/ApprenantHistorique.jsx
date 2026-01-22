@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useHistorique } from '../../hooks/useHistorique';
+import { useViewAs } from '../../hooks/useViewAs';
+import ViewAsBanner from '../../components/ViewAsBanner';
 import { 
   BarChart3, 
   BookOpen, 
@@ -18,8 +20,12 @@ import {
 const ApprenantHistorique = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  
+  // Mode "Voir comme"
+  const { targetUserId } = useViewAs();
+  
   // ✅ Utiliser filter et setFilter du hook pour éviter le double filtrage
-  const { attempts, allAttempts, programStats, loading, filter, setFilter } = useHistorique(user?.uid);
+  const { attempts, allAttempts, programStats, loading, filter, setFilter } = useHistorique(targetUserId);
   const [hoveredBar, setHoveredBar] = useState(null);
 
   // Les tentatives sont déjà filtrées par le hook
@@ -57,191 +63,196 @@ const ApprenantHistorique = () => {
   }
 
   return (
-    <div style={{ padding: '24px', background: '#f8fafc', minHeight: '100vh' }}>
-      {/* Header */}
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-          <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <BarChart3 size={22} color="white" />
-          </div>
-          Mon Historique
-        </h1>
-        <p style={{ fontSize: '14px', color: '#64748b' }}>Suivez votre progression et vos performances</p>
-      </div>
-
-      {/* Stats Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '24px' }}>
-        <StatCard icon={Target} label="Tentatives" value={stats.totalAttempts} color="#3b82f6" />
-        <StatCard icon={TrendingUp} label="Score moyen" value={`${stats.averageScore}%`} color="#8b5cf6" />
-        <StatCard icon={Trophy} label="Meilleur" value={`${stats.bestScore}%`} color="#10b981" />
-      </div>
-
-      {/* Layout 50/50 */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-        gap: '24px',
-        alignItems: 'stretch'  // ← Alignement des hauteurs
-      }}>
-        {/* COLONNE GAUCHE : 3 Graphiques empilés */}
-        <div style={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          gap: '16px',
-          height: 'fit-content'  // ← Hauteur auto selon contenu
-        }}>
-          
-          {/* Graphique 1 : Progression lecture */}
-          <div style={{ 
-            background: 'white', 
-            borderRadius: '16px', 
-            padding: '20px', 
-            boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-              <BookOpen size={18} color="#3b82f6" />
-              <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#1e293b' }}>Progression lecture</h3>
+    <>
+      {/* Bandeau Mode Voir comme */}
+      <ViewAsBanner />
+      
+      <div style={{ padding: '24px', background: '#f8fafc', minHeight: '100vh' }}>
+        {/* Header */}
+        <div style={{ marginBottom: '24px' }}>
+          <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+            <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <BarChart3 size={22} color="white" />
             </div>
-            <div style={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: '8px', 
-              maxHeight: '180px', 
-              overflowY: 'auto'
-            }}>
-              {programStats.map((prog, index) => (
-                <BarRow
-                  key={`read-${prog.programId}`}
-                  label={prog.programName}
-                  value={prog.readingProgress}
-                  color="#3b82f6"
-                  isHovered={hoveredBar === `read-${index}`}
-                  onHover={() => setHoveredBar(`read-${index}`)}
-                  onLeave={() => setHoveredBar(null)}
-                />
-              ))}
-              {programStats.length === 0 && (
-                <p style={{ fontSize: '13px', color: '#94a3b8', textAlign: 'center', padding: '20px' }}>Aucun programme</p>
-              )}
-            </div>
-          </div>
-
-          {/* Graphique 2 : Score exercices */}
-          <div style={{ 
-            background: 'white', 
-            borderRadius: '16px', 
-            padding: '20px', 
-            boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-              <Zap size={18} color="#10b981" />
-              <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#1e293b' }}>Score exercices</h3>
-            </div>
-            <div style={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: '8px', 
-              maxHeight: '180px', 
-              overflowY: 'auto'
-            }}>
-              {programStats.map((prog, index) => (
-                <BarRow
-                  key={`ex-${prog.programId}`}
-                  label={prog.programName}
-                  value={prog.exerciseScore}
-                  color="#10b981"
-                  isHovered={hoveredBar === `ex-${index}`}
-                  onHover={() => setHoveredBar(`ex-${index}`)}
-                  onLeave={() => setHoveredBar(null)}
-                />
-              ))}
-              {programStats.length === 0 && (
-                <p style={{ fontSize: '13px', color: '#94a3b8', textAlign: 'center', padding: '20px' }}>Aucun programme</p>
-              )}
-            </div>
-          </div>
-
-          {/* Graphique 3 : Progression Évaluations */}
-          <div style={{ background: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-              <TrendingUp size={18} color="#8b5cf6" />
-              <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#1e293b' }}>Progression Évaluations</h3>
-            </div>
-            <CurveChart evaluations={evaluations} average={averageEval} />
-          </div>
+            Mon Historique
+          </h1>
+          <p style={{ fontSize: '14px', color: '#64748b' }}>Suivez votre progression et vos performances</p>
         </div>
 
-        {/* COLONNE DROITE : Liste des tentatives */}
-        <div style={{ 
-          background: 'white', 
-          borderRadius: '16px', 
-          padding: '20px', 
-          boxShadow: '0 2px 8px rgba(0,0,0,0.04)', 
-          display: 'flex', 
-          flexDirection: 'column',
-          minHeight: '100%',      // ← S'étire pour matcher la hauteur de gauche
-          maxHeight: '800px'      // ← Limite max pour scroll si trop d'éléments
-        }}>
-          {/* Header avec filtres */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Clock size={18} color="#64748b" />
-              <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#1e293b' }}>Historique</h3>
-              <span style={{ fontSize: '12px', color: '#94a3b8' }}>({filteredAttempts.length})</span>
-            </div>
-            
-            {/* Filtres */}
-            <div style={{ display: 'flex', gap: '6px' }}>
-              {[
-                { key: 'all', label: 'Tous' },
-                { key: 'exercises', label: 'Exercices' },
-                { key: 'evaluations', label: 'Évaluations' }
-              ].map((f) => (
-                <button
-                  key={f.key}
-                  onClick={() => setFilter(f.key)}
-                  style={{
-                    padding: '6px 12px',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    borderRadius: '6px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: filter === f.key ? '#3b82f6' : '#f1f5f9',
-                    color: filter === f.key ? 'white' : '#64748b',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          </div>
+        {/* Stats Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '24px' }}>
+          <StatCard icon={Target} label="Tentatives" value={stats.totalAttempts} color="#3b82f6" />
+          <StatCard icon={TrendingUp} label="Score moyen" value={`${stats.averageScore}%`} color="#8b5cf6" />
+          <StatCard icon={Trophy} label="Meilleur" value={`${stats.bestScore}%`} color="#10b981" />
+        </div>
 
-          {/* Liste scrollable */}
+        {/* Layout 50/50 */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+          gap: '24px',
+          alignItems: 'stretch'  // ← Alignement des hauteurs
+        }}>
+          {/* COLONNE GAUCHE : 3 Graphiques empilés */}
           <div style={{ 
-            flex: 1,               // ← Prend tout l'espace disponible
-            overflowY: 'auto', 
             display: 'flex', 
             flexDirection: 'column', 
-            gap: '8px',
-            paddingRight: '4px'    // ← Espace pour la scrollbar
+            gap: '16px',
+            height: 'fit-content'  // ← Hauteur auto selon contenu
           }}>
-            {filteredAttempts.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-                <Target size={40} style={{ marginBottom: '12px', opacity: 0.5 }} />
-                <p style={{ fontSize: '14px' }}>Aucune tentative</p>
+            
+            {/* Graphique 1 : Progression lecture */}
+            <div style={{ 
+              background: 'white', 
+              borderRadius: '16px', 
+              padding: '20px', 
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                <BookOpen size={18} color="#3b82f6" />
+                <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#1e293b' }}>Progression lecture</h3>
               </div>
-            ) : (
-              filteredAttempts.map((attempt) => (
-                <AttemptRow key={attempt.id} attempt={attempt} navigate={navigate} />
-              ))
-            )}
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '8px', 
+                maxHeight: '180px', 
+                overflowY: 'auto'
+              }}>
+                {programStats.map((prog, index) => (
+                  <BarRow
+                    key={`read-${prog.programId}`}
+                    label={prog.programName}
+                    value={prog.readingProgress}
+                    color="#3b82f6"
+                    isHovered={hoveredBar === `read-${index}`}
+                    onHover={() => setHoveredBar(`read-${index}`)}
+                    onLeave={() => setHoveredBar(null)}
+                  />
+                ))}
+                {programStats.length === 0 && (
+                  <p style={{ fontSize: '13px', color: '#94a3b8', textAlign: 'center', padding: '20px' }}>Aucun programme</p>
+                )}
+              </div>
+            </div>
+
+            {/* Graphique 2 : Score exercices */}
+            <div style={{ 
+              background: 'white', 
+              borderRadius: '16px', 
+              padding: '20px', 
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                <Zap size={18} color="#10b981" />
+                <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#1e293b' }}>Score exercices</h3>
+              </div>
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '8px', 
+                maxHeight: '180px', 
+                overflowY: 'auto'
+              }}>
+                {programStats.map((prog, index) => (
+                  <BarRow
+                    key={`ex-${prog.programId}`}
+                    label={prog.programName}
+                    value={prog.exerciseScore}
+                    color="#10b981"
+                    isHovered={hoveredBar === `ex-${index}`}
+                    onHover={() => setHoveredBar(`ex-${index}`)}
+                    onLeave={() => setHoveredBar(null)}
+                  />
+                ))}
+                {programStats.length === 0 && (
+                  <p style={{ fontSize: '13px', color: '#94a3b8', textAlign: 'center', padding: '20px' }}>Aucun programme</p>
+                )}
+              </div>
+            </div>
+
+            {/* Graphique 3 : Progression Évaluations */}
+            <div style={{ background: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                <TrendingUp size={18} color="#8b5cf6" />
+                <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#1e293b' }}>Progression Évaluations</h3>
+              </div>
+              <CurveChart evaluations={evaluations} average={averageEval} />
+            </div>
+          </div>
+
+          {/* COLONNE DROITE : Liste des tentatives */}
+          <div style={{ 
+            background: 'white', 
+            borderRadius: '16px', 
+            padding: '20px', 
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)', 
+            display: 'flex', 
+            flexDirection: 'column',
+            minHeight: '100%',      // ← S'étire pour matcher la hauteur de gauche
+            maxHeight: '800px'      // ← Limite max pour scroll si trop d'éléments
+          }}>
+            {/* Header avec filtres */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Clock size={18} color="#64748b" />
+                <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#1e293b' }}>Historique</h3>
+                <span style={{ fontSize: '12px', color: '#94a3b8' }}>({filteredAttempts.length})</span>
+              </div>
+              
+              {/* Filtres */}
+              <div style={{ display: 'flex', gap: '6px' }}>
+                {[
+                  { key: 'all', label: 'Tous' },
+                  { key: 'exercises', label: 'Exercices' },
+                  { key: 'evaluations', label: 'Évaluations' }
+                ].map((f) => (
+                  <button
+                    key={f.key}
+                    onClick={() => setFilter(f.key)}
+                    style={{
+                      padding: '6px 12px',
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      borderRadius: '6px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: filter === f.key ? '#3b82f6' : '#f1f5f9',
+                      color: filter === f.key ? 'white' : '#64748b',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Liste scrollable */}
+            <div style={{ 
+              flex: 1,               // ← Prend tout l'espace disponible
+              overflowY: 'auto', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '8px',
+              paddingRight: '4px'    // ← Espace pour la scrollbar
+            }}>
+              {filteredAttempts.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                  <Target size={40} style={{ marginBottom: '12px', opacity: 0.5 }} />
+                  <p style={{ fontSize: '14px' }}>Aucune tentative</p>
+                </div>
+              ) : (
+                filteredAttempts.map((attempt) => (
+                  <AttemptRow key={attempt.id} attempt={attempt} navigate={navigate} />
+                ))
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+      </>
+    );
 };
 
 // Composant StatCard

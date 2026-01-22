@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { auth, db } from '../firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 
 // Créer le contexte
@@ -21,10 +21,62 @@ export const AuthProvider = ({ children }) => {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [employeeData, setEmployeeData] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  // Mode "Voir comme" - pour les admins qui veulent voir le compte d'un apprenant
+  const [viewAsUserId, setViewAsUserId] = useState(null);
 
   useEffect(() => {
+    // Vérifier si on est en mode "viewAs" au chargement
+    const savedViewAsUserId = localStorage.getItem('viewAsUserId');
+    if (savedViewAsUserId) {
+      setViewAsUserId(savedViewAsUserId);
+    }
+    
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log('🔐 Auth state changed:', firebaseUser?.email);
+      
+      // Si mode "viewAs" activé, charger les données de l'utilisateur cible
+      const targetUserId = savedViewAsUserId || viewAsUserId;
+      
+      if (firebaseUser && targetUserId) {
+        console.log('👁️ Mode "Voir comme" activé pour:', targetUserId);
+        
+        try {
+          // Charger les données de l'utilisateur cible
+          const targetEmployeeDoc = await getDoc(
+            doc(db, 'organizations', DEFAULT_ORG_ID, 'employees', targetUserId)
+          );
+          
+          if (targetEmployeeDoc.exists()) {
+            const targetData = targetEmployeeDoc.data();
+            const targetProfile = targetData.profile || {};
+            
+            // Créer un user object modifié
+            const viewAsUser = {
+              ...firebaseUser,
+              uid: targetUserId,
+              email: targetProfile.email,
+              displayName: `${targetProfile.firstName || ''} ${targetProfile.lastName || ''}`.trim()
+            };
+            
+            setUser(viewAsUser);
+            setEmployeeData(targetData);
+            setUserRole(targetProfile.role || 'learner');
+            setOrganizationId(DEFAULT_ORG_ID);
+            setIsSuperAdmin(false);
+            setLoading(false);
+            
+            console.log('✅ Mode "Voir comme" activé avec succès');
+            return;
+          }
+        } catch (error) {
+          console.error('❌ Erreur mode "Voir comme":', error);
+          // Nettoyer le mode viewAs en cas d'erreur
+          localStorage.removeItem('viewAsUserId');
+          localStorage.removeItem('viewAsUserEmail');
+          setViewAsUserId(null);
+        }
+      }
       
       if (firebaseUser) {
         setUser(firebaseUser);
@@ -123,7 +175,7 @@ export const AuthProvider = ({ children }) => {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [viewAsUserId]);
 
   // Helpers pour les chemins Firebase
   const getEmployeePath = (userId = null) => {
@@ -148,6 +200,51 @@ export const AuthProvider = ({ children }) => {
     return `organizations/${organizationId}`;
   };
 
+  // Fonction pour activer le mode "viewAs"
+  const enableViewAs = (userId) => {
+    setViewAsUserId(userId);
+    localStorage.setItem('viewAsUserId', userId);
+  };
+  
+  // Fonction pour désactiver le mode "viewAs"
+  const disableViewAs = () => {
+    setViewAsUserId(null);
+    localStorage.removeItem('viewAsUserId');
+    localStorage.removeItem('viewAsUserEmail');
+    window.location.reload(); // Recharger pour revenir à l'état normal
+  };
+
+  // Fonction de déconnexion
+  const logout = async () => {
+    try {
+      console.log('🚪 Déconnexion en cours...');
+      
+      // Nettoyer le mode "viewAs" si actif
+      if (viewAsUserId) {
+        localStorage.removeItem('viewAsUserId');
+        localStorage.removeItem('viewAsUserEmail');
+        localStorage.removeItem('viewAsUserName');
+        setViewAsUserId(null);
+      }
+      
+      // Déconnexion Firebase
+      await signOut(auth);
+      
+      // Réinitialiser les états
+      setUser(null);
+      setUserRole(null);
+      setEmployeeData(null);
+      setOrganizationId(null);
+      setOrganizationInfo(null);
+      setIsSuperAdmin(false);
+      
+      console.log('✅ Déconnexion réussie');
+    } catch (error) {
+      console.error('❌ Erreur lors de la déconnexion:', error);
+      throw error;
+    }
+  };
+
   const value = {
     user,
     userRole,
@@ -159,6 +256,10 @@ export const AuthProvider = ({ children }) => {
     organizationInfo,
     employeeData,
     loading,
+    viewAsUserId,
+    enableViewAs,
+    disableViewAs,
+    logout,
     getEmployeePath,
     getLearningPath,
     getProgramsPath,

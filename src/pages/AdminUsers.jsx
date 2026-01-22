@@ -1,5 +1,6 @@
 // src/pages/AdminUsers.jsx
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { db, createUserWithoutSignOut } from "../firebase";
 import {
   collection,
@@ -15,6 +16,7 @@ import Breadcrumb from "../components/Breadcrumb";
 import { assignProgramsToUser, getAllPrograms } from '../services/assignmentService';
 
 export default function AdminUsers() {
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -410,30 +412,54 @@ export default function AdminUsers() {
                             Aucun programme
                           </div>
                         )}
-                        <button
-                          onClick={() => handleOpenAssignModal(user)}
-                          style={{
-                            padding: "4px 8px",
-                            background: "#f1f5f9",
-                            border: "1px solid #e2e8f0",
-                            borderRadius: 6,
-                            fontSize: 12,
-                            fontWeight: 600,
-                            color: "#3b82f6",
-                            cursor: "pointer",
-                            transition: "all 0.2s"
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = "#e0f2fe";
-                            e.currentTarget.style.borderColor = "#3b82f6";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = "#f1f5f9";
-                            e.currentTarget.style.borderColor = "#e2e8f0";
-                          }}
-                        >
-                          Gérer
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            onClick={() => navigate(`/admin/employees/${user.id}`)}
+                            style={{
+                              padding: "4px 8px",
+                              background: "#eff6ff",
+                              border: "1px solid #3b82f6",
+                              borderRadius: 6,
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: "#1e40af",
+                              cursor: "pointer",
+                              transition: "all 0.2s"
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = "#dbeafe";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = "#eff6ff";
+                            }}
+                          >
+                            👤 Fiche
+                          </button>
+                          <button
+                            onClick={() => handleOpenAssignModal(user)}
+                            style={{
+                              padding: "4px 8px",
+                              background: "#f1f5f9",
+                              border: "1px solid #e2e8f0",
+                              borderRadius: 6,
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: "#3b82f6",
+                              cursor: "pointer",
+                              transition: "all 0.2s"
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = "#e0f2fe";
+                              e.currentTarget.style.borderColor = "#3b82f6";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = "#f1f5f9";
+                              e.currentTarget.style.borderColor = "#e2e8f0";
+                            }}
+                          >
+                            Gérer
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <span style={{ color: "#94a3b8", fontSize: 12 }}>—</span>

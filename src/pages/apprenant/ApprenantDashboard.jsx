@@ -6,6 +6,8 @@ import { getAllUserProgress, calculateGlobalProgress, getUserAssignedProgramsWit
 import { BookOpen, TrendingUp, ArrowRight, Clock, CheckCircle2, Zap, Flame, Trophy, Award, ChevronRight } from 'lucide-react';
 import { apprenantTheme, cardStyles, buttonStyles } from '../../styles/apprenantTheme';
 import { useGamification, LEVELS, BADGES_CONFIG } from '../../hooks/useGamification';
+import { useViewAs } from '../../hooks/useViewAs';
+import ViewAsBanner from '../../components/ViewAsBanner';
 
 export default function ApprenantDashboard() {
   const navigate = useNavigate();
@@ -15,15 +17,18 @@ export default function ApprenantDashboard() {
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState('');
 
-  // Hook gamification
+  // Mode "Voir comme"
   const user = auth.currentUser;
+  const { isViewingAs, targetUserId, viewAsUserName } = useViewAs();
+
+  // Hook gamification - utiliser targetUserId
   const { 
     gamificationData, 
     currentLevel, 
     levelProgress, 
     unlockedBadges,
     loading: gamifLoading 
-  } = useGamification(user?.uid);
+  } = useGamification(targetUserId);
 
   useEffect(() => {
     loadData();
@@ -32,27 +37,28 @@ export default function ApprenantDashboard() {
   async function loadData() {
     try {
       const user = auth.currentUser;
-      if (!user) {
+      if (!user && !isViewingAs) {
         navigate('/login');
         return;
       }
 
-      // Récupérer info utilisateur
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      // Récupérer info utilisateur (utiliser targetUserId pour le mode viewAs)
+      const userDoc = await getDoc(doc(db, 'users', targetUserId));
       if (userDoc.exists()) {
-        setUserName(userDoc.data().displayName || userDoc.data().name || 'Apprenant');
+        const userData = userDoc.data();
+        setUserName(isViewingAs ? (viewAsUserName || userData.displayName || userData.name) : (userData.displayName || userData.name || 'Apprenant'));
       }
 
       // Récupérer les programmes affectés à l'utilisateur
-      console.log('🔍 Fetching assigned programs for user:', user.uid);
-      const assignedPrograms = await getUserAssignedProgramsWithDetails(user.uid);
+      console.log('🔍 Fetching assigned programs for user:', targetUserId, isViewingAs ? '(Mode Voir comme)' : '');
+      const assignedPrograms = await getUserAssignedProgramsWithDetails(targetUserId);
       console.log('✅ Assigned programs:', assignedPrograms);
 
       // Enrichir chaque programme avec sa progression de lecture
       const programsWithProgress = await Promise.all(
         assignedPrograms.map(async (program) => {
           try {
-            const progressRef = doc(db, 'userProgress', user.uid, 'programs', program.id);
+            const progressRef = doc(db, 'userProgress', targetUserId, 'programs', program.id);
             const progressSnap = await getDoc(progressRef);
             
             if (progressSnap.exists()) {
@@ -81,12 +87,12 @@ export default function ApprenantDashboard() {
 
       setPrograms(programsWithProgress);
 
-      // Charger la progression utilisateur
-      const allProgress = await getAllUserProgress(user.uid);
+      // Charger la progression utilisateur (utiliser targetUserId en mode viewAs)
+      const allProgress = await getAllUserProgress(targetUserId);
       setUserProgress(allProgress);
 
       // Calculer progression globale pour TOUS les programmes assignés (même ceux à 0%)
-      const userDocSnap = await getDoc(doc(db, 'users', user.uid));
+      const userDocSnap = await getDoc(doc(db, 'users', targetUserId));
       const assignedProgramIds = userDocSnap.exists() ? (userDocSnap.data().assignedPrograms || []) : [];
       
       console.log('📚 Programmes assignés (IDs):', assignedProgramIds);
@@ -95,7 +101,7 @@ export default function ApprenantDashboard() {
       const progressions = await Promise.all(
         assignedProgramIds.map(async (programId) => {
           try {
-            const progressRef = doc(db, 'userProgress', user.uid, 'programs', programId);
+            const progressRef = doc(db, 'userProgress', targetUserId, 'programs', programId);
             const progressSnap = await getDoc(progressRef);
             
             if (progressSnap.exists() && progressSnap.data().percentage !== undefined) {
@@ -166,6 +172,9 @@ export default function ApprenantDashboard() {
       minHeight: '100%',
       background: apprenantTheme.colors.bgApp
     }}>
+      {/* Bandeau Mode Voir comme */}
+      <ViewAsBanner />
+      
       <div style={{
         maxWidth: '1200px',
         margin: '0 auto',
