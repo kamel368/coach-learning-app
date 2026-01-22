@@ -1,16 +1,47 @@
-// src/components/ProtectedRoute.jsx
-import { useContext } from "react";
-import { Navigate, useLocation } from "react-router-dom";
-import { AuthContext } from "../context/AuthContext";
+import React from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
-export default function ProtectedRoute({ children }) {
-  const { user, userRole, loading } = useContext(AuthContext);
+const ProtectedRoute = ({ children, allowedRoles = [] }) => {
+  const { user, userRole, loading, isSuperAdmin } = useAuth();
   const location = useLocation();
 
-  if (loading) return <div>Chargement...</div>;
-  if (!user) return <Navigate to="/login" />;
+  // Attendre le chargement
+  if (loading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh' 
+      }}>
+        <div>Chargement...</div>
+      </div>
+    );
+  }
 
-  // Redirection automatique selon le rôle
+  // Non connecté → Login
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Super Admin a accès à tout
+  if (isSuperAdmin) {
+    return children;
+  }
+
+  // Vérifier le rôle si des rôles sont spécifiés
+  if (allowedRoles.length > 0 && !allowedRoles.includes(userRole)) {
+    // Rediriger selon le rôle
+    if (userRole === 'learner') {
+      return <Navigate to="/apprenant/dashboard" replace />;
+    } else if (userRole === 'admin' || userRole === 'trainer') {
+      return <Navigate to="/admin" replace />;
+    }
+    return <Navigate to="/login" replace />;
+  }
+
+  // Redirection automatique selon le rôle (si pas de allowedRoles spécifié)
   const isAdminRoute = location.pathname.startsWith('/admin') || location.pathname === '/dashboard';
   const isApprenantRoute = location.pathname.startsWith('/apprenant');
 
@@ -20,9 +51,11 @@ export default function ProtectedRoute({ children }) {
   }
 
   // Si admin essaie d'accéder à une route apprenant → rediriger vers dashboard admin
-  if (userRole === 'admin' && isApprenantRoute) {
+  if ((userRole === 'admin' || userRole === 'trainer') && isApprenantRoute) {
     return <Navigate to="/admin" replace />;
   }
 
   return children;
-}
+};
+
+export default ProtectedRoute;

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, increment } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useToast } from '../contexts/ToastContext';
+import { useAuth } from '../context/AuthContext';
 
 // Configuration XP
 const XP_CONFIG = {
@@ -113,6 +114,7 @@ const BADGES_CONFIG = {
 };
 
 export const useGamification = (userId) => {
+  const { organizationId } = useAuth();
   const [gamificationData, setGamificationData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [newBadges, setNewBadges] = useState([]);
@@ -120,17 +122,36 @@ export const useGamification = (userId) => {
   // Hook pour afficher les toasts
   const { showBadgeUnlocked, showXPGained, showLevelUp } = useToast();
 
+  // Helper pour obtenir la référence gamification
+  const getGamificationRef = () => {
+    if (organizationId && userId) {
+      // Nouvelle structure multi-tenant
+      return doc(db, 'organizations', organizationId, 'employees', userId, 'learning', 'gamification');
+    } else if (userId) {
+      // Fallback ancienne structure
+      return doc(db, 'users', userId, 'gamification', 'data');
+    }
+    return null;
+  };
+
   // Charger les données de gamification
   useEffect(() => {
     if (!userId) return;
 
     const loadGamification = async () => {
+      setLoading(true);
       try {
-        const gamifRef = doc(db, 'users', userId, 'gamification', 'data');
+        const gamifRef = getGamificationRef();
+        if (!gamifRef) {
+          setLoading(false);
+          return;
+        }
+
         const gamifSnap = await getDoc(gamifRef);
 
         if (gamifSnap.exists()) {
           setGamificationData(gamifSnap.data());
+          console.log('🎮 Gamification chargée:', organizationId ? 'nouvelle structure' : 'ancienne structure');
         } else {
           // Créer les données initiales
           const initialData = {
@@ -165,16 +186,17 @@ export const useGamification = (userId) => {
           };
           await setDoc(gamifRef, initialData);
           setGamificationData(initialData);
+          console.log('🎮 Gamification initialisée');
         }
       } catch (error) {
-        console.error('Erreur chargement gamification:', error);
+        console.error('❌ Erreur chargement gamification:', error);
       } finally {
         setLoading(false);
       }
     };
 
     loadGamification();
-  }, [userId]);
+  }, [userId, organizationId]);
 
   // Calculer le niveau à partir des XP
   const calculateLevel = (xp) => {
@@ -234,7 +256,9 @@ export const useGamification = (userId) => {
       }
     }
 
-    const gamifRef = doc(db, 'users', userId, 'gamification', 'data');
+    const gamifRef = getGamificationRef();
+    if (!gamifRef) return;
+
     await updateDoc(gamifRef, {
       currentStreak: newStreak,
       maxStreak: Math.max(newStreak, gamificationData.maxStreak || 0),
@@ -264,7 +288,9 @@ export const useGamification = (userId) => {
     const newLevel = calculateLevel(newXP);
     const oldLevel = gamificationData.level;
 
-    const gamifRef = doc(db, 'users', userId, 'gamification', 'data');
+    const gamifRef = getGamificationRef();
+    if (!gamifRef) return null;
+
     await updateDoc(gamifRef, {
       xp: newXP,
       level: newLevel.level,
@@ -307,7 +333,9 @@ export const useGamification = (userId) => {
       return;
     }
 
-    const gamifRef = doc(db, 'users', userId, 'gamification', 'data');
+    const gamifRef = getGamificationRef();
+    if (!gamifRef) return;
+
     await updateDoc(gamifRef, {
       [`stats.${statName}`]: increment(value)
     });
@@ -343,7 +371,9 @@ export const useGamification = (userId) => {
     }
 
     if (newlyUnlocked.length > 0) {
-      const gamifRef = doc(db, 'users', userId, 'gamification', 'data');
+      const gamifRef = getGamificationRef();
+      if (!gamifRef) return [];
+
       await updateDoc(gamifRef, {
         badges: arrayUnion(...newlyUnlocked.map(b => b.id)),
         history: arrayUnion(...newlyUnlocked.map(b => ({
@@ -393,10 +423,12 @@ export const useGamification = (userId) => {
 
     // Marquer comme récompensé
     if (lessonId) {
-      const gamifRef = doc(db, 'users', userId, 'gamification', 'data');
-      await updateDoc(gamifRef, {
-        'rewardedActions.lessons': arrayUnion(lessonId)
-      });
+      const gamifRef = getGamificationRef();
+      if (gamifRef) {
+        await updateDoc(gamifRef, {
+          'rewardedActions.lessons': arrayUnion(lessonId)
+        });
+      }
     }
 
     return result;
@@ -442,10 +474,12 @@ export const useGamification = (userId) => {
 
     // Marquer comme récompensé
     if (attemptId) {
-      const gamifRef = doc(db, 'users', userId, 'gamification', 'data');
-      await updateDoc(gamifRef, {
-        'rewardedActions.exercises': arrayUnion(attemptId)
-      });
+      const gamifRef = getGamificationRef();
+      if (gamifRef) {
+        await updateDoc(gamifRef, {
+          'rewardedActions.exercises': arrayUnion(attemptId)
+        });
+      }
     }
 
     return { percentage };
@@ -479,10 +513,12 @@ export const useGamification = (userId) => {
 
     // Marquer comme récompensé
     if (evaluationId) {
-      const gamifRef = doc(db, 'users', userId, 'gamification', 'data');
-      await updateDoc(gamifRef, {
-        'rewardedActions.evaluations': arrayUnion(evaluationId)
-      });
+      const gamifRef = getGamificationRef();
+      if (gamifRef) {
+        await updateDoc(gamifRef, {
+          'rewardedActions.evaluations': arrayUnion(evaluationId)
+        });
+      }
     }
 
     return { percentage };

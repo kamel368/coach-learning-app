@@ -33,6 +33,7 @@ export function useHistorique(userId) {
     }
     
     try {
+      // ⚠️ FALLBACK : Utiliser l'ancienne structure (chemin valide avec 2 segments)
       const programDoc = await getDoc(doc(db, 'programs', programId));
       const name = programDoc.exists() ? (programDoc.data().title || programDoc.data().name || 'Programme') : 'Programme';
       cacheRef.current.programs[programId] = name;
@@ -51,6 +52,7 @@ export function useHistorique(userId) {
     }
     
     try {
+      // ⚠️ FALLBACK : Utiliser l'ancienne structure (chemin valide avec 4 segments)
       const moduleDoc = await getDoc(doc(db, 'programs', programId, 'modules', moduleId));
       const name = moduleDoc.exists() ? (moduleDoc.data().title || 'Module') : 'Module';
       cacheRef.current.modules[cacheKey] = name;
@@ -68,6 +70,7 @@ export function useHistorique(userId) {
     }
     
     try {
+      // ⚠️ FALLBACK : Utiliser l'ancienne structure (chemin valide avec 4 segments)
       const progressRef = doc(db, 'userProgress', userId, 'programs', programId);
       const progressSnap = await getDoc(progressRef);
       const progress = progressSnap.exists() ? (progressSnap.data().percentage || 0) : 0;
@@ -82,6 +85,7 @@ export function useHistorique(userId) {
   // 🚀 FONCTION : Charger les évaluations d'un programme
   const loadEvaluationsForProgram = async (programId, programName) => {
     try {
+      // ⚠️ FALLBACK : Utiliser l'ancienne structure (chemin valide avec 5 segments)
       const evaluationsRef = collection(db, 'users', userId, 'programs', programId, 'evaluations');
       // ⚡ OPTIMISATION : Limiter le nombre d'évaluations chargées
       const q = query(evaluationsRef, orderBy('completedAt', 'desc'), limit(MAX_ATTEMPTS_PER_PROGRAM));
@@ -116,6 +120,7 @@ export function useHistorique(userId) {
   // 🚀 FONCTION : Charger les tentatives d'exercices d'un programme
   const loadExercisesForProgram = async (programId, programName) => {
     try {
+      // ⚠️ FALLBACK : Utiliser l'ancienne structure (chemin valide avec 3 segments)
       const modulesSnapshot = await getDocs(collection(db, 'programs', programId, 'modules'));
       console.log('📘 Modules trouvés pour programme', programId, ':', modulesSnapshot.size);
       
@@ -124,6 +129,7 @@ export function useHistorique(userId) {
         const moduleName = await getModuleName(programId, moduleDoc.id);
         
         try {
+          // ⚠️ FALLBACK : Utiliser l'ancienne structure (chemin valide avec 7 segments)
           const moduleAttemptsRef = collection(db, 'users', userId, 'programs', programId, 'modules', moduleDoc.id, 'attempts');
           // ⚡ OPTIMISATION : Limiter le nombre de tentatives par module
           const q = query(moduleAttemptsRef, orderBy('completedAt', 'desc'), limit(MAX_ATTEMPTS_PER_PROGRAM));
@@ -176,6 +182,7 @@ export function useHistorique(userId) {
         console.time('⏱️ Temps de chargement total');
 
         // 1. Récupérer le document utilisateur pour avoir les programmes assignés
+        // ⚠️ FALLBACK : Utiliser l'ancienne structure (chemin valide avec 2 segments)
         const userDoc = await getDoc(doc(db, 'users', userId));
         
         if (!userDoc.exists()) {
