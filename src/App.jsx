@@ -19,6 +19,7 @@ import AdminProgramDetail from "./pages/AdminProgramDetail";
 import AdminQuiz from "./pages/AdminQuiz";
 import AdminAIExercises from "./pages/AdminAIExercises";
 import AdminUsers from "./pages/AdminUsers";
+import MigrationPage from "./pages/admin/MigrationPage";
 
 // ✅ Nouvelle page Teachizy-like
 import LessonEditorPage from "./pages/LessonEditorPage";
@@ -236,6 +237,14 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <AdminUsers />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/migration"
+            element={
+              <ProtectedRoute>
+                <MigrationPage />
               </ProtectedRoute>
             }
           />

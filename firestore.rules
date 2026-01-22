@@ -2,76 +2,167 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Users
-    match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth.uid == userId || 
-                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    // ⚠️ ========================================
+    // ⚠️ RÈGLES TEMPORAIRES POUR MIGRATION
+    // ⚠️ ========================================
+    // ⚠️ À REMPLACER par les règles complètes après la migration !
+    // ⚠️ Ces règles permettent à tout utilisateur authentifié de lire/écrire partout
+    
+    match /{document=**} {
+      allow read, write: if request.auth != null;
     }
     
-    // Programs
-    match /programs/{programId} {
-      allow read: if request.auth != null;
-      allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    // ========================================
+    // RÈGLES COMPLÈTES (À DÉCOMMENTER APRÈS MIGRATION)
+    // ========================================
+    /*
+    
+    // ========================================
+    // PLATFORM SETTINGS (Super Admin only)
+    // ========================================
+    match /platformSettings/{document=**} {
+      allow read: if isAuthenticated() && isSuperAdmin();
+      allow write: if isAuthenticated() && isSuperAdmin();
+    }
+    
+    // ========================================
+    // PLATFORM ADMINS (Super Admin only)
+    // ========================================
+    match /platformAdmins/{adminId} {
+      allow read: if isAuthenticated() && isSuperAdmin();
+      allow write: if isAuthenticated() && isSuperAdmin();
+    }
+    
+    // ========================================
+    // ORGANIZATIONS
+    // ========================================
+    match /organizations/{orgId} {
+      allow read: if isAuthenticated() && (belongsToOrg(orgId) || isSuperAdmin());
+      allow write: if isAuthenticated() && (isOrgAdmin(orgId) || isSuperAdmin());
       
-      // Subcollections: modules
-      match /modules/{moduleId} {
-        allow read: if request.auth != null;
-        allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      // --- EMPLOYEES ---
+      match /employees/{userId} {
+        allow read: if isAuthenticated() && (belongsToOrg(orgId) || isSuperAdmin());
+        allow write: if isAuthenticated() && (isOrgAdmin(orgId) || isSuperAdmin() || request.auth.uid == userId);
         
-        // Subcollections: lessons
-        match /lessons/{lessonId} {
-          allow read: if request.auth != null;
-          allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        // --- LEARNING DATA ---
+        match /learning/{document=**} {
+          allow read: if isAuthenticated() && (belongsToOrg(orgId) || isSuperAdmin() || request.auth.uid == userId);
+          allow write: if isAuthenticated() && (isOrgAdmin(orgId) || isSuperAdmin() || request.auth.uid == userId);
         }
+      }
+      
+      // --- PROGRAMS ---
+      match /programs/{programId} {
+        allow read: if isAuthenticated() && (belongsToOrg(orgId) || isSuperAdmin());
+        allow write: if isAuthenticated() && (isOrgAdmin(orgId) || isSuperAdmin());
         
-        // Subcollections: quizzes
-        match /quizzes/{quizId} {
-          allow read: if request.auth != null;
-          allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        match /{document=**} {
+          allow read: if isAuthenticated() && (belongsToOrg(orgId) || isSuperAdmin());
+          allow write: if isAuthenticated() && (isOrgAdmin(orgId) || isSuperAdmin());
         }
+      }
+      
+      // --- CATEGORIES ---
+      match /categories/{categoryId} {
+        allow read: if isAuthenticated() && (belongsToOrg(orgId) || isSuperAdmin());
+        allow write: if isAuthenticated() && (isOrgAdmin(orgId) || isSuperAdmin());
       }
     }
     
-    // Evaluations (NOUVEAU)
-    match /evaluations/{evaluationId} {
-      allow read: if request.auth != null;
-      allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    // ========================================
+    // LEGACY - Users (pour migration)
+    // ========================================
+    match /users/{userId} {
+      allow read, write: if isAuthenticated() && (request.auth.uid == userId || isSuperAdmin());
+      
+      match /{document=**} {
+        allow read, write: if isAuthenticated() && (request.auth.uid == userId || isSuperAdmin());
+      }
     }
     
-    // User Evaluation Attempts (NOUVEAU)
-    match /userEvaluationAttempts/{attemptId} {
-      allow read: if request.auth != null && 
-                    (resource.data.userId == request.auth.uid ||
-                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+    // ========================================
+    // LEGACY - Programs (pour migration)
+    // ========================================
+    match /programs/{programId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isSuperAdmin();
+      
+      match /{document=**} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated() && isSuperAdmin();
+      }
     }
     
-    // User Progress (pour le tracking de progression)
-    match /userProgress/{progressId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && 
-                     (request.resource.data.userId == request.auth.uid ||
-                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
-    }
-    
-    // Categories (Rôles Métier)
+    // ========================================
+    // LEGACY - Categories (pour migration)
+    // ========================================
     match /categories/{categoryId} {
-      allow read: if request.auth != null;
-      allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isSuperAdmin();
     }
     
-    // Quiz Attempts
+    // ========================================
+    // LEGACY - Quiz Attempts (pour migration)
+    // ========================================
     match /quizAttempts/{attemptId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
     }
     
-    // AI Exercises
-    match /aiExercises/{exerciseId} {
-      allow read: if request.auth != null;
-      allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    // ========================================
+    // LEGACY - Evaluations (pour migration)
+    // ========================================
+    match /evaluations/{evaluationId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isSuperAdmin();
     }
+    
+    // ========================================
+    // LEGACY - User Evaluation Attempts (pour migration)
+    // ========================================
+    match /userEvaluationAttempts/{attemptId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    // ========================================
+    // LEGACY - User Progress (pour migration)
+    // ========================================
+    match /userProgress/{progressId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    // ========================================
+    // LEGACY - AI Exercises (pour migration)
+    // ========================================
+    match /aiExercises/{exerciseId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isSuperAdmin();
+    }
+    
+    // ========================================
+    // HELPER FUNCTIONS
+    // ========================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isSuperAdmin() {
+      return exists(/databases/$(database)/documents/platformAdmins/$(request.auth.uid));
+    }
+    
+    function belongsToOrg(orgId) {
+      return exists(/databases/$(database)/documents/organizations/$(orgId)/employees/$(request.auth.uid));
+    }
+    
+    function isOrgAdmin(orgId) {
+      let employee = get(/databases/$(database)/documents/organizations/$(orgId)/employees/$(request.auth.uid));
+      return employee != null && employee.data.profile.role == 'admin';
+    }
+    
+    */
   }
 }
