@@ -1,5 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useContext, useEffect, useState } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../firebase';
 import { AuthContext } from '../../context/AuthContext';
 import { useExerciseSession } from '../../hooks/useExerciseSession';
 import { ArrowLeft, ChevronLeft, ChevronRight, Clock, Target } from 'lucide-react';
@@ -24,7 +26,25 @@ const BLOCK_LABELS = {
 export default function ApprenantExercises() {
   const { programId, moduleId } = useParams();
   const navigate = useNavigate();
-  const { user } = useContext(AuthContext);
+  const { user, organizationId } = useContext(AuthContext);
+  const [targetOrgId, setTargetOrgId] = useState(null);
+  
+  // Charger l'organizationId de l'utilisateur
+  useEffect(() => {
+    const loadOrgId = async () => {
+      if (user?.uid) {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) {
+          setTargetOrgId(userDoc.data().organizationId || organizationId);
+        } else {
+          setTargetOrgId(organizationId);
+        }
+      } else {
+        setTargetOrgId(organizationId);
+      }
+    };
+    loadOrgId();
+  }, [user, organizationId]);
   
   const {
     exercises,
@@ -40,7 +60,7 @@ export default function ApprenantExercises() {
     submitting,
     isLastBlock,
     progress
-  } = useExerciseSession(user?.uid, programId, moduleId);
+  } = useExerciseSession(user?.uid, programId, moduleId, targetOrgId);
 
   const [elapsedTime, setElapsedTime] = useState(0);
 

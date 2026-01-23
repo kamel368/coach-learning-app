@@ -21,14 +21,38 @@ import { db } from "../firebase";
  * @param {string} lessonId - ID de la leçon
  * @param {string} programId - ID du programme (optionnel pour compatibilité)
  * @param {string} moduleId - ID du module (optionnel pour compatibilité)
+ * @param {string} organizationId - ID de l'organisation (optionnel pour multi-tenant)
  * @returns {Object|null} - La leçon ou null si non trouvée
  * 
- * NOUVEAU : Si programId et moduleId sont fournis, lit depuis les subcollections
- * ANCIEN : Si absents, lit depuis la collection plate "lessons/" (fallback)
+ * NOUVEAU : Si programId, moduleId et organizationId sont fournis, lit depuis /organizations/{orgId}/programs/...
+ * ANCIEN : Si organizationId absent, lit depuis /programs/... (fallback)
  */
-export async function getLesson(lessonId, programId = null, moduleId = null) {
+export async function getLesson(lessonId, programId = null, moduleId = null, organizationId = null) {
   try {
-    // ✅ NOUVEAU SYSTÈME : Subcollections imbriquées
+    // ✅ STRUCTURE MULTI-TENANT : /organizations/{orgId}/programs/...
+    if (programId && moduleId && organizationId) {
+      const ref = doc(db, "organizations", organizationId, "programs", programId, "modules", moduleId, "lessons", lessonId);
+      const snap = await getDoc(ref);
+      
+      if (!snap.exists()) {
+        console.warn(`⚠️ Leçon ${lessonId} introuvable dans /organizations/${organizationId}/programs/${programId}/modules/${moduleId}`);
+        // Fallback vers ancienne structure
+        const fallbackRef = doc(db, "programs", programId, "modules", moduleId, "lessons", lessonId);
+        const fallbackSnap = await getDoc(fallbackRef);
+        
+        if (fallbackSnap.exists()) {
+          console.log(`✅ Leçon trouvée dans l'ancienne structure: programs/${programId}/modules/${moduleId}/lessons/${lessonId}`);
+          return { id: fallbackSnap.id, ...fallbackSnap.data() };
+        }
+        
+        return null;
+      }
+      
+      console.log(`✅ Leçon chargée depuis /organizations/${organizationId}/programs/${programId}/modules/${moduleId}/lessons/${lessonId}`);
+      return { id: snap.id, ...snap.data() };
+    }
+
+    // ✅ ANCIENNE STRUCTURE : Subcollections imbriquées sans organization
     if (programId && moduleId) {
       const ref = doc(db, "programs", programId, "modules", moduleId, "lessons", lessonId);
       const snap = await getDoc(ref);
@@ -70,11 +94,13 @@ export async function getLesson(lessonId, programId = null, moduleId = null) {
  * @param {Object} lesson - Objet leçon contenant { id, title, blocks, ... }
  * @param {string} programId - ID du programme (REQUIS)
  * @param {string} moduleId - ID du module (REQUIS)
+ * @param {string} organizationId - ID de l'organisation (optionnel pour multi-tenant)
  * @throws {Error} - Si programId ou moduleId sont manquants
  * 
  * IMPORTANT : Les paramètres programId et moduleId sont OBLIGATOIRES
+ * Si organizationId est fourni, sauvegarde dans /organizations/{orgId}/programs/...
  */
-export async function saveLesson(lesson, programId, moduleId) {
+export async function saveLesson(lesson, programId, moduleId, organizationId = null) {
   // ✅ VALIDATION : Vérifier que programId et moduleId sont fournis
   if (!programId || !moduleId) {
     const errorMsg = "❌ saveLesson() nécessite programId et moduleId pour sauvegarder dans les subcollections";
@@ -89,14 +115,17 @@ export async function saveLesson(lesson, programId, moduleId) {
   }
 
   try {
-    // ✅ CHEMIN SUBCOLLECTION
-    const ref = doc(db, "programs", programId, "modules", moduleId, "lessons", lesson.id);
+    // ✅ CHEMIN SUBCOLLECTION (multi-tenant ou ancien)
+    const ref = organizationId
+      ? doc(db, "organizations", organizationId, "programs", programId, "modules", moduleId, "lessons", lesson.id)
+      : doc(db, "programs", programId, "modules", moduleId, "lessons", lesson.id);
     
     // ✅ PAYLOAD avec métadonnées
     const payload = {
       ...lesson,
       programId,      // ✅ Ajouter programId dans le document
       moduleId,       // ✅ Ajouter moduleId dans le document
+      organizationId: organizationId || null, // ✅ Ajouter organizationId
       updatedAt: serverTimestamp(),
       createdAt: lesson.createdAt || serverTimestamp(),
     };
@@ -104,7 +133,11 @@ export async function saveLesson(lesson, programId, moduleId) {
     // ✅ SAUVEGARDE
     await setDoc(ref, payload, { merge: true });
 
-    console.log(`✅ Leçon sauvegardée avec succès: programs/${programId}/modules/${moduleId}/lessons/${lesson.id}`);
+    const path = organizationId 
+      ? `organizations/${organizationId}/programs/${programId}/modules/${moduleId}/lessons/${lesson.id}`
+      : `programs/${programId}/modules/${moduleId}/lessons/${lesson.id}`;
+    
+    console.log(`✅ Leçon sauvegardée avec succès: ${path}`);
     console.log(`   Titre: "${lesson.title || 'Sans titre'}"`);
     console.log(`   Blocs: ${lesson.blocks ? lesson.blocks.length : 0}`);
 
@@ -124,16 +157,20 @@ export async function saveLesson(lesson, programId, moduleId) {
  * 
  * @param {string} moduleId - ID du module
  * @param {string} programId - ID du programme
+ * @param {string} organizationId - ID de l'organisation (optionnel pour multi-tenant)
  * @returns {Array} - Liste des leçons triées par order
  */
-export async function getLessonsByModule(moduleId, programId) {
+export async function getLessonsByModule(moduleId, programId, organizationId = null) {
   if (!programId || !moduleId) {
     console.error("❌ getLessonsByModule() nécessite programId et moduleId");
     throw new Error("programId et moduleId sont requis");
   }
 
   try {
-    const lessonsRef = collection(db, "programs", programId, "modules", moduleId, "lessons");
+    const lessonsRef = organizationId
+      ? collection(db, "organizations", organizationId, "programs", programId, "modules", moduleId, "lessons")
+      : collection(db, "programs", programId, "modules", moduleId, "lessons");
+    
     const q = query(lessonsRef, orderBy("order", "asc"));
     const snap = await getDocs(q);
 
@@ -142,7 +179,11 @@ export async function getLessonsByModule(moduleId, programId) {
       ...doc.data(),
     }));
 
-    console.log(`✅ ${lessons.length} leçon(s) chargée(s) pour le module ${moduleId}`);
+    const path = organizationId 
+      ? `/organizations/${organizationId}/programs/${programId}/modules/${moduleId}`
+      : `/programs/${programId}/modules/${moduleId}`;
+    
+    console.log(`✅ ${lessons.length} leçon(s) chargée(s) depuis ${path}`);
     return lessons;
 
   } catch (error) {

@@ -66,6 +66,47 @@ export async function getAllUserProgress(userId) {
 }
 
 /**
+ * Nettoyer les IDs de leçons obsolètes (qui n'existent plus)
+ */
+export async function cleanObsoleteLessons(userId, programId, validLessonIds) {
+  try {
+    const progressRef = doc(db, `userProgress/${userId}/programs/${programId}`);
+    const progressSnap = await getDoc(progressRef);
+    
+    if (!progressSnap.exists()) return;
+    
+    const data = progressSnap.data();
+    const oldCompleted = data.completedLessons || [];
+    
+    // Filtrer pour garder uniquement les IDs qui existent encore
+    const cleanedCompleted = oldCompleted.filter(id => validLessonIds.includes(id));
+    
+    if (cleanedCompleted.length !== oldCompleted.length) {
+      const removed = oldCompleted.filter(id => !validLessonIds.includes(id));
+      console.log('🧹 Nettoyage des leçons obsolètes:', {
+        avant: oldCompleted.length,
+        après: cleanedCompleted.length,
+        supprimés: removed
+      });
+      
+      // Mettre à jour la progression
+      await setDoc(progressRef, {
+        ...data,
+        completedLessons: cleanedCompleted,
+        lastAccessedAt: new Date().toISOString()
+      }, { merge: true });
+      
+      return cleanedCompleted;
+    }
+    
+    return oldCompleted;
+  } catch (error) {
+    console.error('Erreur cleanObsoleteLessons:', error);
+    return [];
+  }
+}
+
+/**
  * Marquer une leçon comme terminée
  */
 export async function markLessonCompleted(userId, programId, lessonId, totalLessons) {
@@ -164,11 +205,12 @@ export async function calculateGlobalProgress(userId) {
 /**
  * Récupérer les programmes affectés à l'utilisateur avec leurs détails
  * @param {string} userId - ID de l'utilisateur
+ * @param {string} organizationId - ID de l'organisation (optionnel)
  * @returns {Promise<Array>} Liste des programmes affectés avec le nombre de leçons
  */
-export async function getUserAssignedProgramsWithDetails(userId) {
+export async function getUserAssignedProgramsWithDetails(userId, organizationId = null) {
   try {
-    console.log('🔍 getUserAssignedProgramsWithDetails for user:', userId);
+    console.log('🔍 getUserAssignedProgramsWithDetails for user:', userId, 'org:', organizationId);
     
     // 1. Récupérer l'utilisateur
     const userDoc = await getDoc(doc(db, 'users', userId));
@@ -177,45 +219,73 @@ export async function getUserAssignedProgramsWithDetails(userId) {
       return [];
     }
     
-    const assignedProgramIds = userDoc.data().assignedPrograms || [];
+    const userData = userDoc.data();
+    const assignedProgramIds = userData.assignedPrograms || [];
+    const userOrgId = userData.organizationId || organizationId;
+    
     console.log('📋 Assigned program IDs:', assignedProgramIds);
+    console.log('🏢 User organizationId:', userOrgId);
     
     if (assignedProgramIds.length === 0) {
       console.log('ℹ️ No programs assigned to this user');
       return [];
     }
     
-    // 2. Récupérer tous les programmes publiés
-    const programsQuery = query(
-      collection(db, 'programs'),
-      where('status', '==', 'published')
-    );
-    const programsSnap = await getDocs(programsQuery);
-    console.log('📚 Total published programs:', programsSnap.size);
+    // 2. Récupérer tous les programmes (depuis l'organisation si disponible)
+    let allPrograms = [];
+    
+    // Essayer d'abord depuis l'organisation
+    if (userOrgId) {
+      const orgProgramsSnap = await getDocs(
+        collection(db, 'organizations', userOrgId, 'programs')
+      );
+      allPrograms = orgProgramsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      console.log('📚 Programmes depuis /organizations/' + userOrgId + '/programs:', allPrograms.length);
+    }
+    
+    // Fallback vers /programs si vide
+    if (allPrograms.length === 0) {
+      const programsSnap = await getDocs(collection(db, 'programs'));
+      allPrograms = programsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      console.log('⚠️ Fallback: Programmes depuis /programs:', allPrograms.length);
+    }
     
     // 3. Filtrer pour ne garder que les programmes affectés
-    const allPrograms = programsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     const assignedPrograms = allPrograms.filter(p => assignedProgramIds.includes(p.id));
-    console.log('✅ Assigned and published programs:', assignedPrograms.length);
+    console.log('✅ Assigned programs found:', assignedPrograms.length);
     
     // 4. Pour chaque programme, compter les leçons
     const programsWithLessons = await Promise.all(
       assignedPrograms.map(async (program) => {
         let totalLessons = 0;
         
-        // Compter les leçons dans tous les modules
-        const modulesSnap = await getDocs(
-          collection(db, `programs/${program.id}/modules`)
-        );
+        // Compter les leçons dans tous les modules (depuis l'organisation si disponible)
+        let modulesSnap;
+        if (userOrgId) {
+          modulesSnap = await getDocs(
+            collection(db, 'organizations', userOrgId, 'programs', program.id, 'modules')
+          );
+        } else {
+          modulesSnap = await getDocs(
+            collection(db, 'programs', program.id, 'modules')
+          );
+        }
         
         for (const moduleDoc of modulesSnap.docs) {
-          const lessonsSnap = await getDocs(
-            collection(db, `programs/${program.id}/modules/${moduleDoc.id}/lessons`)
-          );
+          let lessonsSnap;
+          if (userOrgId) {
+            lessonsSnap = await getDocs(
+              collection(db, 'organizations', userOrgId, 'programs', program.id, 'modules', moduleDoc.id, 'lessons')
+            );
+          } else {
+            lessonsSnap = await getDocs(
+              collection(db, 'programs', program.id, 'modules', moduleDoc.id, 'lessons')
+            );
+          }
           totalLessons += lessonsSnap.size;
         }
         
-        console.log(`  → ${program.name}: ${totalLessons} leçons`);
+        console.log(`  → ${program.name || program.title}: ${totalLessons} leçons`);
         
         return {
           ...program,

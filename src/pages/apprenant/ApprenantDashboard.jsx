@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
@@ -8,9 +8,11 @@ import { apprenantTheme, cardStyles, buttonStyles } from '../../styles/apprenant
 import { useGamification, LEVELS, BADGES_CONFIG } from '../../hooks/useGamification';
 import { useViewAs } from '../../hooks/useViewAs';
 import ViewAsBanner from '../../components/ViewAsBanner';
+import { useAuth } from '../../context/AuthContext';
 
 export default function ApprenantDashboard() {
   const navigate = useNavigate();
+  const location = useLocation(); // ✅ Ajout pour détecter les changements de navigation
   const [programs, setPrograms] = useState([]);
   const [userProgress, setUserProgress] = useState({});
   const [globalProgress, setGlobalProgress] = useState(0);
@@ -20,6 +22,9 @@ export default function ApprenantDashboard() {
   // Mode "Voir comme"
   const user = auth.currentUser;
   const { isViewingAs, targetUserId, viewAsUserName } = useViewAs();
+  
+  // Récupérer l'organizationId pour charger les programmes depuis l'organisation
+  const { organizationId } = useAuth();
 
   // Hook gamification - utiliser targetUserId
   const { 
@@ -30,9 +35,32 @@ export default function ApprenantDashboard() {
     loading: gamifLoading 
   } = useGamification(targetUserId);
 
+  // ✅ Recharger les données à chaque changement de location (navigation)
   useEffect(() => {
-    loadData();
-  }, []);
+    if (organizationId) {
+      console.log('🔄 Rechargement du dashboard (navigation détectée)', {
+        organizationId,
+        targetUserId,
+        locationKey: location.key,
+        pathname: location.pathname,
+        timestamp: new Date().toISOString()
+      });
+      loadData();
+    }
+  }, [organizationId, targetUserId, location.pathname, location.key]); // ✅ Ajout de pathname ET key
+  
+  // ✅ NOUVEAU: Recharger aussi quand la page redevient visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && organizationId) {
+        console.log('👁️ Page dashboard visible, rechargement des données');
+        loadData();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [organizationId]);
 
   async function loadData() {
     try {
@@ -51,10 +79,12 @@ export default function ApprenantDashboard() {
 
       // Récupérer les programmes affectés à l'utilisateur
       console.log('🔍 Fetching assigned programs for user:', targetUserId, isViewingAs ? '(Mode Voir comme)' : '');
-      const assignedPrograms = await getUserAssignedProgramsWithDetails(targetUserId);
+      console.log('🏢 Using organizationId:', organizationId);
+      const assignedPrograms = await getUserAssignedProgramsWithDetails(targetUserId, organizationId);
       console.log('✅ Assigned programs:', assignedPrograms);
 
       // Enrichir chaque programme avec sa progression de lecture
+      console.log('📊 Enrichissement des programmes avec progression...');
       const programsWithProgress = await Promise.all(
         assignedPrograms.map(async (program) => {
           try {
@@ -63,19 +93,25 @@ export default function ApprenantDashboard() {
             
             if (progressSnap.exists()) {
               const data = progressSnap.data();
+              const completedCount = data.completedLessons?.length || 0;
+              console.log(`  → ${program.name}: ${completedCount}/${program.totalLessons} leçons complétées`, {
+                completedLessons: data.completedLessons,
+                percentage: data.percentage
+              });
               return {
                 ...program,
-                completedLessons: data.completedLessons?.length || 0,
+                completedLessons: completedCount,
                 readingProgress: data.percentage || 0
               };
             }
+            console.log(`  → ${program.name}: 0/${program.totalLessons} leçons (pas de progression)`,);
             return {
               ...program,
               completedLessons: 0,
               readingProgress: 0
             };
           } catch (error) {
-            console.error('Erreur récupération progression pour', program.id, error);
+            console.error('❌ Erreur récupération progression pour', program.id, error);
             return {
               ...program,
               completedLessons: 0,
@@ -85,6 +121,13 @@ export default function ApprenantDashboard() {
         })
       );
 
+      console.log('✅ Programmes avec progression:', programsWithProgress.map(p => ({
+        name: p.name,
+        completed: p.completedLessons,
+        total: p.totalLessons,
+        progress: p.readingProgress
+      })));
+      
       setPrograms(programsWithProgress);
 
       // Charger la progression utilisateur (utiliser targetUserId en mode viewAs)

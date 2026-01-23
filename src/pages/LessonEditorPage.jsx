@@ -2,10 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Eye, Edit3, Save, Undo2, Redo2, X } from 'lucide-react';
 import LessonBuilder from '../components/lesson-builder/LessonBuilder';
+import { useAuth } from '../context/AuthContext';
 
 export default function LessonEditorPage() {
   const { programId, moduleId, lessonId } = useParams();
   const navigate = useNavigate();
+  const { organizationId } = useAuth();
   
   const [lessonData, setLessonData] = useState(null);
   const [showQuitModal, setShowQuitModal] = useState(false);
@@ -586,6 +588,7 @@ export default function LessonEditorPage() {
           lessonId={lessonId}
           moduleId={moduleId}
           programId={programId}
+          organizationId={organizationId}
           onReady={handleReady}
         />
       </div>

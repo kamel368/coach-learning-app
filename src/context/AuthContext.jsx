@@ -42,9 +42,17 @@ export const AuthProvider = ({ children }) => {
         console.log('👁️ Mode "Voir comme" activé pour:', targetUserId);
         
         try {
-          // Charger les données de l'utilisateur cible
+          // D'abord, récupérer l'organizationId de l'utilisateur cible depuis /users
+          const targetUserDoc = await getDoc(doc(db, 'users', targetUserId));
+          const targetOrgId = targetUserDoc.exists() 
+            ? (targetUserDoc.data().organizationId || DEFAULT_ORG_ID)
+            : DEFAULT_ORG_ID;
+          
+          console.log('👁️ organizationId de l\'utilisateur cible:', targetOrgId);
+          
+          // Charger les données de l'utilisateur cible depuis son organisation
           const targetEmployeeDoc = await getDoc(
-            doc(db, 'organizations', DEFAULT_ORG_ID, 'employees', targetUserId)
+            doc(db, 'organizations', targetOrgId, 'employees', targetUserId)
           );
           
           if (targetEmployeeDoc.exists()) {
@@ -62,11 +70,11 @@ export const AuthProvider = ({ children }) => {
             setUser(viewAsUser);
             setEmployeeData(targetData);
             setUserRole(targetProfile.role || 'learner');
-            setOrganizationId(DEFAULT_ORG_ID);
+            setOrganizationId(targetOrgId);
             setIsSuperAdmin(false);
             setLoading(false);
             
-            console.log('✅ Mode "Voir comme" activé avec succès');
+            console.log('✅ Mode "Voir comme" activé avec succès pour org:', targetOrgId);
             return;
           }
         } catch (error) {
@@ -111,46 +119,60 @@ export const AuthProvider = ({ children }) => {
             return;
           }
 
-          // 2. Chercher dans employees (nouvelle structure)
+          // 2. Chercher d'abord dans /users pour récupérer l'organizationId
           setIsSuperAdmin(false);
           
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          let userOrgId = DEFAULT_ORG_ID;
+          
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            userOrgId = userData.organizationId || DEFAULT_ORG_ID;
+            console.log('📦 organizationId depuis /users:', userOrgId);
+          }
+          
+          // Puis chercher dans employees avec le bon organizationId
           const employeeDoc = await getDoc(
-            doc(db, 'organizations', DEFAULT_ORG_ID, 'employees', firebaseUser.uid)
+            doc(db, 'organizations', userOrgId, 'employees', firebaseUser.uid)
           );
           
           if (employeeDoc.exists()) {
             const empData = employeeDoc.data();
             const profile = empData.profile || {};
             
-            console.log('👤 Employee trouvé:', profile.email, '- Role:', profile.role);
+            console.log('👤 Employee trouvé:', profile.email, '- Role:', profile.role, '- Org:', userOrgId);
             
             setEmployeeData(empData);
             setUserRole(profile.role || 'learner');
-            setOrganizationId(DEFAULT_ORG_ID);
+            setOrganizationId(userOrgId);
             
-            const orgDoc = await getDoc(doc(db, 'organizations', DEFAULT_ORG_ID));
+            const orgDoc = await getDoc(doc(db, 'organizations', userOrgId));
             if (orgDoc.exists()) {
               setOrganizationInfo(orgDoc.data());
             }
           } else {
             // 3. Fallback ancienne structure /users
-            console.log('⚠️ Vérification ancienne structure /users...');
+            console.log('⚠️ Fallback: Employee non trouvé, utilisation des données /users');
             
-            const oldUserDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-            if (oldUserDoc.exists()) {
-              const userData = oldUserDoc.data();
+            if (userDoc.exists()) {
+              const userData = userDoc.data();
               console.log('📦 User trouvé (ancienne structure):', userData.email);
+              console.log('📦 organizationId depuis /users:', userData.organizationId);
               
               setUserRole(userData.role || 'learner');
-              setOrganizationId(DEFAULT_ORG_ID);
-              setEmployeeData({ profile: userData });
               
-              const orgDoc = await getDoc(doc(db, 'organizations', DEFAULT_ORG_ID));
+              // Utiliser l'organizationId du document, sinon fallback sur org_default
+              const orgId = userData.organizationId || DEFAULT_ORG_ID;
+              setOrganizationId(orgId);
+              setEmployeeData({ profile: userData });
+              console.log('✅ organizationId défini:', orgId);
+              
+              const orgDoc = await getDoc(doc(db, 'organizations', orgId));
               if (orgDoc.exists()) {
                 setOrganizationInfo(orgDoc.data());
               }
             } else {
-              console.log('❌ Utilisateur non trouvé');
+              console.log('❌ Utilisateur non trouvé dans /users');
               setUserRole(null);
               setOrganizationId(null);
             }

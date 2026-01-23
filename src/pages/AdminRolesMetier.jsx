@@ -11,6 +11,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { ArrowLeft, Plus, Edit2, Trash2, Briefcase } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 // 📝 Note: Collection nommée "categories" en DB pour des raisons historiques
 // Elle correspond aux "rôles métier" dans l'interface utilisateur
@@ -18,6 +19,7 @@ import { ArrowLeft, Plus, Edit2, Trash2, Briefcase } from "lucide-react";
 
 export default function AdminRolesMetier() {
   const navigate = useNavigate();
+  const { organizationId } = useAuth();
   const [items, setItems] = useState([]);
   const [loadingList, setLoadingList] = useState(false);
   const [error, setError] = useState("");
@@ -31,14 +33,28 @@ export default function AdminRolesMetier() {
 
   // Charger les rôles métier (collection "categories")
   useEffect(() => {
+    if (!organizationId) return; // Attendre l'organizationId
+    
     const fetchData = async () => {
       try {
         setLoadingList(true);
-        const snap = await getDocs(collection(db, "categories"));
+        
+        // Charger depuis l'organisation de l'utilisateur
+        const categoriesCollection = organizationId
+          ? collection(db, "organizations", organizationId, "categories")
+          : collection(db, "categories");
+        
+        const snap = await getDocs(categoriesCollection);
         const list = snap.docs.map((d) => ({
           id: d.id,
           ...d.data(),
         }));
+        
+        console.log(organizationId 
+          ? '📚 Rôles métier chargés depuis /organizations/' + organizationId + '/categories'
+          : '⚠️ Fallback: Rôles métier chargés depuis /categories'
+        );
+        
         setItems(list);
       } catch (err) {
         console.error(err);
@@ -49,7 +65,7 @@ export default function AdminRolesMetier() {
     };
 
     fetchData();
-  }, []);
+  }, [organizationId]);
 
   // Ouvrir popup en mode ajout
   const handleAdd = () => {
@@ -88,9 +104,17 @@ export default function AdminRolesMetier() {
     try {
       setSaving(true);
 
+      // Déterminer la collection à utiliser
+      const categoriesCollection = organizationId
+        ? collection(db, "organizations", organizationId, "categories")
+        : collection(db, "categories");
+
       if (editingItem) {
         // Mode édition : updateDoc
-        const ref = doc(db, "categories", editingItem.id);
+        const ref = organizationId
+          ? doc(db, "organizations", organizationId, "categories", editingItem.id)
+          : doc(db, "categories", editingItem.id);
+        
         await updateDoc(ref, { label });
 
         setItems((prev) =>
@@ -98,12 +122,14 @@ export default function AdminRolesMetier() {
             it.id === editingItem.id ? { ...it, label } : it
           )
         );
+        
+        console.log('✅ Rôle métier mis à jour:', editingItem.id);
       } else {
         // Mode ajout : addDoc
-        const ref = await addDoc(collection(db, "categories"), {
-          label,
-        });
+        const ref = await addDoc(categoriesCollection, { label });
         setItems((prev) => [...prev, { id: ref.id, label }]);
+        
+        console.log('✅ Rôle métier créé:', ref.id);
       }
 
       closeModal();
@@ -123,8 +149,14 @@ export default function AdminRolesMetier() {
     if (!ok) return;
 
     try {
-      await deleteDoc(doc(db, "categories", item.id));
+      const categoryDocRef = organizationId
+        ? doc(db, "organizations", organizationId, "categories", item.id)
+        : doc(db, "categories", item.id);
+      
+      await deleteDoc(categoryDocRef);
       setItems((prev) => prev.filter((it) => it.id !== item.id));
+      
+      console.log('✅ Rôle métier supprimé:', item.id);
     } catch (err) {
       console.error(err);
       alert("Erreur lors de la suppression du métier.");

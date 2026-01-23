@@ -4,8 +4,12 @@ import { db } from '../firebase';
 
 /**
  * Hook pour gérer une session d'exercices côté apprenant
+ * @param {string} userId - ID de l'utilisateur
+ * @param {string} programId - ID du programme
+ * @param {string} moduleId - ID du module
+ * @param {string} organizationId - ID de l'organisation (optionnel)
  */
-export function useExerciseSession(userId, programId, moduleId) {
+export function useExerciseSession(userId, programId, moduleId, organizationId = null) {
   const [exercises, setExercises] = useState(null);
   const [currentBlockIndex, setCurrentBlockIndex] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -20,11 +24,27 @@ export function useExerciseSession(userId, programId, moduleId) {
       
       try {
         setLoading(true);
-        const exercisesRef = doc(
-          db,
-          `programs/${programId}/modules/${moduleId}/exercises/main`
-        );
-        const exercisesSnap = await getDoc(exercisesRef);
+        
+        // Charger depuis l'organisation si disponible
+        let exercisesSnap;
+        if (organizationId) {
+          const orgExercisesRef = doc(
+            db,
+            'organizations', organizationId, 'programs', programId, 'modules', moduleId, 'exercises', 'main'
+          );
+          exercisesSnap = await getDoc(orgExercisesRef);
+          console.log('🎯 Exercices depuis /organizations/' + organizationId + '/programs/' + programId + '/modules/' + moduleId);
+        }
+        
+        // Fallback vers ancienne structure
+        if (!exercisesSnap || !exercisesSnap.exists()) {
+          const exercisesRef = doc(
+            db,
+            'programs', programId, 'modules', moduleId, 'exercises', 'main'
+          );
+          exercisesSnap = await getDoc(exercisesRef);
+          console.log('⚠️ Fallback: Exercices depuis /programs/' + programId + '/modules/' + moduleId);
+        }
         
         if (exercisesSnap.exists()) {
           const data = exercisesSnap.data();
@@ -48,7 +68,7 @@ export function useExerciseSession(userId, programId, moduleId) {
     }
     
     loadExercises();
-  }, [programId, moduleId]);
+  }, [programId, moduleId, organizationId]);
 
   // Répondre à un exercice
   const answerBlock = useCallback((blockId, answer) => {

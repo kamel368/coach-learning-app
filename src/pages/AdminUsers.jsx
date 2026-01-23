@@ -14,9 +14,11 @@ import {
 } from "firebase/firestore";
 import Breadcrumb from "../components/Breadcrumb";
 import { assignProgramsToUser, getAllPrograms } from '../services/assignmentService';
+import { useAuth } from '../context/AuthContext';
 
 export default function AdminUsers() {
   const navigate = useNavigate();
+  const { organizationId } = useAuth();
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -39,8 +41,10 @@ export default function AdminUsers() {
 
   // Charger tous les utilisateurs
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    if (organizationId) {
+      fetchUsers();
+    }
+  }, [organizationId]);
 
   // Filtrer par recherche
   useEffect(() => {
@@ -56,12 +60,42 @@ export default function AdminUsers() {
 
   async function fetchUsers() {
     try {
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, orderBy("createdAt", "desc"));
-      const snapshot = await getDocs(q);
-      const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setUsers(list);
-      setFilteredUsers(list);
+      let snapshot;
+      
+      if (organizationId) {
+        // Nouvelle structure : charger depuis /organizations/{orgId}/employees
+        const employeesRef = collection(db, "organizations", organizationId, "employees");
+        snapshot = await getDocs(employeesRef);
+        
+        // Transformer les données pour correspondre au format attendu
+        const list = snapshot.docs.map((d) => {
+          const data = d.data();
+          const profile = data.profile || {};
+          return {
+            id: d.id,
+            email: profile.email || '',
+            role: profile.role || 'learner',
+            displayName: `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || profile.email,
+            createdAt: profile.createdAt || data.createdAt,
+            status: profile.status || 'active',
+            ...profile
+          };
+        });
+        
+        console.log('📚 Utilisateurs chargés depuis /organizations/' + organizationId + '/employees');
+        setUsers(list);
+        setFilteredUsers(list);
+      } else {
+        // Fallback ancienne structure
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, orderBy("createdAt", "desc"));
+        snapshot = await getDocs(q);
+        const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+        
+        console.log('⚠️ Fallback: Utilisateurs chargés depuis /users');
+        setUsers(list);
+        setFilteredUsers(list);
+      }
     } catch (err) {
       console.error(err);
       setError("Impossible de charger les utilisateurs.");
@@ -73,7 +107,21 @@ export default function AdminUsers() {
   async function handleToggleRole(user) {
     const newRole = user.role === "admin" ? "learner" : "admin";
     try {
-      await updateDoc(doc(db, "users", user.id), { role: newRole });
+      // Mettre à jour dans la nouvelle structure
+      if (organizationId) {
+        await updateDoc(
+          doc(db, "organizations", organizationId, "employees", user.id),
+          { 'profile.role': newRole, 'profile.updatedAt': serverTimestamp() }
+        );
+      }
+      
+      // Aussi mettre à jour dans /users pour compatibilité
+      try {
+        await updateDoc(doc(db, "users", user.id), { role: newRole });
+      } catch (e) {
+        console.log('User doc not found in /users, skipping');
+      }
+      
       setUsers((prev) =>
         prev.map((u) => (u.id === user.id ? { ...u, role: newRole } : u))
       );
@@ -95,20 +143,54 @@ export default function AdminUsers() {
     try {
       // 1. Créer dans Firebase Auth (sans déconnecter l'admin)
       const newUser = await createUserWithoutSignOut(newEmail, newPassword);
+      const oderId = newUser.uid;
 
-      // 2. Créer le document Firestore
-      await setDoc(doc(db, "users", newUser.uid), {
-        uid: newUser.uid,
+      // 2. Créer dans la nouvelle structure /organizations/{orgId}/employees
+      if (organizationId) {
+        await setDoc(doc(db, "organizations", organizationId, "employees", oderId), {
+          profile: {
+            oderId: oderId,
+            email: newEmail,
+            firstName: '',
+            lastName: '',
+            role: newRole,
+            status: 'active',
+            poste: '',
+            contrat: '',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          }
+        });
+        
+        // Créer aussi le document learning/data
+        await setDoc(
+          doc(db, "organizations", organizationId, "employees", oderId, "learning", "data"),
+          {
+            assignedPrograms: [],
+            lastActivityAt: serverTimestamp()
+          }
+        );
+        
+        console.log('✅ Utilisateur créé dans /organizations/' + organizationId + '/employees');
+      }
+
+      // 3. Aussi créer dans /users pour compatibilité
+      await setDoc(doc(db, "users", oderId), {
+        oderId: oderId,
+        uid: oderId, // Pour compatibilité
         email: newEmail,
         role: newRole,
         displayName: newEmail.split("@")[0],
+        organizationId: organizationId,
         createdAt: serverTimestamp(),
       });
+      
+      console.log('✅ Utilisateur créé dans /users (compatibilité)');
 
-      // 3. Recharger la liste
+      // 4. Recharger la liste
       await fetchUsers();
 
-      // 4. Réinitialiser le formulaire
+      // 5. Réinitialiser le formulaire
       setNewEmail("");
       setNewPassword("");
       setNewRole("learner");
@@ -133,9 +215,36 @@ export default function AdminUsers() {
     setSelectedPrograms(user.assignedPrograms || []);
     setShowAssignModal(true);
     
-    // Charger les programmes disponibles
-    const programs = await getAllPrograms();
-    setAvailablePrograms(programs);
+    // Charger les programmes disponibles depuis l'organisation
+    await loadProgramsForAssignment();
+  }
+  
+  // Fonction pour charger les programmes pour l'assignation
+  async function loadProgramsForAssignment() {
+    try {
+      let progSnap;
+      
+      if (organizationId) {
+        // Charger depuis l'organisation
+        progSnap = await getDocs(collection(db, "organizations", organizationId, "programs"));
+        console.log('📚 Programmes pour assignation depuis /organizations/' + organizationId + '/programs');
+      } else {
+        // Fallback
+        progSnap = await getDocs(collection(db, "programs"));
+        console.log('⚠️ Fallback: Programmes depuis /programs');
+      }
+      
+      const programsList = progSnap.docs.map(d => ({ 
+        id: d.id, 
+        name: d.data().name || d.data().title || 'Programme sans titre',
+        ...d.data() 
+      }));
+      
+      setAvailablePrograms(programsList);
+    } catch (error) {
+      console.error('Erreur chargement programmes:', error);
+      setAvailablePrograms([]);
+    }
   }
 
   // Fonction pour sauvegarder l'affectation
@@ -144,32 +253,51 @@ export default function AdminUsers() {
     
     setAssignLoading(true);
     try {
-      const result = await assignProgramsToUser(selectedUser.id, selectedPrograms);
+      const oderId = selectedUser.id;
       
-      if (result.success) {
-        alert('✅ Programmes affectés avec succès !');
-        
-        // Mettre à jour la liste locale
-        setUsers(users.map(u => 
-          u.id === selectedUser.id 
-            ? { ...u, assignedPrograms: selectedPrograms }
-            : u
-        ));
-        setFilteredUsers(filteredUsers.map(u => 
-          u.id === selectedUser.id 
-            ? { ...u, assignedPrograms: selectedPrograms }
-            : u
-        ));
-        
-        setShowAssignModal(false);
-        setSelectedUser(null);
-        setSelectedPrograms([]);
-      } else {
-        alert('❌ Erreur: ' + result.error);
+      // 1. Sauvegarder dans la nouvelle structure /organizations/{orgId}/employees/{userId}/learning/data
+      if (organizationId) {
+        await setDoc(
+          doc(db, "organizations", organizationId, "employees", oderId, "learning", "data"),
+          { 
+            assignedPrograms: selectedPrograms,
+            lastActivityAt: serverTimestamp()
+          },
+          { merge: true }
+        );
+        console.log('✅ Programmes affectés dans /organizations/' + organizationId + '/employees/' + oderId + '/learning/data');
       }
+      
+      // 2. Aussi sauvegarder dans /users pour compatibilité
+      try {
+        await updateDoc(doc(db, "users", oderId), {
+          assignedPrograms: selectedPrograms
+        });
+        console.log('✅ Programmes affectés dans /users/' + oderId + ' (compatibilité)');
+      } catch (e) {
+        console.log('User doc not found in /users, skipping compatibility update');
+      }
+      
+      alert('✅ Programmes affectés avec succès !');
+      
+      // Mettre à jour la liste locale
+      setUsers(users.map(u => 
+        u.id === selectedUser.id 
+          ? { ...u, assignedPrograms: selectedPrograms }
+          : u
+      ));
+      setFilteredUsers(filteredUsers.map(u => 
+        u.id === selectedUser.id 
+          ? { ...u, assignedPrograms: selectedPrograms }
+          : u
+      ));
+      
+      setShowAssignModal(false);
+      setSelectedUser(null);
+      setSelectedPrograms([]);
     } catch (error) {
-      console.error(error);
-      alert('❌ Erreur lors de l\'affectation');
+      console.error('Erreur lors de l\'affectation:', error);
+      alert('❌ Erreur lors de l\'affectation: ' + error.message);
     } finally {
       setAssignLoading(false);
     }

@@ -14,10 +14,12 @@ import {
   setDoc,
 } from "firebase/firestore";
 import { Plus, FileText, HelpCircle, BrainCircuit, ListTree, Eye, Edit2, FileEdit, Trash2, GripVertical, BookOpen, Users, Copy } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 export default function AdminProgramDetail() {
   const { programId } = useParams();
   const navigate = useNavigate();
+  const { organizationId } = useAuth();
 
   const [program, setProgram] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -35,12 +37,26 @@ export default function AdminProgramDetail() {
   // --------- Chargement initial ---------
   useEffect(() => {
     const load = async () => {
+      if (!organizationId) return;
+      
       try {
         setLoading(true);
 
-        // Programme
-        const programRef = doc(db, "programs", programId);
-        const programSnap = await getDoc(programRef);
+        // Programme (avec multi-tenant)
+        let programSnap;
+        if (organizationId) {
+          const programRef = doc(db, "organizations", organizationId, "programs", programId);
+          programSnap = await getDoc(programRef);
+          if (!programSnap.exists()) {
+            // Fallback ancienne structure
+            const fallbackRef = doc(db, "programs", programId);
+            programSnap = await getDoc(fallbackRef);
+          }
+        } else {
+          const programRef = doc(db, "programs", programId);
+          programSnap = await getDoc(programRef);
+        }
+        
         if (!programSnap.exists()) {
           setError("Programme introuvable.");
           setLoading(false);
@@ -48,25 +64,22 @@ export default function AdminProgramDetail() {
         }
         setProgram({ id: programSnap.id, ...programSnap.data() });
 
-        // Modules (chapitres)
-        const modulesRef = collection(db, "programs", programId, "modules");
+        // Modules (chapitres) avec multi-tenant
+        const modulesRef = organizationId
+          ? collection(db, "organizations", organizationId, "programs", programId, "modules")
+          : collection(db, "programs", programId, "modules");
         const modulesSnap = await getDocs(modulesRef);
         const modulesList = modulesSnap.docs
           .map((d) => ({ id: d.id, ...d.data() }))
           .sort((a, b) => (a.order || 0) - (b.order || 0));
         setChapters(modulesList);
 
-        // Leçons par module
+        // Leçons par module avec multi-tenant
         const lessonsMap = {};
         for (const mod of modulesList) {
-          const lessonsRef = collection(
-            db,
-            "programs",
-            programId,
-            "modules",
-            mod.id,
-            "lessons"
-          );
+          const lessonsRef = organizationId
+            ? collection(db, "organizations", organizationId, "programs", programId, "modules", mod.id, "lessons")
+            : collection(db, "programs", programId, "modules", mod.id, "lessons");
           const lessonsSnap = await getDocs(lessonsRef);
           lessonsMap[mod.id] = lessonsSnap.docs
             .map((d) => ({ id: d.id, ...d.data() }))
@@ -97,7 +110,7 @@ export default function AdminProgramDetail() {
     };
 
     load();
-  }, [programId]);
+  }, [programId, organizationId]);
 
   const formatDate = (ts) => {
     if (!ts) return "—";
@@ -128,7 +141,9 @@ export default function AdminProgramDetail() {
   const saveTitle = async () => {
     if (!program) return;
     try {
-      const ref = doc(db, "programs", program.id);
+      const ref = organizationId
+        ? doc(db, "organizations", organizationId, "programs", program.id)
+        : doc(db, "programs", program.id);
       await updateDoc(ref, {
         name: program.name || "",
         updatedAt: Timestamp.now(),
@@ -144,7 +159,9 @@ export default function AdminProgramDetail() {
     const newStatus = e.target.value;
     try {
       setStatusSaving(true);
-      const ref = doc(db, "programs", program.id);
+      const ref = organizationId
+        ? doc(db, "organizations", organizationId, "programs", program.id)
+        : doc(db, "programs", program.id);
       await updateDoc(ref, {
         status: newStatus,
         updatedAt: Timestamp.now(),
@@ -166,14 +183,14 @@ export default function AdminProgramDetail() {
     if (!title) return;
     try {
       const nextOrder = (chapters.length || 0) + 1;
-      const ref = await addDoc(
-        collection(db, "programs", program.id, "modules"),
-        {
-          title,
-          order: nextOrder,
-          createdAt: Timestamp.now(),
-        }
-      );
+      const modulesCollection = organizationId
+        ? collection(db, "organizations", organizationId, "programs", program.id, "modules")
+        : collection(db, "programs", program.id, "modules");
+      const ref = await addDoc(modulesCollection, {
+        title,
+        order: nextOrder,
+        createdAt: Timestamp.now(),
+      });
       const newChapter = {
         id: ref.id,
         title,
@@ -205,24 +222,17 @@ export default function AdminProgramDetail() {
   const nextOrder = currentLessons.length + 1;
 
   try {
-    const ref = await addDoc(
-      collection(
-        db,
-        "programs",
-        program.id,
-        "modules",
-        chapterId,
-        "lessons"
-      ),
-      {
-        title,
-        order: nextOrder,
-        status: "draft",
-        editorData: null,
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
-      }
-    );
+    const lessonsCollection = organizationId
+      ? collection(db, "organizations", organizationId, "programs", program.id, "modules", chapterId, "lessons")
+      : collection(db, "programs", program.id, "modules", chapterId, "lessons");
+    const ref = await addDoc(lessonsCollection, {
+      title,
+      order: nextOrder,
+      status: "draft",
+      editorData: null,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
 
     const newLesson = {
       id: ref.id,
@@ -238,7 +248,7 @@ export default function AdminProgramDetail() {
       ),
     }));
 
-    // ✅ On envoie aussi le titre à la page d’édition
+    // ✅ On envoie aussi le titre à la page d'édition
     navigate(
       `/admin/programs/${program.id}/modules/${chapterId}/lessons/${ref.id}/edit`,
       {
@@ -326,7 +336,9 @@ export default function AdminProgramDetail() {
     if (!newTitle || newTitle === current) return;
 
     try {
-      const ref = doc(db, "programs", program.id, "modules", chapter.id);
+      const ref = organizationId
+        ? doc(db, "organizations", organizationId, "programs", program.id, "modules", chapter.id)
+        : doc(db, "programs", program.id, "modules", chapter.id);
       await updateDoc(ref, {
         title: newTitle,
         updatedAt: Timestamp.now(),
@@ -343,7 +355,9 @@ export default function AdminProgramDetail() {
   const handleDeleteChapter = async (chapterId) => {
     if (!window.confirm("Supprimer ce chapitre (les leçons associées resteront en base si tu ne les traites pas) ?")) return;
     try {
-      const ref = doc(db, "programs", program.id, "modules", chapterId);
+      const ref = organizationId
+        ? doc(db, "organizations", organizationId, "programs", program.id, "modules", chapterId)
+        : doc(db, "programs", program.id, "modules", chapterId);
       await deleteDoc(ref);
       setChapters((prev) => prev.filter((c) => c.id !== chapterId));
       setLessonsByChapter((prev) => {
@@ -368,7 +382,9 @@ export default function AdminProgramDetail() {
       };
       delete newChapter.id; // Retirer l'ancien ID
 
-      const modulesRef = collection(db, "programs", program.id, "modules");
+      const modulesRef = organizationId
+        ? collection(db, "organizations", organizationId, "programs", program.id, "modules")
+        : collection(db, "programs", program.id, "modules");
       const docRef = await addDoc(modulesRef, newChapter);
       
       setChapters((prev) => [...prev, { id: docRef.id, ...newChapter }]);
@@ -385,15 +401,9 @@ export default function AdminProgramDetail() {
     if (!newTitle || newTitle === current) return;
 
     try {
-      const ref = doc(
-        db,
-        "programs",
-        program.id,
-        "modules",
-        chapterId,
-        "lessons",
-        lesson.id
-      );
+      const ref = organizationId
+        ? doc(db, "organizations", organizationId, "programs", program.id, "modules", chapterId, "lessons", lesson.id)
+        : doc(db, "programs", program.id, "modules", chapterId, "lessons", lesson.id);
       await updateDoc(ref, {
         title: newTitle,
         updatedAt: Timestamp.now(),
@@ -413,15 +423,9 @@ export default function AdminProgramDetail() {
   const handleDeleteLesson = async (chapterId, lessonId) => {
     if (!window.confirm("Supprimer cette leçon ?")) return;
     try {
-      const ref = doc(
-        db,
-        "programs",
-        program.id,
-        "modules",
-        chapterId,
-        "lessons",
-        lessonId
-      );
+      const ref = organizationId
+        ? doc(db, "organizations", organizationId, "programs", program.id, "modules", chapterId, "lessons", lessonId)
+        : doc(db, "programs", program.id, "modules", chapterId, "lessons", lessonId);
       await deleteDoc(ref);
       setLessonsByChapter((prev) => ({
         ...prev,
@@ -497,12 +501,15 @@ export default function AdminProgramDetail() {
 
     try {
       await Promise.all(
-        updated.map((c) =>
-          updateDoc(doc(db, "programs", program.id, "modules", c.id), {
+        updated.map((c) => {
+          const ref = organizationId
+            ? doc(db, "organizations", organizationId, "programs", program.id, "modules", c.id)
+            : doc(db, "programs", program.id, "modules", c.id);
+          return updateDoc(ref, {
             order: c.order,
             updatedAt: Timestamp.now(),
-          })
-        )
+          });
+        })
       );
     } catch (err) {
       console.error(err);
@@ -555,23 +562,15 @@ export default function AdminProgramDetail() {
 
     try {
       await Promise.all(
-        updated.map((l) =>
-          updateDoc(
-            doc(
-              db,
-              "programs",
-              program.id,
-              "modules",
-              chapterId,
-              "lessons",
-              l.id
-            ),
-            {
-              order: l.order,
-              updatedAt: Timestamp.now(),
-            }
-          )
-        )
+        updated.map((l) => {
+          const ref = organizationId
+            ? doc(db, "organizations", organizationId, "programs", program.id, "modules", chapterId, "lessons", l.id)
+            : doc(db, "programs", program.id, "modules", chapterId, "lessons", l.id);
+          return updateDoc(ref, {
+            order: l.order,
+            updatedAt: Timestamp.now(),
+          });
+        })
       );
     } catch (err) {
       console.error(err);

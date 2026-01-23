@@ -5,8 +5,11 @@ import { db } from '../firebase';
 /**
  * Hook pour gérer une évaluation complète de PROGRAMME
  * Mélange TOUS les exercices de TOUS les chapitres de TOUS les modules
+ * @param {string} userId - ID de l'utilisateur
+ * @param {string} programId - ID du programme
+ * @param {string} organizationId - ID de l'organisation (optionnel)
  */
-export function useProgramEvaluation(userId, programId) {
+export function useProgramEvaluation(userId, programId, organizationId = null) {
   const [evaluation, setEvaluation] = useState(null);
   const [currentBlockIndex, setCurrentBlockIndex] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -34,10 +37,16 @@ export function useProgramEvaluation(userId, programId) {
         console.log('🔍 Chargement évaluation programme:', { programId });
 
         // 1. Récupérer tous les modules du programme
-        const modulesRef = collection(db, `programs/${programId}/modules`);
+        const modulesRef = organizationId
+          ? collection(db, 'organizations', organizationId, 'programs', programId, 'modules')
+          : collection(db, 'programs', programId, 'modules');
+        
         const modulesSnap = await getDocs(modulesRef);
         
         console.log(`📚 ${modulesSnap.size} modules trouvés dans le programme`);
+        if (organizationId) {
+          console.log('🏢 Chargement depuis /organizations/' + organizationId);
+        }
 
         // 2. Pour chaque module, récupérer tous ses chapitres et exercices
         const allBlocks = [];
@@ -49,10 +58,10 @@ export function useProgramEvaluation(userId, programId) {
           console.log(`\n📘 Module "${moduleData.title}"`);
           
           try {
-            const exercisesRef = doc(
-              db,
-              `programs/${programId}/modules/${moduleId}/exercises/main`
-            );
+            const exercisesRef = organizationId
+              ? doc(db, 'organizations', organizationId, 'programs', programId, 'modules', moduleId, 'exercises', 'main')
+              : doc(db, 'programs', programId, 'modules', moduleId, 'exercises', 'main');
+            
             const exercisesSnap = await getDoc(exercisesRef);
             
             if (exercisesSnap.exists()) {
@@ -111,7 +120,7 @@ export function useProgramEvaluation(userId, programId) {
     }
 
     loadProgramEvaluation();
-  }, [programId]);
+  }, [programId, organizationId]);
 
   // Enregistrer une réponse
   const answerBlock = useCallback((blockId, answer) => {

@@ -3,9 +3,11 @@ import { useEffect, useState } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { BookOpen, CheckCircle, Bot, Users, Briefcase } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { organizationId } = useAuth();
   
   const [stats, setStats] = useState({
     programs: 0,
@@ -16,26 +18,50 @@ export default function Dashboard() {
 
   // Charger les statistiques
   useEffect(() => {
+    if (!organizationId) return; // Attendre l'organizationId
+    
     async function loadStats() {
       try {
-        const programsSnap = await getDocs(collection(db, 'programs'));
+        // Charger les programmes depuis l'organisation
+        const programsCollection = organizationId
+          ? collection(db, 'organizations', organizationId, 'programs')
+          : collection(db, 'programs');
+        
+        const programsSnap = await getDocs(programsCollection);
         const programsCount = programsSnap.size;
+        
+        console.log('📊 Stats programmes:', programsCount, 'depuis', organizationId ? `/organizations/${organizationId}/programs` : '/programs');
 
+        // Compter les leçons dans tous les modules de tous les programmes
         let lessonsCount = 0;
         for (const programDoc of programsSnap.docs) {
-          const modulesSnap = await getDocs(
-            collection(db, `programs/${programDoc.id}/modules`)
-          );
+          const modulesPath = organizationId
+            ? `organizations/${organizationId}/programs/${programDoc.id}/modules`
+            : `programs/${programDoc.id}/modules`;
+          
+          const modulesSnap = await getDocs(collection(db, modulesPath));
+          
           for (const moduleDoc of modulesSnap.docs) {
-            const lessonsSnap = await getDocs(
-              collection(db, `programs/${programDoc.id}/modules/${moduleDoc.id}/lessons`)
-            );
+            const lessonsPath = organizationId
+              ? `organizations/${organizationId}/programs/${programDoc.id}/modules/${moduleDoc.id}/lessons`
+              : `programs/${programDoc.id}/modules/${moduleDoc.id}/lessons`;
+            
+            const lessonsSnap = await getDocs(collection(db, lessonsPath));
             lessonsCount += lessonsSnap.size;
           }
         }
+        
+        console.log('📊 Stats leçons:', lessonsCount);
 
-        const usersSnap = await getDocs(collection(db, 'users'));
+        // Charger les utilisateurs/employees depuis l'organisation
+        const usersCollection = organizationId
+          ? collection(db, 'organizations', organizationId, 'employees')
+          : collection(db, 'users');
+        
+        const usersSnap = await getDocs(usersCollection);
         const usersCount = usersSnap.size;
+        
+        console.log('📊 Stats utilisateurs:', usersCount, 'depuis', organizationId ? `/organizations/${organizationId}/employees` : '/users');
 
         setStats({
           programs: programsCount,
@@ -50,7 +76,7 @@ export default function Dashboard() {
     }
 
     loadStats();
-  }, []);
+  }, [organizationId]);
 
   return (
     <div style={{

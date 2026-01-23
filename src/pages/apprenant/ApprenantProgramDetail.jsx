@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { collection, getDocs, doc, getDoc, query, orderBy } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
@@ -7,22 +7,67 @@ import { ArrowLeft, BookOpen, TrendingUp, ChevronRight, Lock, PlayCircle } from 
 import { apprenantTheme, cardStyles } from '../../styles/apprenantTheme';
 import { useViewAs } from '../../hooks/useViewAs';
 import ViewAsBanner from '../../components/ViewAsBanner';
+import { useAuth } from '../../context/AuthContext';
 
 export default function ApprenantProgramDetail() {
   const { programId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation(); // ✅ Ajout pour détecter les changements de navigation
   
   // Mode "Voir comme"
   const { targetUserId } = useViewAs();
+  const { organizationId } = useAuth();
   
   const [program, setProgram] = useState(null);
   const [modules, setModules] = useState([]);
   const [userProgress, setUserProgress] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [targetOrgId, setTargetOrgId] = useState(null);
 
+  // Charger l'organizationId de l'utilisateur cible (pour mode "Voir comme")
   useEffect(() => {
-    loadData();
-  }, [programId]);
+    const loadTargetOrgId = async () => {
+      const userId = targetUserId;
+      if (userId) {
+        const userDoc = await getDoc(doc(db, "users", userId));
+        if (userDoc.exists()) {
+          setTargetOrgId(userDoc.data().organizationId || organizationId);
+        } else {
+          setTargetOrgId(organizationId);
+        }
+      } else {
+        setTargetOrgId(organizationId);
+      }
+    };
+    loadTargetOrgId();
+  }, [targetUserId, organizationId]);
+
+  // ✅ Recharger les données à chaque changement de location (navigation)
+  useEffect(() => {
+    if (programId && targetOrgId) {
+      console.log('🔄 Rechargement du programme (navigation détectée)', {
+        programId,
+        targetOrgId,
+        targetUserId,
+        locationKey: location.key,
+        pathname: location.pathname
+      });
+      loadData();
+    }
+  }, [programId, targetOrgId, targetUserId, location.pathname, location.key]); // ✅ Ajout de targetUserId, pathname ET key
+  
+  // ✅ NOUVEAU: Recharger aussi quand la page redevient visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && programId && targetOrgId) {
+        console.log('👁️ Page programme visible, rechargement des données');
+        loadData();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [programId, targetOrgId]);
 
   async function loadData() {
     try {
@@ -32,8 +77,19 @@ export default function ApprenantProgramDetail() {
         return;
       }
 
+      const effectiveOrgId = targetOrgId || organizationId;
+      console.log('📚 Chargement programme depuis org:', effectiveOrgId);
+
       // Récupérer le programme
-      const programDoc = await getDoc(doc(db, 'programs', programId));
+      let programDoc;
+      if (effectiveOrgId) {
+        programDoc = await getDoc(doc(db, 'organizations', effectiveOrgId, 'programs', programId));
+        console.log('✅ Programme depuis /organizations/' + effectiveOrgId + '/programs/' + programId);
+      } else {
+        programDoc = await getDoc(doc(db, 'programs', programId));
+        console.log('⚠️ Fallback: Programme depuis /programs/' + programId);
+      }
+
       if (!programDoc.exists()) {
         navigate('/apprenant/dashboard');
         return;
@@ -43,7 +99,10 @@ export default function ApprenantProgramDetail() {
       setProgram(programData);
 
       // Récupérer les modules du programme
-      const modulesRef = collection(db, `programs/${programId}/modules`);
+      const modulesRef = effectiveOrgId
+        ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'modules')
+        : collection(db, 'programs', programId, 'modules');
+      
       const modulesQuery = query(modulesRef, orderBy('order', 'asc'));
       const modulesSnap = await getDocs(modulesQuery);
       
@@ -52,9 +111,11 @@ export default function ApprenantProgramDetail() {
         const moduleData = moduleDoc.data();
         
         // Compter les leçons de ce module
-        const lessonsSnap = await getDocs(
-          collection(db, `programs/${programId}/modules/${moduleDoc.id}/lessons`)
-        );
+        const lessonsRef = effectiveOrgId
+          ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'modules', moduleDoc.id, 'lessons')
+          : collection(db, 'programs', programId, 'modules', moduleDoc.id, 'lessons');
+        
+        const lessonsSnap = await getDocs(lessonsRef);
         
         modulesData.push({
           id: moduleDoc.id,

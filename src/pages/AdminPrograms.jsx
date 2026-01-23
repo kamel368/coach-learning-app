@@ -34,7 +34,7 @@ import { useAuth } from "../context/AuthContext";
 
 export default function AdminPrograms() {
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { user, organizationId } = useAuth();
 
   const [programs, setPrograms] = useState([]);
   const [categories, setCategories] = useState([]); // rôles métier
@@ -69,7 +69,9 @@ export default function AdminPrograms() {
   // Fonction pour compter les chapitres d'un programme
   const fetchChaptersCount = async (programId) => {
     try {
-      const modulesRef = collection(db, "programs", programId, "modules");
+      const modulesRef = organizationId
+        ? collection(db, "organizations", organizationId, "programs", programId, "modules")
+        : collection(db, "programs", programId, "modules");
       const modulesSnap = await getDocs(modulesRef);
       return modulesSnap.size; // Nombre de documents
     } catch (err) {
@@ -80,18 +82,40 @@ export default function AdminPrograms() {
 
   // Charger programmes + rôles métier + compteurs chapitres
   useEffect(() => {
+    if (!organizationId) return; // Attendre l'organizationId
+    
     const fetchData = async () => {
       try {
         setLoadingList(true);
 
-        const progSnap = await getDocs(collection(db, "programs"));
+        // Charger depuis l'organisation de l'utilisateur
+        let progSnap;
+        if (organizationId) {
+          // Nouvelle structure : /organizations/{orgId}/programs
+          progSnap = await getDocs(collection(db, "organizations", organizationId, "programs"));
+          console.log('📚 Programmes chargés depuis /organizations/' + organizationId + '/programs');
+        } else {
+          // Fallback ancienne structure (ne devrait plus arriver)
+          progSnap = await getDocs(collection(db, "programs"));
+          console.log('⚠️ Fallback: Programmes chargés depuis /programs (pas d\'organizationId)');
+        }
+        
         const progList = progSnap.docs.map((d) => ({
           id: d.id,
           ...d.data(),
         }));
         setPrograms(progList);
 
-        const catSnap = await getDocs(collection(db, "categories"));
+        // Charger les catégories depuis l'organisation de l'utilisateur
+        let catSnap;
+        if (organizationId) {
+          catSnap = await getDocs(collection(db, "organizations", organizationId, "categories"));
+          console.log('📂 Catégories depuis /organizations/' + organizationId + '/categories');
+        } else {
+          catSnap = await getDocs(collection(db, "categories"));
+          console.log('⚠️ Fallback: Catégories depuis /categories');
+        }
+        
         const catList = catSnap.docs.map((d) => ({
           id: d.id,
           ...d.data(),
@@ -121,7 +145,7 @@ export default function AdminPrograms() {
     };
 
     fetchData();
-  }, []);
+  }, [organizationId]);
 
   const getCategoryLabel = (id) => {
     if (!id) return "Non défini";
@@ -253,7 +277,13 @@ export default function AdminPrograms() {
     try {
       setSaving(true);
       const now = Timestamp.now();
-      const ref = await addDoc(collection(db, "programs"), {
+      
+      // Créer dans l'organisation de l'utilisateur
+      const programsCollection = organizationId 
+        ? collection(db, "organizations", organizationId, "programs")
+        : collection(db, "programs");
+      
+      const ref = await addDoc(programsCollection, {
         name,
         description,
         categoryId,
@@ -261,6 +291,8 @@ export default function AdminPrograms() {
         createdAt: now,
         updatedAt: now,
       });
+      
+      console.log('✅ Programme créé:', ref.id, 'dans', organizationId ? `/organizations/${organizationId}/programs` : '/programs');
 
       const newProgram = {
         id: ref.id,
@@ -303,8 +335,14 @@ export default function AdminPrograms() {
     if (!ok) return;
 
     try {
-      await deleteDoc(doc(db, "programs", program.id));
+      // Supprimer depuis l'organisation de l'utilisateur
+      const programDocRef = organizationId
+        ? doc(db, "organizations", organizationId, "programs", program.id)
+        : doc(db, "programs", program.id);
+        
+      await deleteDoc(programDocRef);
       setPrograms((prev) => prev.filter((p) => p.id !== program.id));
+      console.log('✅ Programme supprimé:', program.id);
     } catch (err) {
       console.error(err);
       alert("Erreur lors de la suppression du programme.");

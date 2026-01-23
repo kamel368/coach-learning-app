@@ -3,9 +3,11 @@ import { useEffect, useState } from 'react';
 import { doc, getDoc, collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
 import { markLessonCompleted, updateCurrentLesson } from '../../services/progressionService';
+import { getLesson } from '../../services/lessonsService';
 import { useGamification } from '../../hooks/useGamification';
 import { useViewAs } from '../../hooks/useViewAs';
 import ViewAsBanner from '../../components/ViewAsBanner';
+import { useAuth } from '../../context/AuthContext';
 
 export default function ApprenantLessonViewer() {
   const { programId, moduleId, lessonId } = useParams();
@@ -18,17 +20,39 @@ export default function ApprenantLessonViewer() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState(false);
+  const [targetOrgId, setTargetOrgId] = useState(null);
 
   // Mode "Voir comme"
   const user = auth.currentUser;
   const { targetUserId, isViewingAs } = useViewAs();
+  const { organizationId } = useAuth();
   
   // Hook gamification
   const { onLessonCompleted } = useGamification(targetUserId);
 
+  // Charger l'organizationId de l'utilisateur cible
   useEffect(() => {
-    loadData();
-  }, [programId, moduleId, lessonId]);
+    const loadTargetOrgId = async () => {
+      const userId = targetUserId;
+      if (userId) {
+        const userDoc = await getDoc(doc(db, "users", userId));
+        if (userDoc.exists()) {
+          setTargetOrgId(userDoc.data().organizationId || organizationId);
+        } else {
+          setTargetOrgId(organizationId);
+        }
+      } else {
+        setTargetOrgId(organizationId);
+      }
+    };
+    loadTargetOrgId();
+  }, [targetUserId, organizationId]);
+
+  useEffect(() => {
+    if (programId && moduleId && lessonId && targetOrgId) {
+      loadData();
+    }
+  }, [programId, moduleId, lessonId, targetOrgId]);
 
   async function loadData() {
     try {
@@ -38,23 +62,42 @@ export default function ApprenantLessonViewer() {
         return;
       }
 
+      const effectiveOrgId = targetOrgId || organizationId;
+      console.log('📖 Chargement leçon depuis org:', effectiveOrgId);
+
       // Récupérer le programme
-      const programDoc = await getDoc(doc(db, 'programs', programId));
+      let programDoc;
+      if (effectiveOrgId) {
+        programDoc = await getDoc(doc(db, 'organizations', effectiveOrgId, 'programs', programId));
+      } else {
+        programDoc = await getDoc(doc(db, 'programs', programId));
+      }
+
       if (programDoc.exists()) {
         setProgram({ id: programDoc.id, ...programDoc.data() });
       }
 
       // Récupérer le module
-      const moduleDoc = await getDoc(
-        doc(db, `programs/${programId}/modules/${moduleId}`)
-      );
+      let moduleDoc;
+      if (effectiveOrgId) {
+        moduleDoc = await getDoc(
+          doc(db, 'organizations', effectiveOrgId, 'programs', programId, 'modules', moduleId)
+        );
+      } else {
+        moduleDoc = await getDoc(
+          doc(db, 'programs', programId, 'modules', moduleId)
+        );
+      }
       
       if (moduleDoc.exists()) {
         setModule({ id: moduleDoc.id, ...moduleDoc.data() });
       }
 
       // Récupérer toutes les leçons du module pour navigation
-      const lessonsRef = collection(db, `programs/${programId}/modules/${moduleId}/lessons`);
+      const lessonsRef = effectiveOrgId
+        ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'modules', moduleId, 'lessons')
+        : collection(db, 'programs', programId, 'modules', moduleId, 'lessons');
+      
       const lessonsQuery = query(lessonsRef, orderBy('order', 'asc'));
       const lessonsSnap = await getDocs(lessonsQuery);
       
@@ -69,15 +112,26 @@ export default function ApprenantLessonViewer() {
       const index = lessonsData.findIndex(l => l.id === lessonId);
       setCurrentIndex(index);
 
-      // Récupérer la leçon actuelle
-      const currentLesson = lessonsData[index];
-      if (currentLesson) {
-        setLesson(currentLesson);
+      // Récupérer le document COMPLET de la leçon actuelle (avec les blocks)
+      if (index >= 0) {
+        // Utiliser le service lessonsService qui gère la structure multi-tenant
+        const lessonData = await getLesson(lessonId, programId, moduleId, effectiveOrgId);
         
-        // Marquer comme leçon en cours (sauf en mode viewAs)
-        if (!isViewingAs) {
-          await updateCurrentLesson(targetUserId, programId, lessonId);
+        if (lessonData) {
+          setLesson(lessonData);
+          console.log('✅ Leçon chargée avec', lessonData.blocks?.length || 0, 'blocks');
+          
+          // Marquer comme leçon en cours (sauf en mode viewAs)
+          if (!isViewingAs) {
+            await updateCurrentLesson(targetUserId, programId, lessonId);
+          }
+        } else {
+          console.error('❌ Leçon introuvable');
+          setLesson(null);
         }
+      } else {
+        console.error('❌ Leçon introuvable dans la liste');
+        setLesson(null);
       }
 
     } catch (error) {
@@ -92,6 +146,8 @@ export default function ApprenantLessonViewer() {
       setCompleting(true);
       const user = auth.currentUser;
       
+      const effectiveOrgId = targetOrgId || organizationId;
+      
       // 📊 CORRECTION BUG : Calculer le nombre TOTAL de leçons du programme
       // (pas seulement celles du module actuel)
       console.log('🔍 Calcul du nombre total de leçons du programme...');
@@ -99,12 +155,18 @@ export default function ApprenantLessonViewer() {
       let totalProgramLessons = 0;
       
       // Récupérer tous les modules du programme
-      const modulesRef = collection(db, `programs/${programId}/modules`);
+      const modulesRef = effectiveOrgId
+        ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'modules')
+        : collection(db, 'programs', programId, 'modules');
+      
       const modulesSnap = await getDocs(modulesRef);
       
       // Pour chaque module, compter les leçons
       for (const moduleDoc of modulesSnap.docs) {
-        const lessonsRef = collection(db, `programs/${programId}/modules/${moduleDoc.id}/lessons`);
+        const lessonsRef = effectiveOrgId
+          ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'modules', moduleDoc.id, 'lessons')
+          : collection(db, 'programs', programId, 'modules', moduleDoc.id, 'lessons');
+        
         const lessonsSnap = await getDocs(lessonsRef);
         totalProgramLessons += lessonsSnap.size;
       }
@@ -143,10 +205,55 @@ export default function ApprenantLessonViewer() {
     }
   }
 
-  function handleNext() {
+  async function handleNext() {
     if (currentIndex < allLessons.length - 1) {
-      const nextLesson = allLessons[currentIndex + 1];
-      navigate(`/apprenant/programs/${programId}/modules/${moduleId}/lessons/${nextLesson.id}`);
+      try {
+        setCompleting(true);
+        
+        const effectiveOrgId = targetOrgId || organizationId;
+        
+        // Calculer le nombre total de leçons du programme
+        console.log('🔍 handleNext - Calcul du nombre total de leçons...');
+        let totalProgramLessons = 0;
+        
+        const modulesRef = effectiveOrgId
+          ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'modules')
+          : collection(db, 'programs', programId, 'modules');
+        
+        const modulesSnap = await getDocs(modulesRef);
+        
+        for (const moduleDoc of modulesSnap.docs) {
+          const lessonsRef = effectiveOrgId
+            ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'modules', moduleDoc.id, 'lessons')
+            : collection(db, 'programs', programId, 'modules', moduleDoc.id, 'lessons');
+          
+          const lessonsSnap = await getDocs(lessonsRef);
+          totalProgramLessons += lessonsSnap.size;
+        }
+        
+        console.log('📖 handleNext - Marquage leçon comme lue:', lessonId);
+        console.log('📚 Total leçons du programme:', totalProgramLessons);
+        
+        // Marquer la leçon actuelle comme terminée
+        await markLessonCompleted(targetUserId, programId, lessonId, totalProgramLessons);
+        
+        // 🎮 GAMIFICATION : Ajouter XP pour leçon complétée
+        if (onLessonCompleted) {
+          await onLessonCompleted();
+        }
+        
+        // Naviguer vers la leçon suivante
+        const nextLesson = allLessons[currentIndex + 1];
+        navigate(`/apprenant/programs/${programId}/modules/${moduleId}/lessons/${nextLesson.id}`);
+        
+      } catch (error) {
+        console.error('❌ Erreur handleNext:', error);
+        // En cas d'erreur, naviguer quand même
+        const nextLesson = allLessons[currentIndex + 1];
+        navigate(`/apprenant/programs/${programId}/modules/${moduleId}/lessons/${nextLesson.id}`);
+      } finally {
+        setCompleting(false);
+      }
     }
   }
 

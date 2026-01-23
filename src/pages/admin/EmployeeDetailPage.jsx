@@ -132,23 +132,30 @@ export default function EmployeeDetailPage() {
       // 2. Charger TOUS les programmes
       let allProgramsList = [];
       
-      // D'abord /programs (ancienne structure)
-      const programsSnap = await getDocs(collection(db, 'programs'));
-      if (programsSnap.size > 0) {
-        allProgramsList = programsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        console.log('📚 Programmes depuis /programs:', allProgramsList.length);
-      }
+      // Récupérer l'organizationId de l'employé (depuis /users)
+      const employeeOrgId = userDoc.exists() ? userDoc.data().organizationId : null;
+      const targetOrgId = employeeOrgId || organizationId;
       
-      // Si vide, essayer nouvelle structure
-      if (allProgramsList.length === 0 && organizationId) {
+      console.log('🏢 organizationId de l\'employé:', targetOrgId);
+      
+      // D'abord essayer nouvelle structure /organizations/{orgId}/programs
+      if (targetOrgId) {
         const orgProgramsSnap = await getDocs(
-          collection(db, 'organizations', organizationId, 'programs')
+          collection(db, 'organizations', targetOrgId, 'programs')
         );
         allProgramsList = orgProgramsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        console.log('📚 Programmes depuis /organizations/' + targetOrgId + '/programs:', allProgramsList.length);
+      }
+      
+      // Fallback ancienne structure si vide
+      if (allProgramsList.length === 0) {
+        const programsSnap = await getDocs(collection(db, 'programs'));
+        allProgramsList = programsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        console.log('⚠️ Fallback: Programmes depuis /programs:', allProgramsList.length);
       }
       
       setAllPrograms(allProgramsList);
-      console.log('📚 Total programmes:', allProgramsList.length);
+      console.log('📚 Total programmes chargés:', allProgramsList.length);
       
       // 3. Construire la liste des programmes ASSIGNÉS avec leur progression
       const assignedProgramsWithProgress = [];

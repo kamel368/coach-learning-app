@@ -9,7 +9,8 @@ import {
   BrainCircuit, 
   UserCog,
   Menu,
-  LogOut
+  LogOut,
+  Shield
 } from 'lucide-react';
 
 export const SIDEBAR_WIDTH = 220;
@@ -18,7 +19,7 @@ export const SIDEBAR_WIDTH_COLLAPSED = 60;
 export default function Sidebar({ isOpen, setIsOpen }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout, user } = useContext(AuthContext);
+  const { logout, user, isSuperAdmin } = useContext(AuthContext);
 
 const handleLogout = async () => {
   console.log('🚪 Logout clicked!');
@@ -234,6 +235,47 @@ const handleLogout = async () => {
             {isOpen ? user.email : '👤'}
           </span>
         )}
+
+        {/* Bouton Super Admin - visible uniquement pour les Super Admins */}
+        {isSuperAdmin && (
+          <button
+            onClick={() => navigate('/superadmin/dashboard')}
+            style={{
+              width: '100%',
+              padding: isOpen ? '10px 12px' : '10px 4px',
+              background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: isOpen ? '13px' : '18px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              marginBottom: '8px',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, #d97706, #b45309)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
+            }}
+            title={isOpen ? '' : 'Super Admin'}
+          >
+            {isOpen ? (
+              <>
+                <Shield className="w-4 h-4" />
+                <span>Super Admin</span>
+              </>
+            ) : (
+              <Shield className="w-5 h-5" />
+            )}
+          </button>
+        )}
+
         <button
           onClick={handleLogout}
           style={{

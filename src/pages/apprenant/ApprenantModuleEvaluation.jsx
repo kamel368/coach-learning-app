@@ -1,5 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../firebase';
 import { ArrowLeft, ChevronLeft, ChevronRight, Trophy } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useModuleEvaluation } from '../../hooks/useModuleEvaluation';
@@ -26,7 +28,25 @@ const BLOCK_LABELS = {
 export default function ApprenantModuleEvaluation() {
   const { programId, moduleId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, organizationId } = useAuth();
+  const [targetOrgId, setTargetOrgId] = useState(null);
+  
+  // Charger l'organizationId de l'utilisateur
+  useEffect(() => {
+    const loadOrgId = async () => {
+      if (user?.uid) {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) {
+          setTargetOrgId(userDoc.data().organizationId || organizationId);
+        } else {
+          setTargetOrgId(organizationId);
+        }
+      } else {
+        setTargetOrgId(organizationId);
+      }
+    };
+    loadOrgId();
+  }, [user, organizationId]);
   
   const {
     evaluation,
@@ -42,7 +62,7 @@ export default function ApprenantModuleEvaluation() {
     submitting,
     isLastBlock,
     progress
-  } = useModuleEvaluation(user?.uid, programId, moduleId);
+  } = useModuleEvaluation(user?.uid, programId, moduleId, targetOrgId);
 
   const [timer, setTimer] = useState(0);
 

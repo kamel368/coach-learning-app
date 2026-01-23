@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
 import { collection, getDocs, doc, getDoc, query, where, orderBy } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
@@ -7,10 +7,13 @@ import { apprenantTheme, buttonStyles } from '../../styles/apprenantTheme';
 import { useGamification } from '../../hooks/useGamification';
 import { useViewAs } from '../../hooks/useViewAs';
 import ViewAsBanner from '../../components/ViewAsBanner';
+import { useAuth } from '../../context/AuthContext';
+import { cleanObsoleteLessons } from '../../services/progressionService';
 
 export default function ApprenantModuleDetail() {
   const { programId, moduleId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation(); // ✅ Ajout pour détecter les changements de navigation
   
   const [program, setProgram] = useState(null);
   const [module, setModule] = useState(null);
@@ -19,19 +22,98 @@ export default function ApprenantModuleDetail() {
   const [quizAttempts, setQuizAttempts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [completedLessons, setCompletedLessons] = useState([]);
+  const [targetOrgId, setTargetOrgId] = useState(null);
 
   // Mode "Voir comme"
   const user = auth.currentUser;
   const { targetUserId } = useViewAs();
+  const { organizationId } = useAuth();
   
   // Hook gamification
   const { onModuleCompleted, loading: gamifLoading, gamificationData } = useGamification(targetUserId);
   const moduleCompletionTracked = useRef(new Set());
 
+  // Charger l'organizationId de l'utilisateur cible
   useEffect(() => {
-    loadData();
-    loadProgress();
-  }, [programId, moduleId]);
+    const loadTargetOrgId = async () => {
+      const userId = targetUserId;
+      if (userId) {
+        const userDoc = await getDoc(doc(db, "users", userId));
+        if (userDoc.exists()) {
+          setTargetOrgId(userDoc.data().organizationId || organizationId);
+        } else {
+          setTargetOrgId(organizationId);
+        }
+      } else {
+        setTargetOrgId(organizationId);
+      }
+    };
+    loadTargetOrgId();
+  }, [targetUserId, organizationId]);
+
+  // ✅ Recharger les données à chaque affichage de la page
+  useEffect(() => {
+    if (programId && moduleId && targetOrgId) {
+      console.log('🔄 Rechargement du module', {
+        programId,
+        moduleId,
+        targetOrgId,
+        targetUserId,
+        locationKey: location.key,
+        pathname: location.pathname
+      });
+      loadData(); // Charger d'abord les leçons
+    }
+  }, [programId, moduleId, targetOrgId, targetUserId, location.pathname, location.key]);
+  
+  // ✅ NOUVEAU: Charger la progression UNIQUEMENT quand les leçons sont chargées
+  useEffect(() => {
+    if (lessons.length > 0 && programId && targetOrgId) {
+      console.log('📊 Leçons chargées, maintenant chargement de la progression');
+      
+      // 🧹 Nettoyer les IDs obsolètes AVANT de charger la progression
+      const user = auth.currentUser;
+      const effectiveUserId = targetUserId || user?.uid;
+      
+      if (effectiveUserId) {
+        const validLessonIds = lessons.map(l => l.id);
+        cleanObsoleteLessons(effectiveUserId, programId, validLessonIds)
+          .then(() => {
+            console.log('✅ Nettoyage terminé, rechargement progression');
+            loadProgress(); // ✅ Rechargement explicite après nettoyage
+          });
+      } else {
+        // Si pas d'utilisateur, charger quand même la progression
+        loadProgress();
+      }
+    }
+  }, [lessons, programId, targetOrgId, targetUserId]);
+
+  // ✅ AJOUT: Recharger la progression quand on revient sur la page (focus)
+  useEffect(() => {
+    const handleFocus = () => {
+      if (lessons.length > 0 && programId) {
+        console.log('👁️ Focus sur la page, rechargement progression');
+        loadProgress();
+      }
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [lessons, programId]);
+  
+  // ✅ Recharger aussi quand la page redevient visible (visibilitychange)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && programId && moduleId && targetOrgId) {
+        console.log('👁️ Page visible, rechargement des données');
+        loadData(); // Recharger tout
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [programId, moduleId, targetOrgId]);
 
   // 🎮 GAMIFICATION : Détecter quand un module est 100% complété
   useEffect(() => {
@@ -52,17 +134,38 @@ export default function ApprenantModuleDetail() {
   async function loadProgress() {
     try {
       const user = auth.currentUser;
-      if ((!user && !targetUserId) || !programId) return;
+      const effectiveUserId = targetUserId || user?.uid;
       
-      const progressRef = doc(db, 'userProgress', targetUserId, 'programs', programId);
+      if (!effectiveUserId || !programId) {
+        console.log('⚠️ loadProgress: userId ou programId manquant');
+        return;
+      }
+      
+      console.log('📖 Chargement progression pour user:', effectiveUserId, 'programme:', programId);
+      
+      const progressRef = doc(db, 'userProgress', effectiveUserId, 'programs', programId);
       const progressSnap = await getDoc(progressRef);
       
       if (progressSnap.exists()) {
-        setCompletedLessons(progressSnap.data().completedLessons || []);
-        console.log('📚 Leçons complétées chargées:', progressSnap.data().completedLessons || []);
+        const completed = progressSnap.data().completedLessons || [];
+        setCompletedLessons(completed);
+        console.log('✅ Leçons complétées chargées depuis Firebase:', completed.length, '/', lessons.length);
+        console.log('   📋 IDs complétés:', completed);
+        console.log('   📋 Type des IDs complétés:', completed.map(id => typeof id));
+        console.log('   📚 IDs des leçons du module:', lessons.map(l => l.id));
+        console.log('   📚 Type des IDs des leçons:', lessons.map(l => typeof l.id));
+        
+        // Vérifier les correspondances
+        lessons.forEach(lesson => {
+          const isIncluded = completed.includes(lesson.id);
+          console.log(`   ${isIncluded ? '✅' : '❌'} Leçon "${lesson.title}" (${lesson.id}) → ${isIncluded ? 'Complétée' : 'Non complétée'}`);
+        });
+      } else {
+        console.log('ℹ️ Aucune progression trouvée, initialisation à []');
+        setCompletedLessons([]);
       }
     } catch (error) {
-      console.error('Erreur chargement progression:', error);
+      console.error('❌ Erreur chargement progression:', error);
     }
   }
 
@@ -74,16 +177,32 @@ export default function ApprenantModuleDetail() {
         return;
       }
 
+      const effectiveOrgId = targetOrgId || organizationId;
+      console.log('📚 Chargement module depuis org:', effectiveOrgId);
+
       // Récupérer le programme
-      const programDoc = await getDoc(doc(db, 'programs', programId));
+      let programDoc;
+      if (effectiveOrgId) {
+        programDoc = await getDoc(doc(db, 'organizations', effectiveOrgId, 'programs', programId));
+      } else {
+        programDoc = await getDoc(doc(db, 'programs', programId));
+      }
+
       if (programDoc.exists()) {
         setProgram({ id: programDoc.id, ...programDoc.data() });
       }
 
       // Récupérer le module
-      const moduleDoc = await getDoc(
-        doc(db, `programs/${programId}/modules/${moduleId}`)
-      );
+      let moduleDoc;
+      if (effectiveOrgId) {
+        moduleDoc = await getDoc(
+          doc(db, 'organizations', effectiveOrgId, 'programs', programId, 'modules', moduleId)
+        );
+      } else {
+        moduleDoc = await getDoc(
+          doc(db, 'programs', programId, 'modules', moduleId)
+        );
+      }
       
       if (!moduleDoc.exists()) {
         navigate(`/apprenant/programs/${programId}`);
@@ -93,7 +212,10 @@ export default function ApprenantModuleDetail() {
       setModule({ id: moduleDoc.id, ...moduleDoc.data() });
 
       // Récupérer les leçons du module
-      const lessonsRef = collection(db, `programs/${programId}/modules/${moduleId}/lessons`);
+      const lessonsRef = effectiveOrgId
+        ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'modules', moduleId, 'lessons')
+        : collection(db, 'programs', programId, 'modules', moduleId, 'lessons');
+      
       const lessonsQuery = query(lessonsRef, orderBy('order', 'asc'));
       const lessonsSnap = await getDocs(lessonsQuery);
       
@@ -105,9 +227,11 @@ export default function ApprenantModuleDetail() {
       setLessons(lessonsData);
 
       // Récupérer le QCM du module
-      const quizzesSnap = await getDocs(
-        collection(db, `programs/${programId}/modules/${moduleId}/quizzes`)
-      );
+      const quizzesRef = effectiveOrgId
+        ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'modules', moduleId, 'quizzes')
+        : collection(db, 'programs', programId, 'modules', moduleId, 'quizzes');
+      
+      const quizzesSnap = await getDocs(quizzesRef);
       
       if (!quizzesSnap.empty) {
         const quizDoc = quizzesSnap.docs[0];
@@ -380,6 +504,15 @@ export default function ApprenantModuleDetail() {
               }}>
                 {lessons.map((lesson, index) => {
                   const isCompleted = completedLessons.includes(lesson.id);
+                  
+                  // 🔍 Log pour débogage
+                  if (index === 0) {
+                    console.log('🎨 RENDU des leçons:', {
+                      totalLessons: lessons.length,
+                      completedCount: completedLessons.length,
+                      completedIds: completedLessons
+                    });
+                  }
                   
                   return (
                     <div
