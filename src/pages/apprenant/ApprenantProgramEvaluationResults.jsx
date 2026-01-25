@@ -489,13 +489,13 @@ export default function ApprenantProgramEvaluationResults() {
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           Question {index + 1}
                         </span>
-                        {result?.sourceModuleName && (
+                        {result?.sourceChapterName && (
                           <span style={{ 
                             fontSize: '12px', 
                             color: '#94a3b8',
                             fontWeight: '400'
                           }}>
-                            • {result.sourceModuleName}
+                            • {result.sourceChapterName}
                           </span>
                         )}
                       </div>

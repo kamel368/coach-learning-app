@@ -5,6 +5,7 @@ import { db } from '../../firebase';
 import { ArrowLeft, ChevronLeft, ChevronRight, Trophy } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useProgramEvaluation } from '../../hooks/useProgramEvaluation';
+import { useGamification } from '../../hooks/useGamification';
 
 // Import des composants d'exercices
 import FlashcardExercise from '../../components/exercises-apprenant/FlashcardExercise';
@@ -14,6 +15,7 @@ import QCMSelectiveExercise from '../../components/exercises-apprenant/QCMSelect
 import ReorderExercise from '../../components/exercises-apprenant/ReorderExercise';
 import DragDropExercise from '../../components/exercises-apprenant/DragDropExercise';
 import MatchPairsExercise from '../../components/exercises-apprenant/MatchPairsExercise';
+import TextExercise from '../../components/exercises-apprenant/TextExercise';
 
 const BLOCK_LABELS = {
   flashcard: { icon: '🃏', label: 'Flashcard' },
@@ -30,6 +32,9 @@ export default function ApprenantProgramEvaluation() {
   const navigate = useNavigate();
   const { user, organizationId } = useAuth();
   const [targetOrgId, setTargetOrgId] = useState(null);
+  
+  // Hook gamification
+  const { onEvaluationCompleted, onProgramCompleted } = useGamification(user?.uid);
   
   // Charger l'organizationId de l'utilisateur
   useEffect(() => {
@@ -85,6 +90,29 @@ export default function ApprenantProgramEvaluation() {
     
     const result = await submitEvaluation();
     if (result.success) {
+      // ✅ Mettre à jour la gamification
+      try {
+        const percentage = result.results.score;
+        console.log('🎮 Mise à jour gamification après évaluation programme:', { 
+          percentage, 
+          programId,
+          resultId: result.resultId 
+        });
+        
+        // Attribuer XP et marquer l'évaluation comme récompensée
+        await onEvaluationCompleted(percentage, 'program_full');
+        
+        // Si score >= 70%, marquer le programme comme complété
+        if (percentage >= 70) {
+          await onProgramCompleted(programId);
+          console.log('✅ Programme marqué comme complété');
+        }
+        
+        console.log('✅ Gamification mise à jour avec succès');
+      } catch (gamifError) {
+        console.error('⚠️ Erreur mise à jour gamification (non bloquante):', gamifError);
+      }
+      
       navigate(`/apprenant/program-evaluation/${programId}/results`, {
         state: {
           results: result.results,
@@ -117,6 +145,8 @@ export default function ApprenantProgramEvaluation() {
         return <DragDropExercise block={currentBlock} answer={answer} onAnswer={handleAnswer} />;
       case 'match_pairs':
         return <MatchPairsExercise block={currentBlock} answer={answer} onAnswer={handleAnswer} />;
+      case 'text':
+        return <TextExercise block={currentBlock} answer={answer} onAnswer={handleAnswer} />;
       default:
         return <div style={{ color: '#ef4444' }}>Type d'exercice non supporté: {currentBlock.type}</div>;
     }
@@ -304,11 +334,11 @@ export default function ApprenantProgramEvaluation() {
                 <span style={{ fontSize: '10px', fontWeight: '600', color: '#64748b' }}>
                   {blockInfo.label}
                 </span>
-                {currentBlock?.sourceModuleName && (
+                {currentBlock?.sourceChapterName && (
                   <>
                     <span style={{ fontSize: '10px', color: '#cbd5e1' }}>•</span>
                     <span style={{ fontSize: '9px', color: '#94a3b8' }}>
-                      {currentBlock.sourceModuleName}
+                      {currentBlock.sourceChapterName}
                     </span>
                   </>
                 )}

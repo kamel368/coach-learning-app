@@ -1,11 +1,18 @@
 import { useState, useEffect } from 'react';
-import { doc, getDoc, setDoc, updateDoc, arrayUnion, increment } from 'firebase/firestore';
+import { 
+  getUserGamification, 
+  createUserGamification, 
+  addXP,
+  incrementStat,
+  addBadge
+} from '../services/userDataService';
+import { useAuth } from '../context/AuthContext';
+import { doc, updateDoc, arrayUnion, increment } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useToast } from '../contexts/ToastContext';
-import { useAuth } from '../context/AuthContext';
 
 // Configuration XP
-const XP_CONFIG = {
+export const XP_CONFIG = {
   LESSON_COMPLETED: 10,
   MODULE_COMPLETED: 50,
   EXERCISE_PASSED: 20,
@@ -15,7 +22,7 @@ const XP_CONFIG = {
 };
 
 // Configuration Niveaux
-const LEVELS = [
+export const LEVELS = [
   { level: 1, xpRequired: 0, title: 'Débutant' },
   { level: 2, xpRequired: 100, title: 'Apprenti' },
   { level: 3, xpRequired: 300, title: 'Confirmé' },
@@ -26,7 +33,7 @@ const LEVELS = [
 ];
 
 // Configuration Badges
-const BADGES_CONFIG = {
+export const BADGES_CONFIG = {
   first_lesson: {
     id: 'first_lesson',
     name: 'Premier pas',
@@ -113,184 +120,134 @@ const BADGES_CONFIG = {
   }
 };
 
-export const useGamification = (userId) => {
-  const { organizationId } = useAuth();
+/**
+ * Hook pour gérer la gamification d'un utilisateur
+ * Utilise la nouvelle structure /gamification/{userId}
+ * 
+ * @param {string} targetUserId - ID de l'utilisateur (optionnel, sinon utilise user du contexte)
+ */
+export function useGamification(targetUserId) {
+  const { user: contextUser, organizationId } = useAuth();
+  const userId = targetUserId || contextUser?.uid;
+  
   const [gamificationData, setGamificationData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [newBadges, setNewBadges] = useState([]);
   
-  // Hook pour afficher les toasts
   const { showBadgeUnlocked, showXPGained, showLevelUp } = useToast();
-
-  // Helper pour obtenir la référence gamification
-  const getGamificationRef = () => {
-    if (organizationId && userId) {
-      // Nouvelle structure multi-tenant
-      return doc(db, 'organizations', organizationId, 'employees', userId, 'learning', 'gamification');
-    } else if (userId) {
-      // Fallback ancienne structure
-      return doc(db, 'users', userId, 'gamification', 'data');
-    }
-    return null;
-  };
-
-  // Charger les données de gamification
+  
   useEffect(() => {
-    if (!userId) return;
-
-    const loadGamification = async () => {
-      setLoading(true);
-      try {
-        const gamifRef = getGamificationRef();
-        if (!gamifRef) {
-          setLoading(false);
-          return;
-        }
-
-        const gamifSnap = await getDoc(gamifRef);
-
-        if (gamifSnap.exists()) {
-          setGamificationData(gamifSnap.data());
-          console.log('🎮 Gamification chargée:', organizationId ? 'nouvelle structure' : 'ancienne structure');
-        } else {
-          // Créer les données initiales
-          const initialData = {
-            xp: 0,
-            level: 1,
-            currentStreak: 0,
-            maxStreak: 0,
-            lastActiveDate: null,
-            badges: [],
-            rewardedActions: {
-              lessons: [],      // IDs des leçons déjà récompensées
-              exercises: [],    // IDs des exercices déjà récompensés
-              evaluations: [],  // IDs des évaluations déjà récompensées
-              modules: [],      // IDs des modules déjà récompensés
-              programs: []      // IDs des programmes déjà récompensés
-            },
-            stats: {
-              lessonsCompleted: 0,
-              modulesCompleted: 0,
-              exercisesCompleted: 0,
-              evaluationsCompleted: 0,
-              perfectScores: 0,
-              excellentScores: 0,
-              programsCompleted: 0,
-              allProgramsCompleted: false,
-              maxLessonsInDay: 0,
-              todayLessons: 0,
-              earlyBird: false
-            },
-            history: [],
-            createdAt: new Date().toISOString()
-          };
-          await setDoc(gamifRef, initialData);
-          setGamificationData(initialData);
-          console.log('🎮 Gamification initialisée');
-        }
-      } catch (error) {
-        console.error('❌ Erreur chargement gamification:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+    
     loadGamification();
   }, [userId, organizationId]);
-
-  // Calculer le niveau à partir des XP
+  
+  const loadGamification = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log('🎮 Chargement gamification:', { userId });
+      
+      let gamif = await getUserGamification(userId);
+      
+      // Si pas de gamification, la créer
+      if (!gamif) {
+        console.log('🆕 Création nouvelle gamification');
+        gamif = await createUserGamification(organizationId, userId);
+      }
+      
+      setGamificationData(gamif);
+      console.log('✅ Gamification chargée: nouvelle structure');
+      
+    } catch (err) {
+      console.error('❌ Erreur chargement gamification:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Calculer le niveau actuel basé sur l'XP
   const calculateLevel = (xp) => {
     let currentLevel = LEVELS[0];
-    for (const level of LEVELS) {
-      if (xp >= level.xpRequired) {
-        currentLevel = level;
-      } else {
+    for (let i = LEVELS.length - 1; i >= 0; i--) {
+      if (xp >= LEVELS[i].xpRequired) {
+        currentLevel = LEVELS[i];
         break;
       }
     }
     return currentLevel;
   };
-
+  
   // Calculer la progression vers le niveau suivant
   const getLevelProgress = (xp) => {
     const currentLevel = calculateLevel(xp);
     const currentLevelIndex = LEVELS.findIndex(l => l.level === currentLevel.level);
+    
+    if (currentLevelIndex === LEVELS.length - 1) {
+      return 100; // Niveau max atteint
+    }
+    
     const nextLevel = LEVELS[currentLevelIndex + 1];
-
-    if (!nextLevel) return 100; // Max level
-
     const xpInCurrentLevel = xp - currentLevel.xpRequired;
     const xpNeededForNextLevel = nextLevel.xpRequired - currentLevel.xpRequired;
-
+    
     return Math.round((xpInCurrentLevel / xpNeededForNextLevel) * 100);
   };
-
+  
   // Mettre à jour le streak
   const updateStreak = async () => {
     if (!userId || !gamificationData) {
       console.warn('⚠️ updateStreak appelé avant chargement des données');
       return;
     }
-
+    
     const today = new Date().toISOString().split('T')[0];
-    const lastActive = gamificationData.lastActiveDate;
-
-    let newStreak = gamificationData.currentStreak;
-
-    if (!lastActive) {
-      newStreak = 1;
-    } else {
-      const lastDate = new Date(lastActive);
-      const todayDate = new Date(today);
-      const diffDays = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
-
-      if (diffDays === 0) {
-        // Même jour, pas de changement
-        return;
-      } else if (diffDays === 1) {
-        // Jour consécutif
-        newStreak += 1;
-      } else {
-        // Streak perdu
-        newStreak = 1;
-      }
+    const lastActiveDate = gamificationData.lastActiveDate;
+    
+    if (lastActiveDate === today) {
+      return; // Déjà actif aujourd'hui
     }
-
-    const gamifRef = getGamificationRef();
-    if (!gamifRef) return;
-
+    
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    let newStreak = 1;
+    
+    if (lastActiveDate === yesterday) {
+      newStreak = (gamificationData.currentStreak || 0) + 1;
+    }
+    
+    const gamifRef = doc(db, 'gamification', userId);
     await updateDoc(gamifRef, {
       currentStreak: newStreak,
       maxStreak: Math.max(newStreak, gamificationData.maxStreak || 0),
-      lastActiveDate: today,
-      'stats.maxStreak': Math.max(newStreak, gamificationData.stats?.maxStreak || 0)
+      lastActiveDate: today
     });
-
+    
     setGamificationData(prev => ({
       ...prev,
       currentStreak: newStreak,
       maxStreak: Math.max(newStreak, prev.maxStreak || 0),
       lastActiveDate: today
     }));
-
-    // Vérifier les badges de streak
-    checkAndUnlockBadges({ ...gamificationData.stats, maxStreak: newStreak });
   };
-
-  // Ajouter des XP
-  const addXP = async (amount, action) => {
+  
+  // Ajouter de l'XP
+  const addXPAction = async (amount, action) => {
     if (!userId || !gamificationData) {
       console.warn('⚠️ addXP appelé avant chargement des données');
       return null;
     }
-
-    const newXP = (gamificationData.xp || 0) + amount;
+    
+    const oldLevel = calculateLevel(gamificationData.xp);
+    const newXP = gamificationData.xp + amount;
     const newLevel = calculateLevel(newXP);
-    const oldLevel = gamificationData.level;
-
-    const gamifRef = getGamificationRef();
-    if (!gamifRef) return null;
-
+    
+    const gamifRef = doc(db, 'gamification', userId);
     await updateDoc(gamifRef, {
       xp: newXP,
       level: newLevel.level,
@@ -300,80 +257,69 @@ export const useGamification = (userId) => {
         date: new Date().toISOString()
       })
     });
-
+    
     setGamificationData(prev => ({
       ...prev,
       xp: newXP,
       level: newLevel.level
     }));
-
-    // 🎉 Afficher un toast pour les XP gagnés
-    const actionLabels = {
-      'lesson_completed': 'Leçon terminée',
-      'module_completed': 'Module terminé',
-      'exercise_passed': 'Exercice réussi',
-      'exercise_excellent': 'Exercice excellent',
-      'evaluation_passed': 'Évaluation réussie',
-      'program_completed': 'Programme terminé'
-    };
-    showXPGained(amount, actionLabels[action] || action);
-
-    // 🎊 Afficher un toast pour level up
-    if (newLevel.level > oldLevel) {
+    
+    // Afficher le toast XP
+    showXPGained(amount);
+    
+    // Vérifier si level up
+    if (newLevel.level > oldLevel.level) {
       showLevelUp(newLevel);
     }
-
-    return { newXP, newLevel, levelUp: newLevel.level > oldLevel };
+    
+    return { newXP, newLevel, levelUp: newLevel.level > oldLevel.level };
   };
-
+  
   // Mettre à jour une stat
   const updateStat = async (statName, value = 1) => {
     if (!userId || !gamificationData) {
       console.warn('⚠️ updateStat appelé avant chargement des données');
       return;
     }
-
-    const gamifRef = getGamificationRef();
-    if (!gamifRef) return;
-
+    
+    const gamifRef = doc(db, 'gamification', userId);
     await updateDoc(gamifRef, {
       [`stats.${statName}`]: increment(value)
     });
-
+    
     const newStats = {
       ...gamificationData.stats,
       [statName]: (gamificationData.stats?.[statName] || 0) + value
     };
-
+    
     setGamificationData(prev => ({
       ...prev,
       stats: newStats
     }));
-
+    
     // Vérifier les badges
-    checkAndUnlockBadges(newStats);
+    await checkAndUnlockBadges(newStats);
   };
-
+  
   // Vérifier et débloquer les badges
   const checkAndUnlockBadges = async (stats) => {
     if (!userId || !gamificationData) {
       console.warn('⚠️ checkAndUnlockBadges appelé avant chargement des données');
       return [];
     }
-
+    
     const currentBadges = gamificationData.badges || [];
     const newlyUnlocked = [];
-
+    
     for (const [badgeId, badge] of Object.entries(BADGES_CONFIG)) {
       if (!currentBadges.includes(badgeId) && badge.condition(stats)) {
         newlyUnlocked.push(badge);
       }
     }
-
+    
     if (newlyUnlocked.length > 0) {
-      const gamifRef = getGamificationRef();
-      if (!gamifRef) return [];
-
+      const gamifRef = doc(db, 'gamification', userId);
+      
       await updateDoc(gamifRef, {
         badges: arrayUnion(...newlyUnlocked.map(b => b.id)),
         history: arrayUnion(...newlyUnlocked.map(b => ({
@@ -382,88 +328,90 @@ export const useGamification = (userId) => {
           date: new Date().toISOString()
         })))
       });
-
+      
       setGamificationData(prev => ({
         ...prev,
         badges: [...(prev.badges || []), ...newlyUnlocked.map(b => b.id)]
       }));
-
+      
       setNewBadges(newlyUnlocked);
-
+      
       // 🎉 Afficher un toast pour chaque nouveau badge débloqué
       newlyUnlocked.forEach(badge => {
         showBadgeUnlocked(badge);
       });
     }
+    
+    return newlyUnlocked;
   };
-
+  
   // Actions spécifiques
   const onLessonCompleted = async (lessonId) => {
     if (!userId || !gamificationData) {
       console.warn('⚠️ onLessonCompleted appelé avant chargement des données');
       return null;
     }
-
+    
     // Vérifier si déjà récompensé
     const rewardedLessons = gamificationData.rewardedActions?.lessons || [];
     if (lessonId && rewardedLessons.includes(lessonId)) {
       console.log('ℹ️ Leçon déjà récompensée:', lessonId);
       return null;
     }
-
+    
     await updateStreak();
-    const result = await addXP(XP_CONFIG.LESSON_COMPLETED, 'lesson_completed');
+    const result = await addXPAction(XP_CONFIG.LESSON_COMPLETED, 'lesson_completed');
     await updateStat('lessonsCompleted');
-
+    
     // Vérifier early bird
     const hour = new Date().getHours();
     if (hour < 8) {
       await updateStat('earlyBird', 1);
     }
-
+    
     // Marquer comme récompensé
     if (lessonId) {
-      const gamifRef = getGamificationRef();
-      if (gamifRef) {
-        await updateDoc(gamifRef, {
-          'rewardedActions.lessons': arrayUnion(lessonId)
-        });
-      }
+      const gamifRef = doc(db, 'gamification', userId);
+      await updateDoc(gamifRef, {
+        'rewardedActions.lessons': arrayUnion(lessonId)
+      });
     }
-
+    
+    await loadGamification(); // Recharger pour voir les changements
     return result;
   };
-
-  const onModuleCompleted = async () => {
+  
+  const onModuleCompleted = async (moduleId) => {
     if (!userId || !gamificationData) {
       console.warn('⚠️ onModuleCompleted appelé avant chargement des données');
       return null;
     }
-
-    await addXP(XP_CONFIG.MODULE_COMPLETED, 'module_completed');
+    
+    await addXPAction(XP_CONFIG.MODULE_COMPLETED, 'module_completed');
     await updateStat('modulesCompleted');
+    await loadGamification();
   };
-
+  
   const onExerciseCompleted = async (percentage, attemptId) => {
     if (!userId || !gamificationData) {
       console.warn('⚠️ onExerciseCompleted appelé avant chargement des données');
       return null;
     }
-
+    
     // Vérifier si déjà récompensé
     const rewardedExercises = gamificationData.rewardedActions?.exercises || [];
     if (attemptId && rewardedExercises.includes(attemptId)) {
       console.log('ℹ️ Exercice déjà récompensé:', attemptId);
       return null;
     }
-
+    
     await updateStreak();
     
     if (percentage >= 80) {
-      await addXP(XP_CONFIG.EXERCISE_EXCELLENT, 'exercise_excellent');
+      await addXPAction(XP_CONFIG.EXERCISE_EXCELLENT, 'exercise_excellent');
       await updateStat('excellentScores');
     } else if (percentage >= 50) {
-      await addXP(XP_CONFIG.EXERCISE_PASSED, 'exercise_passed');
+      await addXPAction(XP_CONFIG.EXERCISE_PASSED, 'exercise_passed');
     }
     
     await updateStat('exercisesCompleted');
@@ -471,37 +419,36 @@ export const useGamification = (userId) => {
     if (percentage === 100) {
       await updateStat('perfectScores');
     }
-
+    
     // Marquer comme récompensé
     if (attemptId) {
-      const gamifRef = getGamificationRef();
-      if (gamifRef) {
-        await updateDoc(gamifRef, {
-          'rewardedActions.exercises': arrayUnion(attemptId)
-        });
-      }
+      const gamifRef = doc(db, 'gamification', userId);
+      await updateDoc(gamifRef, {
+        'rewardedActions.exercises': arrayUnion(attemptId)
+      });
     }
-
+    
+    await loadGamification();
     return { percentage };
   };
-
+  
   const onEvaluationCompleted = async (percentage, evaluationId) => {
     if (!userId || !gamificationData) {
       console.warn('⚠️ onEvaluationCompleted appelé avant chargement des données');
       return null;
     }
-
+    
     // Vérifier si déjà récompensé
     const rewardedEvaluations = gamificationData.rewardedActions?.evaluations || [];
     if (evaluationId && rewardedEvaluations.includes(evaluationId)) {
       console.log('ℹ️ Évaluation déjà récompensée:', evaluationId);
       return null;
     }
-
+    
     await updateStreak();
     
     if (percentage >= 80) {
-      await addXP(XP_CONFIG.EVALUATION_PASSED, 'evaluation_passed');
+      await addXPAction(XP_CONFIG.EVALUATION_PASSED, 'evaluation_passed');
       await updateStat('excellentScores');
     }
     
@@ -510,47 +457,48 @@ export const useGamification = (userId) => {
     if (percentage === 100) {
       await updateStat('perfectScores');
     }
-
+    
     // Marquer comme récompensé
     if (evaluationId) {
-      const gamifRef = getGamificationRef();
-      if (gamifRef) {
-        await updateDoc(gamifRef, {
-          'rewardedActions.evaluations': arrayUnion(evaluationId)
-        });
-      }
+      const gamifRef = doc(db, 'gamification', userId);
+      await updateDoc(gamifRef, {
+        'rewardedActions.evaluations': arrayUnion(evaluationId)
+      });
     }
-
+    
+    await loadGamification();
     return { percentage };
   };
-
-  const onProgramCompleted = async () => {
+  
+  const onProgramCompleted = async (programId) => {
     if (!userId || !gamificationData) {
       console.warn('⚠️ onProgramCompleted appelé avant chargement des données');
       return null;
     }
-
-    await addXP(XP_CONFIG.MODULE_COMPLETED * 2, 'program_completed');
+    
+    await addXPAction(XP_CONFIG.MODULE_COMPLETED * 2, 'program_completed');
     await updateStat('programsCompleted');
+    await loadGamification();
   };
-
+  
   // Effacer les nouveaux badges (après affichage)
   const clearNewBadges = () => {
     setNewBadges([]);
   };
-
+  
   return {
     // Data
     gamificationData,
     loading,
+    error,
     newBadges,
-
+    
     // Computed
     currentLevel: gamificationData ? calculateLevel(gamificationData.xp) : LEVELS[0],
     levelProgress: gamificationData ? getLevelProgress(gamificationData.xp) : 0,
     allBadges: BADGES_CONFIG,
     unlockedBadges: gamificationData?.badges || [],
-
+    
     // Actions
     onLessonCompleted,
     onModuleCompleted,
@@ -558,8 +506,7 @@ export const useGamification = (userId) => {
     onEvaluationCompleted,
     onProgramCompleted,
     updateStreak,
-    clearNewBadges
+    clearNewBadges,
+    refresh: loadGamification
   };
-};
-
-export { BADGES_CONFIG, LEVELS, XP_CONFIG };
+}

@@ -26,8 +26,8 @@ export default function AdminProgramDetail() {
   const [statusSaving, setStatusSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const [chapters, setChapters] = useState([]); // modules
-  const [lessonsByChapter, setLessonsByChapter] = useState({}); // { moduleId: [lessons] }
+  const [chapters, setChapters] = useState([]); // chapters
+  const [lessonsByChapter, setLessonsByChapter] = useState({}); // { chapterId: [lessons] }
   const [quizzes, setQuizzes] = useState([]);
   const [aiExercises, setAiExercises] = useState([]);
 
@@ -65,10 +65,10 @@ export default function AdminProgramDetail() {
         }
         setProgram({ id: programSnap.id, ...programSnap.data() });
 
-        // Modules (chapitres) - charger depuis l'organisation
+        // Chapitres (chapitres) - charger depuis l'organisation
         const modulesRef = organizationId
-          ? collection(db, "organizations", organizationId, "programs", programId, "modules")
-          : collection(db, "programs", programId, "modules");
+          ? collection(db, "organizations", organizationId, "programs", programId, "chapitres")
+          : collection(db, "programs", programId, "chapitres");
         
         const modulesSnap = await getDocs(modulesRef);
         const modulesList = modulesSnap.docs
@@ -76,14 +76,14 @@ export default function AdminProgramDetail() {
           .sort((a, b) => (a.order || 0) - (b.order || 0));
         setChapters(modulesList);
         
-        console.log('📂 Modules chargés:', modulesList.length);
+        console.log('📂 Chapitres chargés:', modulesList.length);
 
-        // Leçons par module - charger depuis l'organisation
+        // Leçons par chapitre - charger depuis l'organisation
         const lessonsMap = {};
         for (const mod of modulesList) {
           const lessonsRef = organizationId
-            ? collection(db, "organizations", organizationId, "programs", programId, "modules", mod.id, "lessons")
-            : collection(db, "programs", programId, "modules", mod.id, "lessons");
+            ? collection(db, "organizations", organizationId, "programs", programId, "chapitres", mod.id, "lessons")
+            : collection(db, "programs", programId, "chapitres", mod.id, "lessons");
           
           const lessonsSnap = await getDocs(lessonsRef);
           lessonsMap[mod.id] = lessonsSnap.docs
@@ -92,7 +92,7 @@ export default function AdminProgramDetail() {
         }
         setLessonsByChapter(lessonsMap);
         
-        console.log('📄 Leçons chargées par module');
+        console.log('📄 Leçons chargées par chapitre');
 
         // (Optionnel) Exercices et exercices IA si tu veux aussi les structurer par programme
         const quizzesSnap = await getDocs(collection(db, "quizzes"));
@@ -208,8 +208,8 @@ export default function AdminProgramDetail() {
       const nextOrder = (chapters.length || 0) + 1;
       
       const modulesCollection = organizationId
-        ? collection(db, "organizations", organizationId, "programs", program.id, "modules")
-        : collection(db, "programs", program.id, "modules");
+        ? collection(db, "organizations", organizationId, "programs", program.id, "chapitres")
+        : collection(db, "programs", program.id, "chapitres");
       
       const ref = await addDoc(modulesCollection, {
         title,
@@ -251,8 +251,8 @@ export default function AdminProgramDetail() {
 
   try {
     const lessonsCollection = organizationId
-      ? collection(db, "organizations", organizationId, "programs", program.id, "modules", chapterId, "lessons")
-      : collection(db, "programs", program.id, "modules", chapterId, "lessons");
+      ? collection(db, "organizations", organizationId, "programs", program.id, "chapitres", chapterId, "lessons")
+      : collection(db, "programs", program.id, "chapitres", chapterId, "lessons");
     
     const ref = await addDoc(lessonsCollection, {
       title,
@@ -280,7 +280,7 @@ export default function AdminProgramDetail() {
 
     // ✅ On envoie aussi le titre à la page d’édition
     navigate(
-      `/admin/programs/${program.id}/modules/${chapterId}/lessons/${ref.id}/edit`,
+      `/admin/programs/${program.id}/chapitres/${chapterId}/lessons/${ref.id}/edit`,
       {
         state: {
           initialTitle: title,
@@ -293,19 +293,19 @@ export default function AdminProgramDetail() {
   }
 };
 
-  // Les Exercices / IA restent pour l'instant à plat, basés sur programId + moduleId
+  // Les Exercices / IA restent pour l'instant à plat, basés sur programId + chapterId
   const handleAddQuizForChapter = async (chapterId) => {
     if (!program) return;
     const title = window.prompt("Nom des exercices ?");
     if (!title) return;
 
-    const existingForChapter = quizzes.filter((q) => q.moduleId === chapterId);
+    const existingForChapter = quizzes.filter((q) => q.chapterId === chapterId);
     const nextOrder = (existingForChapter.length || 0) + 1;
 
     try {
       const ref = await addDoc(collection(db, "quizzes"), {
         programId: program.id,
-        moduleId: chapterId,
+        chapterId: chapterId,
         title,
         order: nextOrder,
         createdAt: Timestamp.now(),
@@ -315,7 +315,7 @@ export default function AdminProgramDetail() {
         {
           id: ref.id,
           programId: program.id,
-          moduleId: chapterId,
+          chapterId: chapterId,
           title,
           order: nextOrder,
         },
@@ -331,13 +331,13 @@ export default function AdminProgramDetail() {
     const title = window.prompt("Nom de l'exercice IA ?");
     if (!title) return;
 
-    const existingForChapter = aiExercises.filter((e) => e.moduleId === chapterId);
+    const existingForChapter = aiExercises.filter((e) => e.chapterId === chapterId);
     const nextOrder = (existingForChapter.length || 0) + 1;
 
     try {
       const ref = await addDoc(collection(db, "aiExercises"), {
         programId: program.id,
-        moduleId: chapterId,
+        chapterId: chapterId,
         title,
         order: nextOrder,
         createdAt: Timestamp.now(),
@@ -347,7 +347,7 @@ export default function AdminProgramDetail() {
         {
           id: ref.id,
           programId: program.id,
-          moduleId: chapterId,
+          chapterId: chapterId,
           title,
           order: nextOrder,
         },
@@ -367,8 +367,8 @@ export default function AdminProgramDetail() {
 
     try {
       const ref = organizationId
-        ? doc(db, "organizations", organizationId, "programs", program.id, "modules", chapter.id)
-        : doc(db, "programs", program.id, "modules", chapter.id);
+        ? doc(db, "organizations", organizationId, "programs", program.id, "chapitres", chapter.id)
+        : doc(db, "programs", program.id, "chapitres", chapter.id);
       
       await updateDoc(ref, {
         title: newTitle,
@@ -390,8 +390,8 @@ export default function AdminProgramDetail() {
     if (!window.confirm("Supprimer ce chapitre (les leçons associées resteront en base si tu ne les traites pas) ?")) return;
     try {
       const ref = organizationId
-        ? doc(db, "organizations", organizationId, "programs", program.id, "modules", chapterId)
-        : doc(db, "programs", program.id, "modules", chapterId);
+        ? doc(db, "organizations", organizationId, "programs", program.id, "chapitres", chapterId)
+        : doc(db, "programs", program.id, "chapitres", chapterId);
       
       await deleteDoc(ref);
       
@@ -416,8 +416,8 @@ export default function AdminProgramDetail() {
 
     try {
       const ref = organizationId
-        ? doc(db, "organizations", organizationId, "programs", program.id, "modules", chapterId, "lessons", lesson.id)
-        : doc(db, "programs", program.id, "modules", chapterId, "lessons", lesson.id);
+        ? doc(db, "organizations", organizationId, "programs", program.id, "chapitres", chapterId, "lessons", lesson.id)
+        : doc(db, "programs", program.id, "chapitres", chapterId, "lessons", lesson.id);
       
       await updateDoc(ref, {
         title: newTitle,
@@ -442,8 +442,8 @@ export default function AdminProgramDetail() {
     if (!window.confirm("Supprimer cette leçon ?")) return;
     try {
       const ref = organizationId
-        ? doc(db, "organizations", organizationId, "programs", program.id, "modules", chapterId, "lessons", lessonId)
-        : doc(db, "programs", program.id, "modules", chapterId, "lessons", lessonId);
+        ? doc(db, "organizations", organizationId, "programs", program.id, "chapitres", chapterId, "lessons", lessonId)
+        : doc(db, "programs", program.id, "chapitres", chapterId, "lessons", lessonId);
       
       await deleteDoc(ref);
       
@@ -523,13 +523,18 @@ export default function AdminProgramDetail() {
 
     try {
       await Promise.all(
-        updated.map((c) =>
-          updateDoc(doc(db, "programs", program.id, "modules", c.id), {
+        updated.map((c) => {
+          const chapterRef = organizationId
+            ? doc(db, "organizations", organizationId, "programs", program.id, "chapitres", c.id)
+            : doc(db, "programs", program.id, "chapitres", c.id);
+          
+          return updateDoc(chapterRef, {
             order: c.order,
             updatedAt: Timestamp.now(),
-          })
-        )
+          });
+        })
       );
+      console.log('✅ Ordre des chapitres sauvegardé');
     } catch (err) {
       console.error(err);
       alert("Erreur lors du réordonnancement des chapitres.");
@@ -587,7 +592,7 @@ export default function AdminProgramDetail() {
               db,
               "programs",
               program.id,
-              "modules",
+              "chapitres",
               chapterId,
               "lessons",
               l.id
@@ -974,10 +979,10 @@ export default function AdminProgramDetail() {
             {chapters.map((chapter) => {
               const lessons = lessonsByChapter[chapter.id] || [];
               const quizzesForChapter = quizzes.filter(
-                (q) => q.moduleId === chapter.id
+                (q) => q.chapterId === chapter.id
               );
               const aiForChapter = aiExercises.filter(
-                (e) => e.moduleId === chapter.id
+                (e) => e.chapterId === chapter.id
               );
               const expanded = expandedChapters.has(chapter.id);
 
@@ -1008,7 +1013,7 @@ export default function AdminProgramDetail() {
                     position: 'relative'
                   }}>
                     
-                    {/* Partie gauche : Drag + Nom du module */}
+                    {/* Partie gauche : Drag + Nom du chapitre */}
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -1038,7 +1043,7 @@ export default function AdminProgramDetail() {
                         <GripVertical size={20} strokeWidth={2.5} />
                       </div>
 
-                      {/* Bouton nom du module avec chevron */}
+                      {/* Bouton nom du chapitre avec chevron */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1062,7 +1067,7 @@ export default function AdminProgramDetail() {
                           WebkitTapHighlightColor: 'transparent'
                         }}
                       >
-                        {/* Icône du module */}
+                        {/* Icône du chapitre */}
                         <div style={{
                           width: 32,
                           height: 32,
@@ -1155,7 +1160,7 @@ export default function AdminProgramDetail() {
                           onClick={(e) => {
                             e.stopPropagation();
                             // Navigation vers le builder d'exercices
-                            navigate(`/admin/programs/${program.id}/modules/${chapter.id}/exercises`);
+                            navigate(`/admin/programs/${program.id}/chapitres/${chapter.id}/exercises`);
                           }}
                           style={{
                             padding: '8px 16px',
@@ -1266,7 +1271,7 @@ export default function AdminProgramDetail() {
                             e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
                             e.currentTarget.style.transform = 'translateY(0)';
                           }}
-                          title="Renommer le module"
+                          title="Renommer le chapitre"
                         >
                           ✏️
                         </button>
@@ -1303,7 +1308,7 @@ export default function AdminProgramDetail() {
                             e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
                             e.currentTarget.style.transform = 'translateY(0)';
                           }}
-                          title="Supprimer le module"
+                          title="Supprimer le chapitre"
                         >
                           🗑️
                         </button>
@@ -1647,7 +1652,7 @@ export default function AdminProgramDetail() {
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       navigate(
-                                        `/programs/${program.id}/modules/${chapter.id}/lessons/${l.id}/preview`
+                                        `/programs/${program.id}/chapitres/${chapter.id}/lessons/${l.id}/preview`
                                       );
                                     }}
                                     title="Prévisualiser la leçon"
@@ -1688,7 +1693,7 @@ export default function AdminProgramDetail() {
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       navigate(
-                                        `/admin/programs/${program.id}/modules/${chapter.id}/lessons/${l.id}/edit`
+                                        `/admin/programs/${program.id}/chapitres/${chapter.id}/lessons/${l.id}/edit`
                                       );
                                     }}
                                     title="Modifier (éditeur)"

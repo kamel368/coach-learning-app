@@ -4,7 +4,8 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { ArrowLeft, ChevronLeft, ChevronRight, Trophy } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { useModuleEvaluation } from '../../hooks/useModuleEvaluation';
+import { useChapterEvaluation } from '../../hooks/useChapterEvaluation';
+import { useGamification } from '../../hooks/useGamification';
 
 // Import des composants d'exercices
 import FlashcardExercise from '../../components/exercises-apprenant/FlashcardExercise';
@@ -14,6 +15,7 @@ import QCMSelectiveExercise from '../../components/exercises-apprenant/QCMSelect
 import ReorderExercise from '../../components/exercises-apprenant/ReorderExercise';
 import DragDropExercise from '../../components/exercises-apprenant/DragDropExercise';
 import MatchPairsExercise from '../../components/exercises-apprenant/MatchPairsExercise';
+import TextExercise from '../../components/exercises-apprenant/TextExercise';
 
 const BLOCK_LABELS = {
   flashcard: { icon: '🃏', label: 'Flashcard' },
@@ -25,11 +27,14 @@ const BLOCK_LABELS = {
   match_pairs: { icon: '🔗', label: 'Paires' }
 };
 
-export default function ApprenantModuleEvaluation() {
-  const { programId, moduleId } = useParams();
+export default function ApprenantChapterEvaluation() {
+  const { programId, chapterId } = useParams();
   const navigate = useNavigate();
   const { user, organizationId } = useAuth();
   const [targetOrgId, setTargetOrgId] = useState(null);
+  
+  // Hook gamification
+  const { onEvaluationCompleted } = useGamification(user?.uid);
   
   // Charger l'organizationId de l'utilisateur
   useEffect(() => {
@@ -62,7 +67,7 @@ export default function ApprenantModuleEvaluation() {
     submitting,
     isLastBlock,
     progress
-  } = useModuleEvaluation(user?.uid, programId, moduleId, targetOrgId);
+  } = useChapterEvaluation(user?.uid, programId, chapterId, targetOrgId);
 
   const [timer, setTimer] = useState(0);
 
@@ -85,7 +90,23 @@ export default function ApprenantModuleEvaluation() {
     
     const result = await submitEvaluation();
     if (result.success) {
-      navigate(`/apprenant/evaluation/${programId}/${moduleId}/results`, {
+      // ✅ Mettre à jour la gamification
+      try {
+        const percentage = result.results.score;
+        console.log('🎮 Mise à jour gamification après évaluation:', { 
+          percentage, 
+          chapterId,
+          resultId: result.resultId 
+        });
+        
+        // Attribuer XP et marquer l'évaluation comme récompensée
+        await onEvaluationCompleted(percentage, chapterId);
+        console.log('✅ Gamification mise à jour avec succès');
+      } catch (gamifError) {
+        console.error('⚠️ Erreur mise à jour gamification (non bloquante):', gamifError);
+      }
+      
+      navigate(`/apprenant/evaluation/${programId}/${chapterId}/results`, {
         state: {
           results: result.results,
           duration: result.duration
@@ -117,6 +138,8 @@ export default function ApprenantModuleEvaluation() {
         return <DragDropExercise block={currentBlock} answer={answer} onAnswer={handleAnswer} />;
       case 'match_pairs':
         return <MatchPairsExercise block={currentBlock} answer={answer} onAnswer={handleAnswer} />;
+      case 'text':
+        return <TextExercise block={currentBlock} answer={answer} onAnswer={handleAnswer} />;
       default:
         return <div style={{ color: '#ef4444' }}>Type d'exercice non supporté: {currentBlock.type}</div>;
     }
@@ -172,10 +195,10 @@ export default function ApprenantModuleEvaluation() {
             Aucun exercice disponible
           </h3>
           <p style={{ fontSize: '11px', color: '#64748b', marginBottom: '17px' }}>
-            Ce module ne contient pas encore d'exercices pour l'évaluation.
+            Ce chapitre ne contient pas encore d'exercices pour l'évaluation.
           </p>
           <button
-            onClick={() => navigate(`/apprenant/programs/${programId}/modules/${moduleId}`)}
+            onClick={() => navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}`)}
             style={{
               padding: '8px 14px',
               background: 'white',
@@ -187,7 +210,7 @@ export default function ApprenantModuleEvaluation() {
               cursor: 'pointer'
             }}
           >
-            ← Retour au module
+            ← Retour au chapitre
           </button>
         </div>
       </div>
@@ -221,7 +244,7 @@ export default function ApprenantModuleEvaluation() {
           flexWrap: 'wrap'
         }}>
           <button
-            onClick={() => navigate(`/apprenant/programs/${programId}/modules/${moduleId}`)}
+            onClick={() => navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}`)}
             style={{
               display: 'flex',
               alignItems: 'center',

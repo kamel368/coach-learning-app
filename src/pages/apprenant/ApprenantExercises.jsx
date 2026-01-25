@@ -24,7 +24,7 @@ const BLOCK_LABELS = {
 };
 
 export default function ApprenantExercises() {
-  const { programId, moduleId } = useParams();
+  const { programId, chapterId } = useParams();
   const navigate = useNavigate();
   const { user, organizationId } = useContext(AuthContext);
   const [targetOrgId, setTargetOrgId] = useState(null);
@@ -60,7 +60,7 @@ export default function ApprenantExercises() {
     submitting,
     isLastBlock,
     progress
-  } = useExerciseSession(user?.uid, programId, moduleId, targetOrgId);
+  } = useExerciseSession(user?.uid, programId, chapterId, targetOrgId);
 
   const [elapsedTime, setElapsedTime] = useState(0);
 
@@ -83,7 +83,7 @@ export default function ApprenantExercises() {
     
     const result = await submitAttempt();
     if (result.success) {
-      navigate(`/apprenant/programs/${programId}/modules/${moduleId}/exercises/results`, {
+      navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}/exercises/results`, {
         state: { results: result.results, duration: result.duration }
       });
     } else {
@@ -188,7 +188,7 @@ export default function ApprenantExercises() {
         }}>
           {/* Gauche : Retour */}
           <button
-            onClick={() => navigate(`/apprenant/programs/${programId}/modules/${moduleId}`)}
+            onClick={() => navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}`)}
             style={{
               display: 'flex',
               alignItems: 'center',

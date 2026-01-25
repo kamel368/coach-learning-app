@@ -19,7 +19,7 @@ export default function ApprenantProgramDetail() {
   const { organizationId } = useAuth();
   
   const [program, setProgram] = useState(null);
-  const [modules, setModules] = useState([]);
+  const [chapters, setModules] = useState([]);
   const [userProgress, setUserProgress] = useState(null);
   const [loading, setLoading] = useState(true);
   const [targetOrgId, setTargetOrgId] = useState(null);
@@ -98,28 +98,28 @@ export default function ApprenantProgramDetail() {
       const programData = { id: programDoc.id, ...programDoc.data() };
       setProgram(programData);
 
-      // Récupérer les modules du programme
+      // Récupérer les chapters du programme
       const modulesRef = effectiveOrgId
-        ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'modules')
-        : collection(db, 'programs', programId, 'modules');
+        ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'chapitres')
+        : collection(db, 'programs', programId, 'chapitres');
       
       const modulesQuery = query(modulesRef, orderBy('order', 'asc'));
       const modulesSnap = await getDocs(modulesQuery);
       
       const modulesData = [];
-      for (const moduleDoc of modulesSnap.docs) {
-        const moduleData = moduleDoc.data();
+      for (const chapterDoc of modulesSnap.docs) {
+        const chapterData = chapterDoc.data();
         
-        // Compter les leçons de ce module
+        // Compter les leçons de ce chapitre
         const lessonsRef = effectiveOrgId
-          ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'modules', moduleDoc.id, 'lessons')
-          : collection(db, 'programs', programId, 'modules', moduleDoc.id, 'lessons');
+          ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'chapitres', chapterDoc.id, 'lessons')
+          : collection(db, 'programs', programId, 'chapitres', chapterDoc.id, 'lessons');
         
         const lessonsSnap = await getDocs(lessonsRef);
         
         modulesData.push({
-          id: moduleDoc.id,
-          ...moduleData,
+          id: chapterDoc.id,
+          ...chapterData,
           totalLessons: lessonsSnap.size
         });
       }
@@ -137,16 +137,16 @@ export default function ApprenantProgramDetail() {
     }
   }
 
-  function getModuleStatus(moduleId) {
+  function getModuleStatus(chapterId) {
     if (!userProgress || !userProgress.completedLessons) {
       return { icon: '🔒', label: 'Non commencé', color: '#94a3b8' };
     }
 
-    // Vérifier si toutes les leçons du module sont terminées
-    const module = modules.find(m => m.id === moduleId);
-    if (!module) return { icon: '🔒', label: 'Non commencé', color: '#94a3b8' };
+    // Vérifier si toutes les leçons du chapitre sont terminées
+    const chapitre = chapters.find(m => m.id === chapterId);
+    if (!chapitre) return { icon: '🔒', label: 'Non commencé', color: '#94a3b8' };
 
-    // Pour l'instant on considère le module commencé si au moins une leçon est faite
+    // Pour l'instant on considère le chapitre commencé si au moins une leçon est faite
     // et terminé si toutes les leçons sont faites
     // (logique simplifiée, on peut améliorer plus tard)
     
@@ -354,7 +354,7 @@ export default function ApprenantProgramDetail() {
           )}
         </div>
 
-        {/* Liste des modules */}
+        {/* Liste des chapters */}
         <div>
           <div style={{
             display: 'flex',
@@ -367,10 +367,10 @@ export default function ApprenantProgramDetail() {
             paddingLeft: 'clamp(0px, 2vw, 8px)'
           }}>
             <BookOpen size={24} strokeWidth={2.5} />
-            <span>Modules du programme</span>
+            <span>Chapitres du programme</span>
           </div>
 
-          {modules.length === 0 ? (
+          {chapters.length === 0 ? (
             <div style={{
               background: apprenantTheme.colors.bgPrimary,
               borderRadius: apprenantTheme.radius.xl,
@@ -382,7 +382,7 @@ export default function ApprenantProgramDetail() {
                 fontSize: apprenantTheme.fontSize.lg,
                 color: apprenantTheme.colors.textSecondary
               }}>
-                Aucun module disponible pour ce programme
+                Aucun chapitre disponible pour ce programme
               </p>
             </div>
           ) : (
@@ -391,13 +391,13 @@ export default function ApprenantProgramDetail() {
               flexDirection: 'column',
               gap: apprenantTheme.spacing.sm
             }}>
-              {modules.map((module, index) => {
-                const status = getModuleStatus(module.id);
+              {chapters.map((chapitre, index) => {
+                const status = getModuleStatus(chapitre.id);
                 const StatusIcon = status.label === 'Non commencé' ? Lock : PlayCircle;
 
                 return (
                   <div
-                    key={module.id}
+                    key={chapitre.id}
                     style={{
                       background: apprenantTheme.colors.bgPrimary,
                       borderRadius: apprenantTheme.radius.lg,
@@ -421,9 +421,9 @@ export default function ApprenantProgramDetail() {
                       e.currentTarget.style.boxShadow = apprenantTheme.shadows.md;
                       e.currentTarget.style.borderColor = 'transparent';
                     }}
-                    onClick={() => navigate(`/apprenant/programs/${programId}/modules/${module.id}`)}
+                    onClick={() => navigate(`/apprenant/programs/${programId}/chapitres/${chapitre.id}`)}
                   >
-                    {/* Numéro module */}
+                    {/* Numéro chapitre */}
                     <div style={{
                       width: 'clamp(48px, 12vw, 60px)',
                       height: 'clamp(48px, 12vw, 60px)',
@@ -453,10 +453,10 @@ export default function ApprenantProgramDetail() {
                         marginBottom: '6px',
                         lineHeight: '1.3'
                       }}>
-                        {module.title}
+                        {chapitre.title}
                       </h3>
 
-                      {module.description && (
+                      {chapitre.description && (
                         <p style={{
                           fontSize: apprenantTheme.fontSize.sm,
                           color: apprenantTheme.colors.textSecondary,
@@ -467,7 +467,7 @@ export default function ApprenantProgramDetail() {
                           WebkitBoxOrient: 'vertical',
                           overflow: 'hidden'
                         }}>
-                          {module.description}
+                          {chapitre.description}
                         </p>
                       )}
 
@@ -475,7 +475,7 @@ export default function ApprenantProgramDetail() {
                         fontSize: apprenantTheme.fontSize.sm,
                         color: apprenantTheme.colors.textTertiary
                       }}>
-                        {module.totalLessons} leçon{module.totalLessons > 1 ? 's' : ''}
+                        {chapitre.totalLessons} leçon{chapitre.totalLessons > 1 ? 's' : ''}
                       </div>
                     </div>
 
@@ -505,7 +505,7 @@ export default function ApprenantProgramDetail() {
           )}
 
           {/* 🏆 BOUTON ÉVALUATION COMPLÈTE DU PROGRAMME */}
-          {modules.length > 0 && (
+          {chapters.length > 0 && (
             <div style={{
               marginTop: apprenantTheme.spacing.xl,
               padding: 'clamp(20px, 4vw, 28px)',
@@ -603,7 +603,7 @@ export default function ApprenantProgramDetail() {
                       gap: '6px'
                     }}>
                       <span>📚</span>
-                      <span>{modules.length} module{modules.length > 1 ? 's' : ''}</span>
+                      <span>{chapters.length} chapitre{chapters.length > 1 ? 's' : ''}</span>
                     </div>
                     
                     <div style={{
@@ -620,7 +620,7 @@ export default function ApprenantProgramDetail() {
                       gap: '6px'
                     }}>
                       <span>⏱️</span>
-                      <span>Durée estimée : {Math.ceil(modules.length * 10)} min</span>
+                      <span>Durée estimée : {Math.ceil(chapters.length * 10)} min</span>
                     </div>
                   </div>
                 </div>

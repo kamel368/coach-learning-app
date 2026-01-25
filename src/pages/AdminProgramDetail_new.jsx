@@ -26,8 +26,8 @@ export default function AdminProgramDetail() {
   const [statusSaving, setStatusSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const [chapters, setChapters] = useState([]); // modules
-  const [lessonsByChapter, setLessonsByChapter] = useState({}); // { moduleId: [lessons] }
+  const [chapters, setChapters] = useState([]); // chapters
+  const [lessonsByChapter, setLessonsByChapter] = useState({}); // { chapterId: [lessons] }
   const [quizzes, setQuizzes] = useState([]);
   const [aiExercises, setAiExercises] = useState([]);
 
@@ -64,22 +64,22 @@ export default function AdminProgramDetail() {
         }
         setProgram({ id: programSnap.id, ...programSnap.data() });
 
-        // Modules (chapitres) avec multi-tenant
+        // Chapitres (chapitres) avec multi-tenant
         const modulesRef = organizationId
-          ? collection(db, "organizations", organizationId, "programs", programId, "modules")
-          : collection(db, "programs", programId, "modules");
+          ? collection(db, "organizations", organizationId, "programs", programId, "chapitres")
+          : collection(db, "programs", programId, "chapitres");
         const modulesSnap = await getDocs(modulesRef);
         const modulesList = modulesSnap.docs
           .map((d) => ({ id: d.id, ...d.data() }))
           .sort((a, b) => (a.order || 0) - (b.order || 0));
         setChapters(modulesList);
 
-        // Leçons par module avec multi-tenant
+        // Leçons par chapitre avec multi-tenant
         const lessonsMap = {};
         for (const mod of modulesList) {
           const lessonsRef = organizationId
-            ? collection(db, "organizations", organizationId, "programs", programId, "modules", mod.id, "lessons")
-            : collection(db, "programs", programId, "modules", mod.id, "lessons");
+            ? collection(db, "organizations", organizationId, "programs", programId, "chapitres", mod.id, "lessons")
+            : collection(db, "programs", programId, "chapitres", mod.id, "lessons");
           const lessonsSnap = await getDocs(lessonsRef);
           lessonsMap[mod.id] = lessonsSnap.docs
             .map((d) => ({ id: d.id, ...d.data() }))
@@ -184,8 +184,8 @@ export default function AdminProgramDetail() {
     try {
       const nextOrder = (chapters.length || 0) + 1;
       const modulesCollection = organizationId
-        ? collection(db, "organizations", organizationId, "programs", program.id, "modules")
-        : collection(db, "programs", program.id, "modules");
+        ? collection(db, "organizations", organizationId, "programs", program.id, "chapitres")
+        : collection(db, "programs", program.id, "chapitres");
       const ref = await addDoc(modulesCollection, {
         title,
         order: nextOrder,
@@ -223,8 +223,8 @@ export default function AdminProgramDetail() {
 
   try {
     const lessonsCollection = organizationId
-      ? collection(db, "organizations", organizationId, "programs", program.id, "modules", chapterId, "lessons")
-      : collection(db, "programs", program.id, "modules", chapterId, "lessons");
+      ? collection(db, "organizations", organizationId, "programs", program.id, "chapitres", chapterId, "lessons")
+      : collection(db, "programs", program.id, "chapitres", chapterId, "lessons");
     const ref = await addDoc(lessonsCollection, {
       title,
       order: nextOrder,
@@ -250,7 +250,7 @@ export default function AdminProgramDetail() {
 
     // ✅ On envoie aussi le titre à la page d'édition
     navigate(
-      `/admin/programs/${program.id}/modules/${chapterId}/lessons/${ref.id}/edit`,
+      `/admin/programs/${program.id}/chapitres/${chapterId}/lessons/${ref.id}/edit`,
       {
         state: {
           initialTitle: title,
@@ -263,19 +263,19 @@ export default function AdminProgramDetail() {
   }
 };
 
-  // Les QCM / IA restent pour l'instant à plat, basés sur programId + moduleId
+  // Les QCM / IA restent pour l'instant à plat, basés sur programId + chapterId
   const handleAddQuizForChapter = async (chapterId) => {
     if (!program) return;
     const title = window.prompt("Nom du QCM ?");
     if (!title) return;
 
-    const existingForChapter = quizzes.filter((q) => q.moduleId === chapterId);
+    const existingForChapter = quizzes.filter((q) => q.chapterId === chapterId);
     const nextOrder = (existingForChapter.length || 0) + 1;
 
     try {
       const ref = await addDoc(collection(db, "quizzes"), {
         programId: program.id,
-        moduleId: chapterId,
+        chapterId: chapterId,
         title,
         order: nextOrder,
         createdAt: Timestamp.now(),
@@ -285,7 +285,7 @@ export default function AdminProgramDetail() {
         {
           id: ref.id,
           programId: program.id,
-          moduleId: chapterId,
+          chapterId: chapterId,
           title,
           order: nextOrder,
         },
@@ -301,13 +301,13 @@ export default function AdminProgramDetail() {
     const title = window.prompt("Nom de l'exercice IA ?");
     if (!title) return;
 
-    const existingForChapter = aiExercises.filter((e) => e.moduleId === chapterId);
+    const existingForChapter = aiExercises.filter((e) => e.chapterId === chapterId);
     const nextOrder = (existingForChapter.length || 0) + 1;
 
     try {
       const ref = await addDoc(collection(db, "aiExercises"), {
         programId: program.id,
-        moduleId: chapterId,
+        chapterId: chapterId,
         title,
         order: nextOrder,
         createdAt: Timestamp.now(),
@@ -317,7 +317,7 @@ export default function AdminProgramDetail() {
         {
           id: ref.id,
           programId: program.id,
-          moduleId: chapterId,
+          chapterId: chapterId,
           title,
           order: nextOrder,
         },
@@ -337,8 +337,8 @@ export default function AdminProgramDetail() {
 
     try {
       const ref = organizationId
-        ? doc(db, "organizations", organizationId, "programs", program.id, "modules", chapter.id)
-        : doc(db, "programs", program.id, "modules", chapter.id);
+        ? doc(db, "organizations", organizationId, "programs", program.id, "chapitres", chapter.id)
+        : doc(db, "programs", program.id, "chapitres", chapter.id);
       await updateDoc(ref, {
         title: newTitle,
         updatedAt: Timestamp.now(),
@@ -356,8 +356,8 @@ export default function AdminProgramDetail() {
     if (!window.confirm("Supprimer ce chapitre (les leçons associées resteront en base si tu ne les traites pas) ?")) return;
     try {
       const ref = organizationId
-        ? doc(db, "organizations", organizationId, "programs", program.id, "modules", chapterId)
-        : doc(db, "programs", program.id, "modules", chapterId);
+        ? doc(db, "organizations", organizationId, "programs", program.id, "chapitres", chapterId)
+        : doc(db, "programs", program.id, "chapitres", chapterId);
       await deleteDoc(ref);
       setChapters((prev) => prev.filter((c) => c.id !== chapterId));
       setLessonsByChapter((prev) => {
@@ -383,8 +383,8 @@ export default function AdminProgramDetail() {
       delete newChapter.id; // Retirer l'ancien ID
 
       const modulesRef = organizationId
-        ? collection(db, "organizations", organizationId, "programs", program.id, "modules")
-        : collection(db, "programs", program.id, "modules");
+        ? collection(db, "organizations", organizationId, "programs", program.id, "chapitres")
+        : collection(db, "programs", program.id, "chapitres");
       const docRef = await addDoc(modulesRef, newChapter);
       
       setChapters((prev) => [...prev, { id: docRef.id, ...newChapter }]);
@@ -402,8 +402,8 @@ export default function AdminProgramDetail() {
 
     try {
       const ref = organizationId
-        ? doc(db, "organizations", organizationId, "programs", program.id, "modules", chapterId, "lessons", lesson.id)
-        : doc(db, "programs", program.id, "modules", chapterId, "lessons", lesson.id);
+        ? doc(db, "organizations", organizationId, "programs", program.id, "chapitres", chapterId, "lessons", lesson.id)
+        : doc(db, "programs", program.id, "chapitres", chapterId, "lessons", lesson.id);
       await updateDoc(ref, {
         title: newTitle,
         updatedAt: Timestamp.now(),
@@ -424,8 +424,8 @@ export default function AdminProgramDetail() {
     if (!window.confirm("Supprimer cette leçon ?")) return;
     try {
       const ref = organizationId
-        ? doc(db, "organizations", organizationId, "programs", program.id, "modules", chapterId, "lessons", lessonId)
-        : doc(db, "programs", program.id, "modules", chapterId, "lessons", lessonId);
+        ? doc(db, "organizations", organizationId, "programs", program.id, "chapitres", chapterId, "lessons", lessonId)
+        : doc(db, "programs", program.id, "chapitres", chapterId, "lessons", lessonId);
       await deleteDoc(ref);
       setLessonsByChapter((prev) => ({
         ...prev,
@@ -503,8 +503,8 @@ export default function AdminProgramDetail() {
       await Promise.all(
         updated.map((c) => {
           const ref = organizationId
-            ? doc(db, "organizations", organizationId, "programs", program.id, "modules", c.id)
-            : doc(db, "programs", program.id, "modules", c.id);
+            ? doc(db, "organizations", organizationId, "programs", program.id, "chapitres", c.id)
+            : doc(db, "programs", program.id, "chapitres", c.id);
           return updateDoc(ref, {
             order: c.order,
             updatedAt: Timestamp.now(),
@@ -564,8 +564,8 @@ export default function AdminProgramDetail() {
       await Promise.all(
         updated.map((l) => {
           const ref = organizationId
-            ? doc(db, "organizations", organizationId, "programs", program.id, "modules", chapterId, "lessons", l.id)
-            : doc(db, "programs", program.id, "modules", chapterId, "lessons", l.id);
+            ? doc(db, "organizations", organizationId, "programs", program.id, "chapitres", chapterId, "lessons", l.id)
+            : doc(db, "programs", program.id, "chapitres", chapterId, "lessons", l.id);
           return updateDoc(ref, {
             order: l.order,
             updatedAt: Timestamp.now(),
@@ -980,10 +980,10 @@ export default function AdminProgramDetail() {
             {chapters.map((chapter) => {
               const lessons = lessonsByChapter[chapter.id] || [];
               const quizzesForChapter = quizzes.filter(
-                (q) => q.moduleId === chapter.id
+                (q) => q.chapterId === chapter.id
               );
               const aiForChapter = aiExercises.filter(
-                (e) => e.moduleId === chapter.id
+                (e) => e.chapterId === chapter.id
               );
               const expanded = expandedChapters.has(chapter.id);
 
@@ -1046,7 +1046,7 @@ export default function AdminProgramDetail() {
                     }}>
                       {/* Bouton Leçons */}
                       <button
-                        onClick={() => navigate(`/admin/programs/${programId}/modules/${chapter.id}/lessons`)}
+                        onClick={() => navigate(`/admin/programs/${programId}/chapitres/${chapter.id}/lessons`)}
                         style={{
                           padding: '8px 12px',
                           background: '#ffffff',

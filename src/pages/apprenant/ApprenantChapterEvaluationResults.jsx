@@ -11,10 +11,10 @@ const BLOCK_LABELS = {
   match_pairs: { icon: '🔗', label: 'Paires' }
 };
 
-export default function ApprenantModuleEvaluationResults() {
+export default function ApprenantChapterEvaluationResults() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { programId, moduleId } = useParams();
+  const { programId, chapterId } = useParams();
   
   const { results, duration } = location.state || {};
 
@@ -44,7 +44,7 @@ export default function ApprenantModuleEvaluationResults() {
             Les résultats de l'évaluation n'ont pas pu être chargés.
           </p>
           <button
-            onClick={() => navigate(`/apprenant/programs/${programId}/modules/${moduleId}`)}
+            onClick={() => navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}`)}
             style={{
               padding: '8px 14px',
               background: 'white',
@@ -56,7 +56,7 @@ export default function ApprenantModuleEvaluationResults() {
               cursor: 'pointer'
             }}
           >
-            ← Retour au module
+            ← Retour au chapitre
           </button>
         </div>
       </div>
@@ -123,7 +123,7 @@ export default function ApprenantModuleEvaluationResults() {
             color: '#64748b',
             marginBottom: '14px'
           }}>
-            Résultats de l'Évaluation du Module
+            Résultats de l'Évaluation du Chapitre
           </p>
 
           <div style={{
@@ -306,7 +306,7 @@ export default function ApprenantModuleEvaluationResults() {
           gap: '10px'
         }}>
           <button
-            onClick={() => navigate(`/apprenant/programs/${programId}/modules/${moduleId}`)}
+            onClick={() => navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}`)}
             style={{
               flex: 1,
               display: 'flex',
@@ -325,7 +325,7 @@ export default function ApprenantModuleEvaluationResults() {
             }}
           >
             <ArrowLeft size={14} />
-            Retour au module
+            Retour au chapitre
           </button>
 
           <button
@@ -359,7 +359,7 @@ export default function ApprenantModuleEvaluationResults() {
           </button>
 
           <button
-            onClick={() => navigate(`/apprenant/evaluation/${programId}/${moduleId}`)}
+            onClick={() => navigate(`/apprenant/evaluation/${programId}/${chapterId}`)}
             style={{
               flex: 1,
               display: 'flex',

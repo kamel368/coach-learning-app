@@ -6,10 +6,10 @@ import { db } from '../firebase';
  * Hook pour gérer une session d'exercices côté apprenant
  * @param {string} userId - ID de l'utilisateur
  * @param {string} programId - ID du programme
- * @param {string} moduleId - ID du module
+ * @param {string} chapterId - ID du chapitre
  * @param {string} organizationId - ID de l'organisation (optionnel)
  */
-export function useExerciseSession(userId, programId, moduleId, organizationId = null) {
+export function useExerciseSession(userId, programId, chapterId, organizationId = null) {
   const [exercises, setExercises] = useState(null);
   const [currentBlockIndex, setCurrentBlockIndex] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -20,7 +20,7 @@ export function useExerciseSession(userId, programId, moduleId, organizationId =
   // Charger les exercices
   useEffect(() => {
     async function loadExercises() {
-      if (!programId || !moduleId) return;
+      if (!programId || !chapterId) return;
       
       try {
         setLoading(true);
@@ -30,20 +30,20 @@ export function useExerciseSession(userId, programId, moduleId, organizationId =
         if (organizationId) {
           const orgExercisesRef = doc(
             db,
-            'organizations', organizationId, 'programs', programId, 'modules', moduleId, 'exercises', 'main'
+            'organizations', organizationId, 'programs', programId, 'chapitres', chapterId, 'exercises', 'main'
           );
           exercisesSnap = await getDoc(orgExercisesRef);
-          console.log('🎯 Exercices depuis /organizations/' + organizationId + '/programs/' + programId + '/modules/' + moduleId);
+          console.log('🎯 Exercices depuis /organizations/' + organizationId + '/programs/' + programId + '/chapitres/' + chapterId);
         }
         
         // Fallback vers ancienne structure
         if (!exercisesSnap || !exercisesSnap.exists()) {
           const exercisesRef = doc(
             db,
-            'programs', programId, 'modules', moduleId, 'exercises', 'main'
+            'programs', programId, 'chapitres', chapterId, 'exercises', 'main'
           );
           exercisesSnap = await getDoc(exercisesRef);
-          console.log('⚠️ Fallback: Exercices depuis /programs/' + programId + '/modules/' + moduleId);
+          console.log('⚠️ Fallback: Exercices depuis /programs/' + programId + '/chapitres/' + chapterId);
         }
         
         if (exercisesSnap.exists()) {
@@ -68,7 +68,7 @@ export function useExerciseSession(userId, programId, moduleId, organizationId =
     }
     
     loadExercises();
-  }, [programId, moduleId, organizationId]);
+  }, [programId, chapterId, organizationId]);
 
   // Répondre à un exercice
   const answerBlock = useCallback((blockId, answer) => {
@@ -207,7 +207,7 @@ export function useExerciseSession(userId, programId, moduleId, organizationId =
 
   // Soumettre la tentative
   const submitAttempt = useCallback(async () => {
-    if (!userId || !programId || !moduleId || !exercises) {
+    if (!userId || !programId || !chapterId || !exercises) {
       return { success: false, error: 'Données manquantes' };
     }
 
@@ -220,14 +220,14 @@ export function useExerciseSession(userId, programId, moduleId, organizationId =
       // Sauvegarder dans Firebase
       const attemptRef = doc(
         db,
-        `users/${userId}/programs/${programId}/modules/${moduleId}/attempts/${Date.now()}`
+        `users/${userId}/programs/${programId}/chapitres/${chapterId}/attempts/${Date.now()}`
       );
 
       // Préparer les données à sauvegarder
       const attemptData = {
         userId,
         programId,
-        moduleId,
+        chapterId,
         score: resultsData.score,
         maxScore: resultsData.maxScore,
         percentage: resultsData.percentage,
@@ -256,7 +256,7 @@ export function useExerciseSession(userId, programId, moduleId, organizationId =
     } finally {
       setSubmitting(false);
     }
-  }, [userId, programId, moduleId, exercises, answers, calculateResults, startTime]);
+  }, [userId, programId, chapterId, exercises, answers, calculateResults, startTime]);
 
   return {
     exercises,

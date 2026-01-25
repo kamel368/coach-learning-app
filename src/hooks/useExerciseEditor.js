@@ -4,8 +4,11 @@ import { db } from '../firebase';
 
 /**
  * Hook pour gérer l'édition d'exercices avec système undo/redo
+ * @param {string} organizationId - OBLIGATOIRE pour la structure multi-tenant
+ * @param {string} programId - ID du programme
+ * @param {string} chapterId - ID du chapitre
  */
-export function useExerciseEditor(programId, moduleId) {
+export function useExerciseEditor(organizationId, programId, chapterId) {
   const [blocks, setBlocks] = useState([]);
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -22,14 +25,25 @@ export function useExerciseEditor(programId, moduleId) {
   // Charger les exercices existants
   useEffect(() => {
     async function loadExercises() {
-      if (!programId || !moduleId) return;
+      if (!organizationId || !programId || !chapterId) {
+        console.error('❌ useExerciseEditor: paramètres manquants', { organizationId, programId, chapterId });
+        return;
+      }
       
       try {
         setLoading(true);
+        
+        // ✅ CORRECTION: Utiliser la structure multi-tenant
         const exercisesRef = doc(
           db,
-          `programs/${programId}/modules/${moduleId}/exercises/main`
+          'organizations', organizationId,
+          'programs', programId,
+          'chapitres', chapterId,
+          'exercises', 'main'
         );
+        
+        console.log('📚 Chargement exercices depuis:', `organizations/${organizationId}/programs/${programId}/chapitres/${chapterId}/exercises/main`);
+        
         const exercisesSnap = await getDoc(exercisesRef);
         
         if (exercisesSnap.exists()) {
@@ -40,14 +54,16 @@ export function useExerciseEditor(programId, moduleId) {
           // Initialiser l'historique
           setHistory([data.blocks || []]);
           setHistoryIndex(0);
+          console.log('✅ Exercices chargés:', data.blocks?.length || 0, 'blocs');
         } else {
           // Nouveau document vide
           setBlocks([]);
           setHistory([[]]);
           setHistoryIndex(0);
+          console.log('ℹ️ Aucun exercice existant, nouveau document');
         }
       } catch (error) {
-        console.error('Erreur chargement exercices:', error);
+        console.error('❌ Erreur chargement exercices:', error);
         alert('Erreur lors du chargement des exercices');
       } finally {
         setLoading(false);
@@ -55,7 +71,7 @@ export function useExerciseEditor(programId, moduleId) {
     }
     
     loadExercises();
-  }, [programId, moduleId]);
+  }, [organizationId, programId, chapterId]);
 
   // Ajouter à l'historique
   const addToHistory = useCallback((newBlocks) => {
@@ -132,31 +148,43 @@ export function useExerciseEditor(programId, moduleId) {
 
   // Sauvegarder
   const saveExercises = useCallback(async () => {
-    if (!programId || !moduleId) return { success: false };
+    if (!organizationId || !programId || !chapterId) {
+      console.error('❌ saveExercises: paramètres manquants', { organizationId, programId, chapterId });
+      return { success: false, error: 'Paramètres manquants' };
+    }
     
     try {
       setSaving(true);
+      
+      // ✅ CORRECTION: Utiliser la structure multi-tenant
       const exercisesRef = doc(
         db,
-        `programs/${programId}/modules/${moduleId}/exercises/main`
+        'organizations', organizationId,
+        'programs', programId,
+        'chapitres', chapterId,
+        'exercises', 'main'
       );
       
+      console.log('💾 Sauvegarde exercices dans:', `organizations/${organizationId}/programs/${programId}/chapitres/${chapterId}/exercises/main`);
+      
       await setDoc(exercisesRef, {
-        moduleId,
+        organizationId,
+        chapterId,
         programId,
         blocks,
         settings,
         updatedAt: Timestamp.now()
       }, { merge: true });
       
+      console.log('✅ Exercices sauvegardés avec succès');
       return { success: true };
     } catch (error) {
-      console.error('Erreur sauvegarde:', error);
+      console.error('❌ Erreur sauvegarde:', error);
       return { success: false, error: error.message };
     } finally {
       setSaving(false);
     }
-  }, [programId, moduleId, blocks, settings]);
+  }, [organizationId, programId, chapterId, blocks, settings]);
 
   return {
     blocks,

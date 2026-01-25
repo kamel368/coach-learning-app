@@ -2,16 +2,22 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { useAuth } from '../../context/AuthContext';
 
 export default function ExerciseDebugPage() {
-  const { programId, moduleId } = useParams();
+  const { programId, chapterId } = useParams();
+  const { organizationId } = useAuth();
   const [debugInfo, setDebugInfo] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function checkFirebase() {
       try {
-        const exercisesPath = `programs/${programId}/modules/${moduleId}/exercises/main`;
+        // ✅ CORRECTION: Utiliser la structure multi-tenant
+        const exercisesPath = organizationId
+          ? `organizations/${organizationId}/programs/${programId}/chapitres/${chapterId}/exercises/main`
+          : `programs/${programId}/chapitres/${chapterId}/exercises/main`;
+        
         console.log('🔍 Checking Firebase path:', exercisesPath);
         
         const exercisesRef = doc(db, exercisesPath);
@@ -19,10 +25,11 @@ export default function ExerciseDebugPage() {
         
         const info = {
           path: exercisesPath,
+          organizationId: organizationId || 'N/A',
           exists: exercisesSnap.exists(),
           data: exercisesSnap.exists() ? exercisesSnap.data() : null,
           programId,
-          moduleId
+          chapterId
         };
         
         console.log('📊 Debug Info:', info);
@@ -35,8 +42,10 @@ export default function ExerciseDebugPage() {
       }
     }
     
-    checkFirebase();
-  }, [programId, moduleId]);
+    if (organizationId || programId) {
+      checkFirebase();
+    }
+  }, [organizationId, programId, chapterId]);
 
   if (loading) {
     return (
@@ -97,8 +106,9 @@ export default function ExerciseDebugPage() {
           }}>
             <h2 style={{ color: '#60a5fa' }}>🆔 IDENTIFIANTS</h2>
             <div style={{ background: '#1e293b', padding: '10px', borderRadius: '4px' }}>
+              <div><strong>Organization ID:</strong> {debugInfo.organizationId}</div>
               <div><strong>Program ID:</strong> {debugInfo.programId}</div>
-              <div><strong>Module ID:</strong> {debugInfo.moduleId}</div>
+              <div><strong>Chapitre ID:</strong> {debugInfo.chapterId}</div>
             </div>
           </div>
 
@@ -114,7 +124,7 @@ export default function ExerciseDebugPage() {
             </h2>
             {!debugInfo.exists && (
               <p style={{ margin: '10px 0 0 0' }}>
-                Le document "main" n'existe pas dans Firebase pour ce module.
+                Le document "main" n'existe pas dans Firebase pour ce chapitre.
               </p>
             )}
           </div>
@@ -167,7 +177,7 @@ export default function ExerciseDebugPage() {
               <h2 style={{ color: '#92400e' }}>💡 SOLUTION</h2>
               <ol style={{ margin: '10px 0' }}>
                 <li>Va sur <code>/admin/programs/{debugInfo.programId}</code></li>
-                <li>Trouve le module <code>{debugInfo.moduleId}</code></li>
+                <li>Trouve le chapitre <code>{debugInfo.chapterId}</code></li>
                 <li>Clique sur "🎯 Exercices"</li>
                 <li>Ajoute 2-3 exercices (Flashcard, Vrai/Faux, QCM)</li>
                 <li>Clique "Enregistrer"</li>
@@ -213,7 +223,7 @@ export default function ExerciseDebugPage() {
               </button>
               
               <a 
-                href={`/apprenant/programs/${debugInfo.programId}/modules/${debugInfo.moduleId}/exercises`}
+                href={`/apprenant/programs/${debugInfo.programId}/chapitres/${debugInfo.chapterId}/exercises`}
                 style={{
                   padding: '10px 20px',
                   background: '#8b5cf6',

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useExerciseEditor } from '../../hooks/useExerciseEditor';
+import { useAuth } from '../../context/AuthContext';
 import FlashcardBlockEditor from '../../components/exercises/blocks/FlashcardBlockEditor';
 import TrueFalseBlockEditor from '../../components/exercises/blocks/TrueFalseBlockEditor';
 import QCMBlockEditor from '../../components/exercises/blocks/QCMBlockEditor';
@@ -33,9 +34,11 @@ const BLOCK_LABELS = {
 };
 
 export default function ExerciseEditorPage() {
-  const { programId, moduleId } = useParams();
+  const { programId, chapterId } = useParams();
   const navigate = useNavigate();
+  const { organizationId } = useAuth();
   
+  // ✅ CORRECTION: Passer organizationId au hook
   const {
     blocks,
     loading,
@@ -49,7 +52,7 @@ export default function ExerciseEditorPage() {
     canUndo,
     canRedo,
     saveExercises
-  } = useExerciseEditor(programId, moduleId);
+  } = useExerciseEditor(organizationId, programId, chapterId);
 
   const [activeTab, setActiveTab] = useState('exercices');
   const [draggedIndex, setDraggedIndex] = useState(null);
@@ -59,20 +62,24 @@ export default function ExerciseEditorPage() {
   // Récupérer le titre du chapitre
   useEffect(() => {
     async function fetchChapterTitle() {
+      if (!organizationId || !programId || !chapterId) return;
+      
       try {
-        const moduleRef = doc(db, 'programs', programId, 'modules', moduleId);
-        const moduleSnap = await getDoc(moduleRef);
-        if (moduleSnap.exists()) {
-          setChapterTitle(moduleSnap.data().title || 'Sans titre');
+        // ✅ CORRECTION: Utiliser la structure multi-tenant
+        const chapterRef = organizationId 
+          ? doc(db, 'organizations', organizationId, 'programs', programId, 'chapitres', chapterId)
+          : doc(db, 'programs', programId, 'chapitres', chapterId);
+        
+        const chapterSnap = await getDoc(chapterRef);
+        if (chapterSnap.exists()) {
+          setChapterTitle(chapterSnap.data().title || 'Sans titre');
         }
       } catch (error) {
         console.error('Erreur lors de la récupération du titre du chapitre:', error);
       }
     }
-    if (programId && moduleId) {
-      fetchChapterTitle();
-    }
-  }, [programId, moduleId]);
+    fetchChapterTitle();
+  }, [organizationId, programId, chapterId]);
 
   const handleSave = async () => {
     const result = await saveExercises();

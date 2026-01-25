@@ -5,12 +5,12 @@ import ImageUploader from 'quill-image-uploader';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
 
-Quill.register('modules/imageUploader', ImageUploader);
+Quill.register('chapters/imageUploader', ImageUploader);
 
 export default function RichTextEditor({ value, onChange, placeholder = "Commence à écrire..." }) {
   const quillRef = useRef(null);
 
-  const modules = useMemo(() => ({
+  const chapters = useMemo(() => ({
     toolbar: {
       container: [
         [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
@@ -56,7 +56,7 @@ export default function RichTextEditor({ value, onChange, placeholder = "Commenc
         theme="snow"
         value={value}
         onChange={onChange}
-        modules={modules}
+        chapters={chapters}
         formats={formats}
         placeholder={placeholder}
         style={{ 

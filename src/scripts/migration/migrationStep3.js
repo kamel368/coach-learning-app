@@ -50,52 +50,52 @@ export const migrationStep3 = async () => {
         });
         console.log('   ✅ Programme copié');
 
-        // --- 2.2 Copier les modules ---
+        // --- 2.2 Copier les chapters ---
         try {
-          const modulesSnapshot = await getDocs(collection(db, 'programs', programId, 'modules'));
+          const modulesSnapshot = await getDocs(collection(db, 'programs', programId, 'chapitres'));
           
-          for (const moduleDoc of modulesSnapshot.docs) {
-            const moduleId = moduleDoc.id;
-            const moduleData = moduleDoc.data();
+          for (const chapterDoc of modulesSnapshot.docs) {
+            const chapterId = chapterDoc.id;
+            const chapterData = chapterDoc.data();
             
-            // Copier le module
-            const newModuleRef = doc(db, 'organizations', DEFAULT_ORG_ID, 'programs', programId, 'modules', moduleId);
-            await setDoc(newModuleRef, moduleData);
+            // Copier le chapitre
+            const newModuleRef = doc(db, 'organizations', DEFAULT_ORG_ID, 'programs', programId, 'chapitres', chapterId);
+            await setDoc(newModuleRef, chapterData);
 
             // --- 2.3 Copier les lessons ---
             try {
-              const lessonsSnapshot = await getDocs(collection(db, 'programs', programId, 'modules', moduleId, 'lessons'));
+              const lessonsSnapshot = await getDocs(collection(db, 'programs', programId, 'chapitres', chapterId, 'lessons'));
               for (const lessonDoc of lessonsSnapshot.docs) {
-                const newLessonRef = doc(db, 'organizations', DEFAULT_ORG_ID, 'programs', programId, 'modules', moduleId, 'lessons', lessonDoc.id);
+                const newLessonRef = doc(db, 'organizations', DEFAULT_ORG_ID, 'programs', programId, 'chapitres', chapterId, 'lessons', lessonDoc.id);
                 await setDoc(newLessonRef, lessonDoc.data());
               }
               if (lessonsSnapshot.size > 0) {
-                console.log(`   ✅ Module ${moduleId}: ${lessonsSnapshot.size} lessons`);
+                console.log(`   ✅ Chapitre ${chapterId}: ${lessonsSnapshot.size} lessons`);
               }
             } catch (e) {
-              console.log(`   ⚠️ Pas de lessons pour module ${moduleId}`);
+              console.log(`   ⚠️ Pas de lessons pour chapitre ${chapterId}`);
             }
 
             // --- 2.4 Copier les exercises ---
             try {
-              const exercisesSnapshot = await getDocs(collection(db, 'programs', programId, 'modules', moduleId, 'exercises'));
+              const exercisesSnapshot = await getDocs(collection(db, 'programs', programId, 'chapitres', chapterId, 'exercises'));
               for (const exerciseDoc of exercisesSnapshot.docs) {
-                const newExerciseRef = doc(db, 'organizations', DEFAULT_ORG_ID, 'programs', programId, 'modules', moduleId, 'exercises', exerciseDoc.id);
+                const newExerciseRef = doc(db, 'organizations', DEFAULT_ORG_ID, 'programs', programId, 'chapitres', chapterId, 'exercises', exerciseDoc.id);
                 await setDoc(newExerciseRef, exerciseDoc.data());
               }
               if (exercisesSnapshot.size > 0) {
-                console.log(`   ✅ Module ${moduleId}: ${exercisesSnapshot.size} exercises`);
+                console.log(`   ✅ Chapitre ${chapterId}: ${exercisesSnapshot.size} exercises`);
               }
             } catch (e) {
-              console.log(`   ⚠️ Pas d'exercises pour module ${moduleId}`);
+              console.log(`   ⚠️ Pas d'exercises pour chapitre ${chapterId}`);
             }
           }
           
           if (modulesSnapshot.size > 0) {
-            console.log(`   ✅ ${modulesSnapshot.size} modules migrés`);
+            console.log(`   ✅ ${modulesSnapshot.size} chapters migrés`);
           }
         } catch (e) {
-          console.log('   ⚠️ Pas de modules');
+          console.log('   ⚠️ Pas de chapters');
         }
 
         // --- 2.5 Copier l'évaluation du programme ---

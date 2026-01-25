@@ -91,7 +91,7 @@ export type Block =
 
 export type Lesson = {
   id: string;
-  moduleId: string;
+  chapterId: string;
   title: string;
   status: LessonStatus;
   blocks: Block[];

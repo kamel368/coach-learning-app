@@ -88,7 +88,9 @@ export default function ApprenantDashboard() {
       const programsWithProgress = await Promise.all(
         assignedPrograms.map(async (program) => {
           try {
-            const progressRef = doc(db, 'userProgress', targetUserId, 'programs', program.id);
+            // ✅ Nouvelle structure: /userProgress/{userId}__{programId}
+            const progressDocId = `${targetUserId}__${program.id}`;
+            const progressRef = doc(db, 'userProgress', progressDocId);
             const progressSnap = await getDoc(progressRef);
             
             if (progressSnap.exists()) {
@@ -144,7 +146,9 @@ export default function ApprenantDashboard() {
       const progressions = await Promise.all(
         assignedProgramIds.map(async (programId) => {
           try {
-            const progressRef = doc(db, 'userProgress', targetUserId, 'programs', programId);
+            // ✅ Nouvelle structure: /userProgress/{userId}__{programId}
+            const progressDocId = `${targetUserId}__${programId}`;
+            const progressRef = doc(db, 'userProgress', progressDocId);
             const progressSnap = await getDoc(progressRef);
             
             if (progressSnap.exists() && progressSnap.data().percentage !== undefined) {

@@ -1,16 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
-import { doc, getDoc, collection, getDocs, setDoc, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { saveEvaluationResult } from '../services/userDataService';
 
 /**
- * Hook pour gérer une évaluation complète de module
- * Mélange TOUS les exercices de TOUS les chapitres du module
+ * Hook pour gérer une évaluation complète de chapitre
+ * Mélange TOUS les exercices de TOUS les chapitres du chapitre
  * @param {string} userId - ID de l'utilisateur
  * @param {string} programId - ID du programme
- * @param {string} moduleId - ID du module
+ * @param {string} chapterId - ID du chapitre
  * @param {string} organizationId - ID de l'organisation (optionnel)
  */
-export function useModuleEvaluation(userId, programId, moduleId, organizationId = null) {
+export function useChapterEvaluation(userId, programId, chapterId, organizationId = null) {
   const [evaluation, setEvaluation] = useState(null);
   const [currentBlockIndex, setCurrentBlockIndex] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -28,19 +29,19 @@ export function useModuleEvaluation(userId, programId, moduleId, organizationId 
     return shuffled;
   };
 
-  // Charger tous les exercices de tous les chapitres du module
+  // Charger tous les exercices de tous les chapitres du chapitre
   useEffect(() => {
     async function loadModuleEvaluation() {
-      if (!programId || !moduleId) return;
+      if (!programId || !chapterId) return;
 
       try {
         setLoading(true);
-        console.log('🔍 Chargement évaluation module:', { programId, moduleId });
+        console.log('🔍 Chargement évaluation chapitre:', { programId, chapterId });
 
-        // 1. Récupérer tous les chapitres du module
+        // 1. Récupérer tous les chapitres du chapitre
         const modulesRef = organizationId
-          ? collection(db, 'organizations', organizationId, 'programs', programId, 'modules')
-          : collection(db, 'programs', programId, 'modules');
+          ? collection(db, 'organizations', organizationId, 'programs', programId, 'chapitres')
+          : collection(db, 'programs', programId, 'chapitres');
         
         const modulesSnap = await getDocs(modulesRef);
         
@@ -52,14 +53,14 @@ export function useModuleEvaluation(userId, programId, moduleId, organizationId 
         // 2. Pour chaque chapitre, récupérer les exercices
         const allBlocks = [];
         
-        for (const moduleDoc of modulesSnap.docs) {
-          const chapterId = moduleDoc.id;
-          const chapterData = moduleDoc.data();
+        for (const chapterDoc of modulesSnap.docs) {
+          const chapterId = chapterDoc.id;
+          const chapterData = chapterDoc.data();
           
           try {
             const exercisesRef = organizationId
-              ? doc(db, 'organizations', organizationId, 'programs', programId, 'modules', chapterId, 'exercises', 'main')
-              : doc(db, 'programs', programId, 'modules', chapterId, 'exercises', 'main');
+              ? doc(db, 'organizations', organizationId, 'programs', programId, 'chapitres', chapterId, 'exercises', 'main')
+              : doc(db, 'programs', programId, 'chapitres', chapterId, 'exercises', 'main');
             
             const exercisesSnap = await getDoc(exercisesRef);
             
@@ -88,7 +89,7 @@ export function useModuleEvaluation(userId, programId, moduleId, organizationId 
         console.log(`🎯 Total exercices avant mélange: ${allBlocks.length}`);
 
         if (allBlocks.length === 0) {
-          console.warn('⚠️ Aucun exercice trouvé dans ce module');
+          console.warn('⚠️ Aucun exercice trouvé dans ce chapitre');
           setEvaluation({ blocks: [] });
           setLoading(false);
           return;
@@ -101,7 +102,7 @@ export function useModuleEvaluation(userId, programId, moduleId, organizationId 
         // 4. Créer l'objet évaluation
         const evaluationData = {
           blocks: shuffledBlocks,
-          moduleId,
+          chapterId,
           programId,
           totalBlocks: shuffledBlocks.length,
           createdAt: new Date().toISOString()
@@ -118,7 +119,7 @@ export function useModuleEvaluation(userId, programId, moduleId, organizationId 
     }
 
     loadModuleEvaluation();
-  }, [programId, moduleId, organizationId]);
+  }, [programId, chapterId, organizationId]);
 
   // Enregistrer une réponse
   const answerBlock = useCallback((blockId, answer) => {
@@ -234,7 +235,7 @@ export function useModuleEvaluation(userId, programId, moduleId, organizationId 
 
   // Soumettre l'évaluation
   const submitEvaluation = useCallback(async () => {
-    if (!userId || !programId || !moduleId || !evaluation) {
+    if (!userId || !programId || !chapterId || !evaluation || !organizationId) {
       console.error('❌ Paramètres manquants pour soumettre');
       return { success: false };
     }
@@ -246,35 +247,27 @@ export function useModuleEvaluation(userId, programId, moduleId, organizationId 
 
       const results = calculateResults();
 
-      // Sauvegarder dans Firebase
-      const evaluationId = `eval_${Date.now()}`;
-      const evaluationRef = doc(
-        db,
-        `users/${userId}/programs/${programId}/modules/${moduleId}/evaluations/${evaluationId}`
-      );
-
-      // Préparer les données à sauvegarder
-      const evaluationData = {
-        evaluationId,
-        programId,
-        moduleId,
+      // ✅ Utiliser la nouvelle structure /evaluationResults/{resultId}
+      console.log('💾 Sauvegarde résultat évaluation avec userDataService');
+      
+      const resultDoc = await saveEvaluationResult({
+        organizationId,
         userId,
-        answers,
-        results: results.results,
+        programId,
+        chapterId,
         score: results.score,
-        totalPoints: results.totalPoints,
-        earnedPoints: results.earnedPoints,
+        maxScore: 100,
         duration,
-        completedAt: Timestamp.now(),
-        createdAt: Timestamp.now()
-      };
-
-      // Nettoyer les valeurs undefined (Firebase ne les accepte pas)
-      const cleanData = JSON.parse(JSON.stringify(evaluationData));
-
-      await setDoc(evaluationRef, cleanData);
+        answers: {
+          userAnswers: answers,
+          results: results.results,
+          totalPoints: results.totalPoints,
+          earnedPoints: results.earnedPoints
+        }
+      });
 
       console.log('✅ Évaluation soumise avec succès:', {
+        resultId: resultDoc.id,
         score: results.score,
         duration,
         totalBlocks: evaluation.blocks.length
@@ -287,7 +280,7 @@ export function useModuleEvaluation(userId, programId, moduleId, organizationId 
     } finally {
       setSubmitting(false);
     }
-  }, [userId, programId, moduleId, evaluation, answers, calculateResults, startTime]);
+  }, [userId, programId, chapterId, organizationId, evaluation, answers, calculateResults, startTime]);
 
   return {
     evaluation,

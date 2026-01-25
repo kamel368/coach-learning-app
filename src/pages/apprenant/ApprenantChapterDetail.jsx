@@ -10,13 +10,13 @@ import ViewAsBanner from '../../components/ViewAsBanner';
 import { useAuth } from '../../context/AuthContext';
 import { cleanObsoleteLessons } from '../../services/progressionService';
 
-export default function ApprenantModuleDetail() {
-  const { programId, moduleId } = useParams();
+export default function ApprenantChapterDetail() {
+  const { programId, chapterId } = useParams();
   const navigate = useNavigate();
   const location = useLocation(); // ✅ Ajout pour détecter les changements de navigation
   
   const [program, setProgram] = useState(null);
-  const [module, setModule] = useState(null);
+  const [chapitre, setModule] = useState(null);
   const [lessons, setLessons] = useState([]);
   const [quiz, setQuiz] = useState(null);
   const [quizAttempts, setQuizAttempts] = useState([]);
@@ -53,10 +53,10 @@ export default function ApprenantModuleDetail() {
 
   // ✅ Recharger les données à chaque affichage de la page
   useEffect(() => {
-    if (programId && moduleId && targetOrgId) {
-      console.log('🔄 Rechargement du module', {
+    if (programId && chapterId && targetOrgId) {
+      console.log('🔄 Rechargement du chapitre', {
         programId,
-        moduleId,
+        chapterId,
         targetOrgId,
         targetUserId,
         locationKey: location.key,
@@ -64,7 +64,7 @@ export default function ApprenantModuleDetail() {
       });
       loadData(); // Charger d'abord les leçons
     }
-  }, [programId, moduleId, targetOrgId, targetUserId, location.pathname, location.key]);
+  }, [programId, chapterId, targetOrgId, targetUserId, location.pathname, location.key]);
   
   // ✅ NOUVEAU: Charger la progression UNIQUEMENT quand les leçons sont chargées
   useEffect(() => {
@@ -105,7 +105,7 @@ export default function ApprenantModuleDetail() {
   // ✅ Recharger aussi quand la page redevient visible (visibilitychange)
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (!document.hidden && programId && moduleId && targetOrgId) {
+      if (!document.hidden && programId && chapterId && targetOrgId) {
         console.log('👁️ Page visible, rechargement des données');
         loadData(); // Recharger tout
       }
@@ -113,22 +113,22 @@ export default function ApprenantModuleDetail() {
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [programId, moduleId, targetOrgId]);
+  }, [programId, chapterId, targetOrgId]);
 
-  // 🎮 GAMIFICATION : Détecter quand un module est 100% complété
+  // 🎮 GAMIFICATION : Détecter quand un chapitre est 100% complété
   useEffect(() => {
     if (lessons.length > 0 && completedLessons.length > 0 && !gamifLoading && gamificationData) {
       const completedInThisModule = completedLessons.filter(id => lessons.find(l => l.id === id)).length;
       const moduleProgress = (completedInThisModule / lessons.length) * 100;
       
-      // Si le module est 100% complété et qu'on ne l'a pas encore compté
-      if (moduleProgress >= 100 && !moduleCompletionTracked.current.has(moduleId) && onModuleCompleted) {
-        moduleCompletionTracked.current.add(moduleId);
+      // Si le chapitre est 100% complété et qu'on ne l'a pas encore compté
+      if (moduleProgress >= 100 && !moduleCompletionTracked.current.has(chapterId) && onModuleCompleted) {
+        moduleCompletionTracked.current.add(chapterId);
         onModuleCompleted();
-        console.log('🎮 Gamification: Module complété !', moduleId);
+        console.log('🎮 Gamification: Chapitre complété !', chapterId);
       }
     }
-  }, [completedLessons, lessons, moduleId, onModuleCompleted, gamifLoading, gamificationData]);
+  }, [completedLessons, lessons, chapterId, onModuleCompleted, gamifLoading, gamificationData]);
   
   // Charger la progression des leçons complétées
   async function loadProgress() {
@@ -143,7 +143,9 @@ export default function ApprenantModuleDetail() {
       
       console.log('📖 Chargement progression pour user:', effectiveUserId, 'programme:', programId);
       
-      const progressRef = doc(db, 'userProgress', effectiveUserId, 'programs', programId);
+      // ✅ Nouvelle structure: /userProgress/{userId}__{programId}
+      const progressDocId = `${effectiveUserId}__${programId}`;
+      const progressRef = doc(db, 'userProgress', progressDocId);
       const progressSnap = await getDoc(progressRef);
       
       if (progressSnap.exists()) {
@@ -152,7 +154,7 @@ export default function ApprenantModuleDetail() {
         console.log('✅ Leçons complétées chargées depuis Firebase:', completed.length, '/', lessons.length);
         console.log('   📋 IDs complétés:', completed);
         console.log('   📋 Type des IDs complétés:', completed.map(id => typeof id));
-        console.log('   📚 IDs des leçons du module:', lessons.map(l => l.id));
+        console.log('   📚 IDs des leçons du chapitre:', lessons.map(l => l.id));
         console.log('   📚 Type des IDs des leçons:', lessons.map(l => typeof l.id));
         
         // Vérifier les correspondances
@@ -178,7 +180,7 @@ export default function ApprenantModuleDetail() {
       }
 
       const effectiveOrgId = targetOrgId || organizationId;
-      console.log('📚 Chargement module depuis org:', effectiveOrgId);
+      console.log('📚 Chargement chapitre depuis org:', effectiveOrgId);
 
       // Récupérer le programme
       let programDoc;
@@ -192,29 +194,29 @@ export default function ApprenantModuleDetail() {
         setProgram({ id: programDoc.id, ...programDoc.data() });
       }
 
-      // Récupérer le module
-      let moduleDoc;
+      // Récupérer le chapitre
+      let chapterDoc;
       if (effectiveOrgId) {
-        moduleDoc = await getDoc(
-          doc(db, 'organizations', effectiveOrgId, 'programs', programId, 'modules', moduleId)
+        chapterDoc = await getDoc(
+          doc(db, 'organizations', effectiveOrgId, 'programs', programId, 'chapitres', chapterId)
         );
       } else {
-        moduleDoc = await getDoc(
-          doc(db, 'programs', programId, 'modules', moduleId)
+        chapterDoc = await getDoc(
+          doc(db, 'programs', programId, 'chapitres', chapterId)
         );
       }
       
-      if (!moduleDoc.exists()) {
+      if (!chapterDoc.exists()) {
         navigate(`/apprenant/programs/${programId}`);
         return;
       }
       
-      setModule({ id: moduleDoc.id, ...moduleDoc.data() });
+      setModule({ id: chapterDoc.id, ...chapterDoc.data() });
 
-      // Récupérer les leçons du module
+      // Récupérer les leçons du chapitre
       const lessonsRef = effectiveOrgId
-        ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'modules', moduleId, 'lessons')
-        : collection(db, 'programs', programId, 'modules', moduleId, 'lessons');
+        ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'chapitres', chapterId, 'lessons')
+        : collection(db, 'programs', programId, 'chapitres', chapterId, 'lessons');
       
       const lessonsQuery = query(lessonsRef, orderBy('order', 'asc'));
       const lessonsSnap = await getDocs(lessonsQuery);
@@ -226,10 +228,10 @@ export default function ApprenantModuleDetail() {
 
       setLessons(lessonsData);
 
-      // Récupérer le QCM du module
+      // Récupérer le QCM du chapitre
       const quizzesRef = effectiveOrgId
-        ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'modules', moduleId, 'quizzes')
-        : collection(db, 'programs', programId, 'modules', moduleId, 'quizzes');
+        ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'chapitres', chapterId, 'quizzes')
+        : collection(db, 'programs', programId, 'chapitres', chapterId, 'quizzes');
       
       const quizzesSnap = await getDocs(quizzesRef);
       
@@ -243,7 +245,7 @@ export default function ApprenantModuleDetail() {
       const attemptsQuery = query(
         attemptsRef,
         where('userId', '==', targetUserId),
-        where('moduleId', '==', moduleId),
+        where('chapterId', '==', chapterId),
         orderBy('createdAt', 'desc')
       );
       
@@ -256,7 +258,7 @@ export default function ApprenantModuleDetail() {
       setQuizAttempts(attemptsData);
 
     } catch (error) {
-      console.error('Erreur chargement module:', error);
+      console.error('Erreur chargement chapitre:', error);
     } finally {
       setLoading(false);
     }
@@ -277,14 +279,14 @@ export default function ApprenantModuleDetail() {
     );
   }
 
-  if (!module) {
+  if (!chapitre) {
     return (
       <div style={{
         padding: 'clamp(24px, 5vw, 40px)',
         textAlign: 'center'
       }}>
         <p style={{ fontSize: 'clamp(16px, 3vw, 18px)', color: '#64748b' }}>
-          Module introuvable
+          Chapitre introuvable
         </p>
         <button
           onClick={() => navigate(`/apprenant/programs/${programId}`)}
@@ -365,7 +367,7 @@ export default function ApprenantModuleDetail() {
           </span>
         </button>
 
-        {/* Header Module */}
+        {/* Header Chapitre */}
         <div style={{
           background: 'rgba(255, 255, 255, 0.95)',
           borderRadius: 'clamp(12px, 2.5vw, 20px)',
@@ -383,7 +385,7 @@ export default function ApprenantModuleDetail() {
               overflow: 'hidden',
               textOverflow: 'ellipsis'
             }}>
-              {program.name} / Module
+              {program.name} / Chapitre
             </div>
           )}
 
@@ -403,10 +405,10 @@ export default function ApprenantModuleDetail() {
               lineHeight: '1.2',
               margin: 0
             }}>
-              {module.title}
+              {chapitre.title}
             </h1>
 
-            {/* Badge progression module */}
+            {/* Badge progression chapitre */}
             {lessons.length > 0 && (
               <div style={{
                 display: 'flex',
@@ -446,13 +448,13 @@ export default function ApprenantModuleDetail() {
             )}
           </div>
 
-          {module.description && (
+          {chapitre.description && (
             <p style={{
               fontSize: 'clamp(14px, 3vw, 18px)',
               color: '#64748b',
               lineHeight: '1.6'
             }}>
-              {module.description}
+              {chapitre.description}
             </p>
           )}
         </div>
@@ -493,7 +495,7 @@ export default function ApprenantModuleDetail() {
                   fontSize: 'clamp(14px, 3vw, 16px)',
                   color: '#64748b'
                 }}>
-                  Aucune leçon disponible pour ce module
+                  Aucune leçon disponible pour ce chapitre
                 </p>
               </div>
             ) : (
@@ -611,7 +613,7 @@ export default function ApprenantModuleDetail() {
                         )}
                         
                         <button
-                          onClick={() => navigate(`/apprenant/programs/${programId}/modules/${moduleId}/lessons/${lesson.id}`)}
+                          onClick={() => navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}/lessons/${lesson.id}`)}
                           style={{
                             padding: 'clamp(6px, 2vw, 8px) clamp(12px, 3vw, 16px)',
                             background: isCompleted ? 'white' : '#3b82f6',
@@ -643,7 +645,7 @@ export default function ApprenantModuleDetail() {
             {/* Section Exercices - NOUVEAU */}
             <div style={{ marginTop: 'clamp(20px, 4vw, 24px)' }}>
               <button
-                onClick={() => navigate(`/apprenant/programs/${programId}/modules/${moduleId}/exercises`)}
+                onClick={() => navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}/exercises`)}
                 style={{
                   width: '100%',
                   padding: 'clamp(20px, 4vw, 24px)',
@@ -693,7 +695,7 @@ export default function ApprenantModuleDetail() {
                       fontSize: 'clamp(13px, 2.5vw, 14px)',
                       color: 'rgba(255,255,255,0.9)'
                     }}>
-                      Teste tes connaissances sur ce module
+                      Teste tes connaissances sur ce chapitre
                     </div>
                   </div>
                 </div>
@@ -753,7 +755,7 @@ export default function ApprenantModuleDetail() {
                     marginBottom: '8px',
                     lineHeight: '1.3'
                   }}>
-                    {quiz.title || 'QCM du module'}
+                    {quiz.title || 'QCM du chapitre'}
                   </h3>
 
                   <p style={{
@@ -792,7 +794,7 @@ export default function ApprenantModuleDetail() {
 
                   {/* Bouton passer QCM */}
                   <button
-                    onClick={() => navigate(`/apprenant/programs/${programId}/modules/${moduleId}/quiz`)}
+                    onClick={() => navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}/quiz`)}
                     style={{
                       width: '100%',
                       padding: 'clamp(12px, 2.5vw, 14px)',
@@ -878,7 +880,7 @@ export default function ApprenantModuleDetail() {
                     fontSize: 'clamp(13px, 2.5vw, 14px)',
                     color: '#94a3b8'
                   }}>
-                    Aucun QCM disponible pour ce module
+                    Aucun QCM disponible pour ce chapitre
                   </p>
                 </div>
               )}

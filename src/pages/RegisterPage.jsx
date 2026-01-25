@@ -78,7 +78,7 @@ export default function RegisterPage() {
           logoUrl: null,
           createdAt: serverTimestamp()
         },
-        modules: ['learning'],
+        chapters: ['learning'],
         settings: {
           maxEmployees: 50,
           features: ['learning']

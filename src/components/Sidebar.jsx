@@ -5,8 +5,6 @@ import {
   LayoutDashboard, 
   Users, 
   BookOpen, 
-  HelpCircle, 
-  BrainCircuit, 
   UserCog,
   Menu,
   LogOut,
@@ -47,10 +45,7 @@ const handleLogout = async () => {
 
   const menuItems = [
     { path: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/admin/roles-metier', icon: Users, label: 'Rôles Métier' },
     { path: '/admin/programs', icon: BookOpen, label: 'Programmes' },
-    { path: '/admin/quizzes', icon: HelpCircle, label: 'Exercices' },
-    { path: '/admin/ai-exercises', icon: BrainCircuit, label: 'Exercices IA' },
     { path: '/admin/users', icon: UserCog, label: 'Utilisateurs' },
   ];
 

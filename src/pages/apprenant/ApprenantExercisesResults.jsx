@@ -22,7 +22,7 @@ import {
 export default function ApprenantExercisesResults() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { programId, moduleId } = useParams();
+  const { programId, chapterId } = useParams();
   
   // States pour le chargement
   const [loadedData, setLoadedData] = useState(null);
@@ -73,16 +73,16 @@ export default function ApprenantExercisesResults() {
       }
       
       // Sinon, essayer de charger depuis Firebase
-      if (user?.uid && programId && moduleId) {
+      if (user?.uid && programId && chapterId) {
         console.log('📊 Chargement depuis Firebase');
         console.log('   - userId:', user.uid);
         console.log('   - programId:', programId);
-        console.log('   - moduleId:', moduleId);
+        console.log('   - chapterId:', chapterId);
         
         try {
           // Essayer l'ancienne structure
           const attemptDoc = await getDoc(
-            doc(db, 'users', user.uid, 'programs', programId, 'modules', moduleId, 'attempts', stateData.attemptId || Date.now().toString())
+            doc(db, 'users', user.uid, 'programs', programId, 'chapitres', chapterId, 'attempts', stateData.attemptId || Date.now().toString())
           );
           
           if (attemptDoc.exists()) {
@@ -106,7 +106,7 @@ export default function ApprenantExercisesResults() {
     };
     
     loadDataFromFirebase();
-  }, [user?.uid, stateData.attemptId, stateData.results, fromHistory, attemptFromState, programId, moduleId]);
+  }, [user?.uid, stateData.attemptId, stateData.results, fromHistory, attemptFromState, programId, chapterId]);
   
   // ✅ Fusionner les données : priorité à state, puis attemptFromState, puis loadedData
   const attempt = attemptFromState || loadedData || {};
@@ -262,7 +262,7 @@ export default function ApprenantExercisesResults() {
   };
 
   const handleRestart = () => {
-    navigate(`/apprenant/programs/${programId}/modules/${moduleId}/exercises`);
+    navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}/exercises`);
   };
 
   // Icône selon le type d'exercice
@@ -374,7 +374,7 @@ export default function ApprenantExercisesResults() {
             position: 'relative'
           }}>
             {displayPercentage >= 80 
-              ? 'Tu maîtrises parfaitement ce module !' 
+              ? 'Tu maîtrises parfaitement ce chapitre !' 
               : displayPercentage >= 50 
                 ? 'Tu es sur la bonne voie !' 
                 : 'Tu peux recommencer pour améliorer ton score'}
@@ -640,9 +640,9 @@ export default function ApprenantExercisesResults() {
           gap: '12px',
           flexWrap: 'wrap'
         }}>
-          {/* Retour au module */}
+          {/* Retour au chapitre */}
           <button
-            onClick={() => navigate(`/apprenant/programs/${programId}/modules/${moduleId}`)}
+            onClick={() => navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}`)}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -667,7 +667,7 @@ export default function ApprenantExercisesResults() {
             }}
           >
             <ArrowLeft size={18} />
-            Retour au module
+            Retour au chapitre
           </button>
 
           {/* Historique */}

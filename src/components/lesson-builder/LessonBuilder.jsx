@@ -20,7 +20,7 @@ import BlocksPaletteTab from './BlocksPaletteTab';
 import LessonEditorView from './LessonEditorView';
 import LessonPreview from './LessonPreview';
 
-export default function LessonBuilder({ lessonId, moduleId, programId, organizationId, onReady }) {
+export default function LessonBuilder({ lessonId, chapterId, programId, organizationId, onReady }) {
   // ============================================
   // 1. ÉTATS (useState)
   // ============================================
@@ -49,7 +49,7 @@ export default function LessonBuilder({ lessonId, moduleId, programId, organizat
   useEffect(() => {
     async function load() {
       console.log('🔍 LessonBuilder: Chargement avec organizationId:', organizationId);
-      const existing = await getLesson(lessonId, programId, moduleId, organizationId);
+      const existing = await getLesson(lessonId, programId, chapterId, organizationId);
       if (existing) {
         console.log('✅ Leçon existante trouvée:', existing.title, '- Blocks:', existing.blocks?.length || 0);
         setLesson(existing);
@@ -57,7 +57,7 @@ export default function LessonBuilder({ lessonId, moduleId, programId, organizat
         console.log('📝 Création d\'une nouvelle leçon');
         const empty = {
           id: lessonId,
-          moduleId,
+          chapterId,
           programId,
           title: 'Nouvelle leçon',
           status: 'draft',
@@ -67,7 +67,7 @@ export default function LessonBuilder({ lessonId, moduleId, programId, organizat
       }
     }
     load();
-  }, [lessonId, moduleId, programId, organizationId]);
+  }, [lessonId, chapterId, programId, organizationId]);
 
   // ============================================
   // 4. FONCTIONS MÉTIER (useCallback)
@@ -188,7 +188,7 @@ export default function LessonBuilder({ lessonId, moduleId, programId, organizat
       console.log('📦 Nombre de blocks:', validLesson.blocks?.length || 0);
       
       // ✅ CORRECTION: Passer organizationId à saveLesson
-      await saveLesson(validLesson, programId, moduleId, organizationId);
+      await saveLesson(validLesson, programId, chapterId, organizationId);
       
       // Mettre à jour l'état local avec la version nettoyée
       setLesson(validLesson);
@@ -204,7 +204,7 @@ export default function LessonBuilder({ lessonId, moduleId, programId, organizat
         id: toastId,
       });
     }
-  }, [lesson, hasUnsavedBlock, programId, moduleId, organizationId]);
+  }, [lesson, hasUnsavedBlock, programId, chapterId, organizationId]);
 
   // ============================================
   // 5. useEffect - EXPOSITION AU PARENT (onReady)

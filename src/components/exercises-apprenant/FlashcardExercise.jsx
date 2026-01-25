@@ -3,7 +3,11 @@ import { RotateCcw } from 'lucide-react';
 
 export default function FlashcardExercise({ block, answer, onAnswer }) {
   const [isFlipped, setIsFlipped] = useState(false);
-  const { content } = block;
+  
+  // Gérer à la fois l'ancienne structure (content) et la nouvelle (aplatie)
+  const question = block.content?.question || block.question || '';
+  const correctAnswer = block.content?.answer || block.answer || '';
+  const hint = block.content?.hint || block.hint || '';
 
   const handleSelfEvaluation = (evaluation) => {
     onAnswer({ selfEvaluation: evaluation });
@@ -12,7 +16,7 @@ export default function FlashcardExercise({ block, answer, onAnswer }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* Hint si présent */}
-      {content.hint && (
+      {hint && (
         <div style={{
           padding: '12px 16px',
           background: '#fef3c7',
@@ -21,7 +25,7 @@ export default function FlashcardExercise({ block, answer, onAnswer }) {
           fontSize: '14px',
           color: '#92400e'
         }}>
-          💡 <strong>Indice :</strong> {content.hint}
+          💡 <strong>Indice :</strong> {hint}
         </div>
       )}
 
@@ -73,7 +77,7 @@ export default function FlashcardExercise({ block, answer, onAnswer }) {
               color: 'white',
               textAlign: 'center'
             }}>
-              {content.question}
+              {question}
             </div>
             <div style={{
               marginTop: '24px',
@@ -116,7 +120,7 @@ export default function FlashcardExercise({ block, answer, onAnswer }) {
               color: 'white',
               textAlign: 'center'
             }}>
-              {content.answer}
+              {correctAnswer}
             </div>
             <div style={{
               marginTop: '24px',

@@ -9,9 +9,10 @@ import { db } from '../firebase';
 /**
  * Récupérer les programmes affectés à un utilisateur
  * @param {string} userId - ID de l'utilisateur
+ * @param {string} organizationId - ID de l'organisation
  * @returns {Promise<Array>} Liste des programmes affectés avec leurs détails
  */
-export async function getUserAssignedPrograms(userId) {
+export async function getUserAssignedPrograms(userId, organizationId) {
   try {
     const userDoc = await getDoc(doc(db, 'users', userId));
     if (!userDoc.exists()) {
@@ -25,8 +26,13 @@ export async function getUserAssignedPrograms(userId) {
       return [];
     }
     
-    // Récupérer les détails des programmes
-    const programsSnap = await getDocs(collection(db, 'programs'));
+    // Récupérer les détails des programmes depuis l'organisation
+    if (!organizationId) {
+      console.warn('organizationId manquant pour getUserAssignedPrograms');
+      return [];
+    }
+    
+    const programsSnap = await getDocs(collection(db, 'organizations', organizationId, 'programs'));
     const allPrograms = programsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     
     // Filtrer uniquement les programmes affectés
@@ -59,14 +65,20 @@ export async function assignProgramsToUser(userId, programIds) {
 
 /**
  * Récupérer tous les programmes disponibles
+ * @param {string} organizationId - ID de l'organisation
  * @returns {Promise<Array>} Liste de tous les programmes
  */
-export async function getAllPrograms() {
+export async function getAllPrograms(organizationId) {
   try {
-    const snap = await getDocs(collection(db, 'programs'));
+    if (!organizationId) {
+      console.warn('organizationId manquant pour getAllPrograms');
+      return [];
+    }
+    
+    const snap = await getDocs(collection(db, 'organizations', organizationId, 'programs'));
     const programs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     
-    console.log(`📚 ${programs.length} programmes récupérés`);
+    console.log(`📚 ${programs.length} programmes récupérés depuis /organizations/${organizationId}/programs`);
     return programs;
   } catch (error) {
     console.error('Erreur getAllPrograms:', error);
@@ -75,20 +87,25 @@ export async function getAllPrograms() {
 }
 
 /**
- * Récupérer tous les apprenants
+ * Récupérer tous les apprenants d'une organisation
+ * @param {string} organizationId - ID de l'organisation
  * @returns {Promise<Array>} Liste de tous les apprenants
  */
-export async function getAllLearners() {
+export async function getAllLearners(organizationId) {
   try {
-    const q = query(
-      collection(db, 'users'),
-      where('role', '==', 'learner')
-    );
-    const snap = await getDocs(q);
-    const learners = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (!organizationId) {
+      console.warn('organizationId manquant pour getAllLearners');
+      return [];
+    }
     
-    console.log(`👥 ${learners.length} apprenants récupérés`);
-    return learners;
+    // Récupérer depuis /organizations/{orgId}/employees
+    const employeesSnap = await getDocs(collection(db, 'organizations', organizationId, 'employees'));
+    const employees = employeesSnap.docs
+      .map(d => ({ id: d.id, ...d.data().profile }))
+      .filter(e => e.role === 'learner');
+    
+    console.log(`👥 ${employees.length} apprenants récupérés depuis /organizations/${organizationId}/employees`);
+    return employees;
   } catch (error) {
     console.error('Erreur getAllLearners:', error);
     return [];

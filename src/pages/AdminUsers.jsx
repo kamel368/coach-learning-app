@@ -24,6 +24,9 @@ export default function AdminUsers() {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  
+  // État pour le bouton de création de programmes
+  const [creatingPrograms, setCreatingPrograms] = useState(false);
 
   // Formulaire création
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -334,6 +337,88 @@ export default function AdminUsers() {
 
       {error && <div style={{ color: "red", marginBottom: 12 }}>{error}</div>}
 
+      {/* 🚀 BOUTON CRÉATION PROGRAMMES DE TEST */}
+      <div style={{ 
+        marginBottom: 24, 
+        padding: 16, 
+        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+        borderRadius: 12,
+        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+          <span style={{ fontSize: 24 }}>🚀</span>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: 'white', margin: 0 }}>
+            Aucun programme disponible ?
+          </h3>
+        </div>
+        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.9)', marginBottom: 12, lineHeight: 1.5 }}>
+          Créez automatiquement 3 programmes complets avec 36 leçons et ~80 exercices pour tester l'application.
+        </p>
+        <button
+          onClick={async () => {
+            if (window.confirm('🎓 Créer les 3 programmes de test ?\n\n✅ Excellence Managériale\n✅ Excellence Commerciale\n✅ Excellence RH\n\nCela créera ~150 documents dans Firebase (30-60 secondes).')) {
+              setCreatingPrograms(true);
+              try {
+                console.log('🚀 Démarrage de la création des programmes...');
+                const { createAllTestPrograms } = await import('../scripts/createTestPrograms.js');
+                await createAllTestPrograms();
+                alert('✅ PROGRAMMES CRÉÉS AVEC SUCCÈS !\n\n3 programmes sont maintenant disponibles :\n- Excellence Managériale\n- Excellence Commerciale\n- Excellence RH\n\nVous pouvez maintenant les affecter à vos apprenants !');
+                // Rafraîchir la liste des programmes
+                if (selectedUser) {
+                  const programs = await getAllPrograms(organizationId);
+                  setAvailablePrograms(programs);
+                }
+              } catch (error) {
+                console.error('❌ Erreur lors de la création:', error);
+                alert('❌ Erreur lors de la création des programmes :\n\n' + error.message + '\n\nVérifiez la console pour plus de détails.');
+              } finally {
+                setCreatingPrograms(false);
+              }
+            }
+          }}
+          disabled={creatingPrograms}
+          style={{
+            padding: '10px 20px',
+            background: creatingPrograms ? 'rgba(255,255,255,0.3)' : 'white',
+            color: creatingPrograms ? 'rgba(255,255,255,0.7)' : '#059669',
+            border: 'none',
+            borderRadius: 8,
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: creatingPrograms ? 'wait' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            boxShadow: creatingPrograms ? 'none' : '0 2px 8px rgba(0,0,0,0.1)'
+          }}
+        >
+          {creatingPrograms ? (
+            <>
+              <span style={{ 
+                display: 'inline-block',
+                width: 14,
+                height: 14,
+                border: '2px solid rgba(255,255,255,0.3)',
+                borderTopColor: 'white',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite'
+              }} />
+              Création en cours...
+            </>
+          ) : (
+            <>
+              <span style={{ fontSize: 16 }}>⚡</span>
+              Créer les 3 programmes de test maintenant
+            </>
+          )}
+        </button>
+        <style>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+
       {/* Barre de recherche + Bouton créer */}
       <div
         style={{
@@ -357,7 +442,15 @@ export default function AdminUsers() {
           }}
         />
         <button
-          onClick={() => setShowCreateForm(!showCreateForm)}
+          onClick={() => {
+            setShowCreateForm(!showCreateForm);
+            // Réinitialiser le formulaire quand on l'ouvre
+            if (!showCreateForm) {
+              setNewEmail("");
+              setNewPassword("");
+              setNewRole("learner");
+            }
+          }}
           style={{
             padding: "10px 16px",
             background: "linear-gradient(135deg, var(--color-primary), var(--color-primary-light))",
@@ -385,7 +478,11 @@ export default function AdminUsers() {
           }}
         >
           <h2 style={{ fontSize: 18, marginBottom: 12 }}>Nouveau compte apprenant</h2>
-          <form onSubmit={handleCreateUser} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <form 
+            onSubmit={handleCreateUser} 
+            autoComplete="off"
+            style={{ display: "flex", flexDirection: "column", gap: 12 }}
+          >
             <div>
               <label style={{ display: "block", fontSize: 13, marginBottom: 4, fontWeight: 500 }}>
                 Email
@@ -396,6 +493,8 @@ export default function AdminUsers() {
                 onChange={(e) => setNewEmail(e.target.value)}
                 placeholder="apprenant@example.com"
                 required
+                autoComplete="off"
+                name="new-user-email"
                 style={{
                   width: "100%",
                   padding: "8px 12px",
@@ -417,6 +516,8 @@ export default function AdminUsers() {
                 placeholder="Minimum 6 caractères"
                 required
                 minLength={6}
+                autoComplete="new-password"
+                name="new-user-password"
                 style={{
                   width: "100%",
                   padding: "8px 12px",

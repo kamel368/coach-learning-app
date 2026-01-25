@@ -65,8 +65,8 @@ export default function Navbar() {
             <Link to="/admin/programs" style={{ color: "white", textDecoration: "none", fontSize: 14, fontWeight: 500 }}>
               Programmes
             </Link>
-            <Link to="/admin/modules" style={{ color: "white", textDecoration: "none", fontSize: 14, fontWeight: 500 }}>
-              Modules
+            <Link to="/admin/chapters" style={{ color: "white", textDecoration: "none", fontSize: 14, fontWeight: 500 }}>
+              Chapitres
             </Link>
             <Link to="/admin/lessons" style={{ color: "white", textDecoration: "none", fontSize: 14, fontWeight: 500 }}>
               Leçons

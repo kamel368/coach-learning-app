@@ -5,7 +5,7 @@ import LessonBuilder from '../components/lesson-builder/LessonBuilder';
 import { useAuth } from '../context/AuthContext';
 
 export default function LessonEditorPage() {
-  const { programId, moduleId, lessonId } = useParams();
+  const { programId, chapterId, lessonId } = useParams();
   const navigate = useNavigate();
   const { organizationId } = useAuth();
   
@@ -586,7 +586,7 @@ export default function LessonEditorPage() {
       }}>
         <LessonBuilder
           lessonId={lessonId}
-          moduleId={moduleId}
+          chapterId={chapterId}
           programId={programId}
           organizationId={organizationId}
           onReady={handleReady}

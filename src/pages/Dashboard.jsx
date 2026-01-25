@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
-import { BookOpen, CheckCircle, Bot, Users, Briefcase } from 'lucide-react';
+import { BookOpen, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Dashboard() {
@@ -32,19 +32,19 @@ export default function Dashboard() {
         
         console.log('📊 Stats programmes:', programsCount, 'depuis', organizationId ? `/organizations/${organizationId}/programs` : '/programs');
 
-        // Compter les leçons dans tous les modules de tous les programmes
+        // Compter les leçons dans tous les chapters de tous les programmes
         let lessonsCount = 0;
         for (const programDoc of programsSnap.docs) {
           const modulesPath = organizationId
-            ? `organizations/${organizationId}/programs/${programDoc.id}/modules`
-            : `programs/${programDoc.id}/modules`;
+            ? `organizations/${organizationId}/programs/${programDoc.id}/chapters`
+            : `programs/${programDoc.id}/chapters`;
           
           const modulesSnap = await getDocs(collection(db, modulesPath));
           
-          for (const moduleDoc of modulesSnap.docs) {
+          for (const chapterDoc of modulesSnap.docs) {
             const lessonsPath = organizationId
-              ? `organizations/${organizationId}/programs/${programDoc.id}/modules/${moduleDoc.id}/lessons`
-              : `programs/${programDoc.id}/modules/${moduleDoc.id}/lessons`;
+              ? `organizations/${organizationId}/programs/${programDoc.id}/chapitres/${chapterDoc.id}/lessons`
+              : `programs/${programDoc.id}/chapitres/${chapterDoc.id}/lessons`;
             
             const lessonsSnap = await getDocs(collection(db, lessonsPath));
             lessonsCount += lessonsSnap.size;
@@ -380,142 +380,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Card Exercices */}
-        <div
-          onClick={() => navigate('/admin/quizzes')}
-          style={{
-            background: '#ffffff',
-            borderRadius: '14px',
-            padding: '20px',
-            cursor: 'pointer',
-            border: '1px solid #e2e8f0',
-            transition: 'all 0.3s ease',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-4px)';
-            e.currentTarget.style.boxShadow = '0 10px 32px rgba(0, 0, 0, 0.08)';
-            e.currentTarget.style.borderColor = '#cbd5e1';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
-            e.currentTarget.style.borderColor = '#e2e8f0';
-          }}
-        >
-          <div style={{
-            width: '48px',
-            height: '48px',
-            borderRadius: '12px',
-            background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: '14px'
-          }}>
-            <CheckCircle size={24} color="#3b82f6" strokeWidth={2} />
-          </div>
-          
-          <h3 style={{
-            fontSize: '17px',
-            fontWeight: '700',
-            color: '#1e293b',
-            marginBottom: '6px',
-            letterSpacing: '-0.3px'
-          }}>
-            Exercices
-          </h3>
-          
-          <p style={{
-            fontSize: '13px',
-            color: '#64748b',
-            lineHeight: '1.5',
-            marginBottom: '12px'
-          }}>
-            Créez des exercices variés pour valider les connaissances.
-          </p>
-          
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            fontSize: '13px',
-            color: '#3b82f6',
-            fontWeight: '600'
-          }}>
-            <span>Gérer les exercices</span>
-            <span style={{ fontSize: '16px' }}>→</span>
-          </div>
-        </div>
-
-        {/* Card Exercices IA */}
-        <div
-          onClick={() => navigate('/admin/ai-exercises')}
-          style={{
-            background: '#ffffff',
-            borderRadius: '14px',
-            padding: '20px',
-            cursor: 'pointer',
-            border: '1px solid #e2e8f0',
-            transition: 'all 0.3s ease',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-4px)';
-            e.currentTarget.style.boxShadow = '0 10px 32px rgba(0, 0, 0, 0.08)';
-            e.currentTarget.style.borderColor = '#cbd5e1';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
-            e.currentTarget.style.borderColor = '#e2e8f0';
-          }}
-        >
-          <div style={{
-            width: '48px',
-            height: '48px',
-            borderRadius: '12px',
-            background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: '14px'
-          }}>
-            <Bot size={24} color="#f59e0b" strokeWidth={2} />
-          </div>
-          
-          <h3 style={{
-            fontSize: '17px',
-            fontWeight: '700',
-            color: '#1e293b',
-            marginBottom: '6px',
-            letterSpacing: '-0.3px'
-          }}>
-            Exercices IA
-          </h3>
-          
-          <p style={{
-            fontSize: '13px',
-            color: '#64748b',
-            lineHeight: '1.5',
-            marginBottom: '12px'
-          }}>
-            Configurez des simulations vocales avec Gemini 2.0.
-          </p>
-          
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            fontSize: '13px',
-            color: '#f59e0b',
-            fontWeight: '600'
-          }}>
-            <span>Gérer les exercices IA</span>
-            <span style={{ fontSize: '16px' }}>→</span>
-          </div>
-        </div>
-
         {/* Card Utilisateurs */}
         <div
           onClick={() => navigate('/admin/users')}
@@ -580,74 +444,6 @@ export default function Dashboard() {
             fontWeight: '600'
           }}>
             <span>Gérer les utilisateurs</span>
-            <span style={{ fontSize: '16px' }}>→</span>
-          </div>
-        </div>
-
-        {/* Card Rôles Métier */}
-        <div
-          onClick={() => navigate('/admin/roles-metier')}
-          style={{
-            background: '#ffffff',
-            borderRadius: '14px',
-            padding: '20px',
-            cursor: 'pointer',
-            border: '1px solid #e2e8f0',
-            transition: 'all 0.3s ease',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-4px)';
-            e.currentTarget.style.boxShadow = '0 10px 32px rgba(0, 0, 0, 0.08)';
-            e.currentTarget.style.borderColor = '#cbd5e1';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
-            e.currentTarget.style.borderColor = '#e2e8f0';
-          }}
-        >
-          <div style={{
-            width: '48px',
-            height: '48px',
-            borderRadius: '12px',
-            background: 'linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: '14px'
-          }}>
-            <Briefcase size={24} color="#6366f1" strokeWidth={2} />
-          </div>
-          
-          <h3 style={{
-            fontSize: '17px',
-            fontWeight: '700',
-            color: '#1e293b',
-            marginBottom: '6px',
-            letterSpacing: '-0.3px'
-          }}>
-            Rôles Métier
-          </h3>
-          
-          <p style={{
-            fontSize: '13px',
-            color: '#64748b',
-            lineHeight: '1.5',
-            marginBottom: '12px'
-          }}>
-            Configurez les métiers et leurs permissions.
-          </p>
-          
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            fontSize: '13px',
-            color: '#6366f1',
-            fontWeight: '600'
-          }}>
-            <span>Gérer les rôles métier</span>
             <span style={{ fontSize: '16px' }}>→</span>
           </div>
         </div>

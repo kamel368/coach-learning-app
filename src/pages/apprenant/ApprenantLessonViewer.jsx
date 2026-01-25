@@ -10,11 +10,11 @@ import ViewAsBanner from '../../components/ViewAsBanner';
 import { useAuth } from '../../context/AuthContext';
 
 export default function ApprenantLessonViewer() {
-  const { programId, moduleId, lessonId } = useParams();
+  const { programId, chapterId, lessonId } = useParams();
   const navigate = useNavigate();
   
   const [program, setProgram] = useState(null);
-  const [module, setModule] = useState(null);
+  const [chapitre, setModule] = useState(null);
   const [lesson, setLesson] = useState(null);
   const [allLessons, setAllLessons] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -49,10 +49,10 @@ export default function ApprenantLessonViewer() {
   }, [targetUserId, organizationId]);
 
   useEffect(() => {
-    if (programId && moduleId && lessonId && targetOrgId) {
+    if (programId && chapterId && lessonId && targetOrgId) {
       loadData();
     }
-  }, [programId, moduleId, lessonId, targetOrgId]);
+  }, [programId, chapterId, lessonId, targetOrgId]);
 
   async function loadData() {
     try {
@@ -77,26 +77,26 @@ export default function ApprenantLessonViewer() {
         setProgram({ id: programDoc.id, ...programDoc.data() });
       }
 
-      // Récupérer le module
-      let moduleDoc;
+      // Récupérer le chapitre
+      let chapterDoc;
       if (effectiveOrgId) {
-        moduleDoc = await getDoc(
-          doc(db, 'organizations', effectiveOrgId, 'programs', programId, 'modules', moduleId)
+        chapterDoc = await getDoc(
+          doc(db, 'organizations', effectiveOrgId, 'programs', programId, 'chapitres', chapterId)
         );
       } else {
-        moduleDoc = await getDoc(
-          doc(db, 'programs', programId, 'modules', moduleId)
+        chapterDoc = await getDoc(
+          doc(db, 'programs', programId, 'chapitres', chapterId)
         );
       }
       
-      if (moduleDoc.exists()) {
-        setModule({ id: moduleDoc.id, ...moduleDoc.data() });
+      if (chapterDoc.exists()) {
+        setModule({ id: chapterDoc.id, ...chapterDoc.data() });
       }
 
-      // Récupérer toutes les leçons du module pour navigation
+      // Récupérer toutes les leçons du chapitre pour navigation
       const lessonsRef = effectiveOrgId
-        ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'modules', moduleId, 'lessons')
-        : collection(db, 'programs', programId, 'modules', moduleId, 'lessons');
+        ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'chapitres', chapterId, 'lessons')
+        : collection(db, 'programs', programId, 'chapitres', chapterId, 'lessons');
       
       const lessonsQuery = query(lessonsRef, orderBy('order', 'asc'));
       const lessonsSnap = await getDocs(lessonsQuery);
@@ -115,7 +115,7 @@ export default function ApprenantLessonViewer() {
       // Récupérer le document COMPLET de la leçon actuelle (avec les blocks)
       if (index >= 0) {
         // Utiliser le service lessonsService qui gère la structure multi-tenant
-        const lessonData = await getLesson(lessonId, programId, moduleId, effectiveOrgId);
+        const lessonData = await getLesson(lessonId, programId, chapterId, effectiveOrgId);
         
         if (lessonData) {
           setLesson(lessonData);
@@ -149,30 +149,30 @@ export default function ApprenantLessonViewer() {
       const effectiveOrgId = targetOrgId || organizationId;
       
       // 📊 CORRECTION BUG : Calculer le nombre TOTAL de leçons du programme
-      // (pas seulement celles du module actuel)
+      // (pas seulement celles du chapitre actuel)
       console.log('🔍 Calcul du nombre total de leçons du programme...');
       
       let totalProgramLessons = 0;
       
-      // Récupérer tous les modules du programme
+      // Récupérer tous les chapters du programme
       const modulesRef = effectiveOrgId
-        ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'modules')
-        : collection(db, 'programs', programId, 'modules');
+        ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'chapitres')
+        : collection(db, 'programs', programId, 'chapitres');
       
       const modulesSnap = await getDocs(modulesRef);
       
-      // Pour chaque module, compter les leçons
-      for (const moduleDoc of modulesSnap.docs) {
+      // Pour chaque chapitre, compter les leçons
+      for (const chapterDoc of modulesSnap.docs) {
         const lessonsRef = effectiveOrgId
-          ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'modules', moduleDoc.id, 'lessons')
-          : collection(db, 'programs', programId, 'modules', moduleDoc.id, 'lessons');
+          ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'chapitres', chapterDoc.id, 'lessons')
+          : collection(db, 'programs', programId, 'chapitres', chapterDoc.id, 'lessons');
         
         const lessonsSnap = await getDocs(lessonsRef);
         totalProgramLessons += lessonsSnap.size;
       }
       
       console.log('📚 Nombre total de leçons du programme:', totalProgramLessons);
-      console.log('📖 Nombre de leçons du module actuel:', allLessons.length);
+      console.log('📖 Nombre de leçons du chapitre actuel:', allLessons.length);
       
       // Marquer la leçon comme terminée avec le VRAI nombre total de leçons
       await markLessonCompleted(targetUserId, programId, lessonId, totalProgramLessons);
@@ -186,10 +186,10 @@ export default function ApprenantLessonViewer() {
       if (currentIndex < allLessons.length - 1) {
         // Aller à la leçon suivante
         const nextLesson = allLessons[currentIndex + 1];
-        navigate(`/apprenant/programs/${programId}/modules/${moduleId}/lessons/${nextLesson.id}`);
+        navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}/lessons/${nextLesson.id}`);
       } else {
-        // Dernière leçon, retour au module
-        navigate(`/apprenant/programs/${programId}/modules/${moduleId}`);
+        // Dernière leçon, retour au chapitre
+        navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}`);
       }
     } catch (error) {
       console.error('Erreur marquage leçon:', error);
@@ -201,7 +201,7 @@ export default function ApprenantLessonViewer() {
   function handlePrevious() {
     if (currentIndex > 0) {
       const prevLesson = allLessons[currentIndex - 1];
-      navigate(`/apprenant/programs/${programId}/modules/${moduleId}/lessons/${prevLesson.id}`);
+      navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}/lessons/${prevLesson.id}`);
     }
   }
 
@@ -217,15 +217,15 @@ export default function ApprenantLessonViewer() {
         let totalProgramLessons = 0;
         
         const modulesRef = effectiveOrgId
-          ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'modules')
-          : collection(db, 'programs', programId, 'modules');
+          ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'chapitres')
+          : collection(db, 'programs', programId, 'chapitres');
         
         const modulesSnap = await getDocs(modulesRef);
         
-        for (const moduleDoc of modulesSnap.docs) {
+        for (const chapterDoc of modulesSnap.docs) {
           const lessonsRef = effectiveOrgId
-            ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'modules', moduleDoc.id, 'lessons')
-            : collection(db, 'programs', programId, 'modules', moduleDoc.id, 'lessons');
+            ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'chapitres', chapterDoc.id, 'lessons')
+            : collection(db, 'programs', programId, 'chapitres', chapterDoc.id, 'lessons');
           
           const lessonsSnap = await getDocs(lessonsRef);
           totalProgramLessons += lessonsSnap.size;
@@ -244,13 +244,13 @@ export default function ApprenantLessonViewer() {
         
         // Naviguer vers la leçon suivante
         const nextLesson = allLessons[currentIndex + 1];
-        navigate(`/apprenant/programs/${programId}/modules/${moduleId}/lessons/${nextLesson.id}`);
+        navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}/lessons/${nextLesson.id}`);
         
       } catch (error) {
         console.error('❌ Erreur handleNext:', error);
         // En cas d'erreur, naviguer quand même
         const nextLesson = allLessons[currentIndex + 1];
-        navigate(`/apprenant/programs/${programId}/modules/${moduleId}/lessons/${nextLesson.id}`);
+        navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}/lessons/${nextLesson.id}`);
       } finally {
         setCompleting(false);
       }
@@ -509,7 +509,7 @@ export default function ApprenantLessonViewer() {
           Leçon introuvable
         </p>
         <button
-          onClick={() => navigate(`/apprenant/programs/${programId}/modules/${moduleId}`)}
+          onClick={() => navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}`)}
           style={{
             marginTop: '20px',
             padding: '12px 24px',
@@ -522,7 +522,7 @@ export default function ApprenantLessonViewer() {
             cursor: 'pointer'
           }}
         >
-          Retour au module
+          Retour au chapitre
         </button>
       </div>
     );
@@ -621,7 +621,7 @@ export default function ApprenantLessonViewer() {
           }}>
             {/* Bouton retour */}
             <button
-              onClick={() => navigate(`/apprenant/programs/${programId}/modules/${moduleId}`)}
+              onClick={() => navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}`)}
               style={{
                 background: 'transparent',
                 border: 'none',
@@ -645,7 +645,7 @@ export default function ApprenantLessonViewer() {
             >
               <span>←</span>
               <span style={{ display: window.innerWidth < 400 ? 'none' : 'inline' }}>
-                Retour au module
+                Retour au chapitre
               </span>
               <span style={{ display: window.innerWidth >= 400 ? 'none' : 'inline' }}>
                 Retour
@@ -682,7 +682,7 @@ export default function ApprenantLessonViewer() {
             boxSizing: 'border-box'
           }}>
             {/* Breadcrumb */}
-            {program && module && (
+            {program && chapitre && (
               <div style={{
                 fontSize: 'clamp(11px, 2vw, 13px)',
                 color: '#94a3b8',
@@ -691,7 +691,7 @@ export default function ApprenantLessonViewer() {
                 overflow: 'hidden',
                 textOverflow: 'ellipsis'
               }}>
-                {program.name} / {module.title}
+                {program.name} / {chapitre.title}
               </div>
             )}
 

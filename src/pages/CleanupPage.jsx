@@ -34,21 +34,21 @@ export default function CleanupPage() {
       addLog(`✅ ${lessonsDeleted} leçons supprimées`, 'success');
 
       // ============================================
-      // 2. Supprimer ancienne collection modules/
+      // 2. Supprimer ancienne collection chapters/
       // ============================================
-      addLog('📦 Suppression de la collection "modules"...', 'section');
-      const modulesRef = collection(db, 'modules');
+      addLog('📦 Suppression de la collection "chapitres"...', 'section');
+      const modulesRef = collection(db, 'chapitres');
       const modulesSnap = await getDocs(modulesRef);
-      addLog(`   → ${modulesSnap.size} anciens modules trouvés`);
+      addLog(`   → ${modulesSnap.size} anciens chapters trouvés`);
 
       let modulesDeleted = 0;
-      for (const moduleDoc of modulesSnap.docs) {
-        await deleteDoc(doc(db, 'modules', moduleDoc.id));
+      for (const chapterDoc of modulesSnap.docs) {
+        await deleteDoc(doc(db, 'chapitres', chapterDoc.id));
         modulesDeleted++;
-        addLog(`   ✅ Module ${moduleDoc.id} supprimé (${modulesDeleted}/${modulesSnap.size})`);
+        addLog(`   ✅ Chapitre ${chapterDoc.id} supprimé (${modulesDeleted}/${modulesSnap.size})`);
       }
 
-      addLog(`✅ ${modulesDeleted} modules supprimés`, 'success');
+      addLog(`✅ ${modulesDeleted} chapters supprimés`, 'success');
 
       // ============================================
       // 3. Résumé
@@ -57,7 +57,7 @@ export default function CleanupPage() {
       addLog('✅ NETTOYAGE TERMINÉ !', 'title');
       addLog('═══════════════════════════════════════', 'separator');
       addLog(`Total supprimé : ${lessonsDeleted + modulesDeleted} documents`, 'success');
-      addLog('Structure actuelle : programs/{id}/modules/{id}/lessons/ ✅', 'success');
+      addLog('Structure actuelle : programs/{id}/chapitres/{id}/lessons/ ✅', 'success');
 
     } catch (error) {
       addLog(`❌ ERREUR lors du nettoyage: ${error.message}`, 'error');
@@ -84,7 +84,7 @@ export default function CleanupPage() {
         <p style={{ marginBottom: '0.5rem' }}>Ce script va supprimer DÉFINITIVEMENT :</p>
         <ul style={{ paddingLeft: '1.5rem', marginBottom: '0.5rem' }}>
           <li>❌ Collection <code>lessons/</code> (obsolète)</li>
-          <li>❌ Collection <code>modules/</code> (obsolète)</li>
+          <li>❌ Collection <code>chapters/</code> (obsolète)</li>
         </ul>
         <p style={{ fontWeight: 'bold' }}>Cette action est IRRÉVERSIBLE !</p>
       </div>

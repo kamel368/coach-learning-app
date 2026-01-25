@@ -168,8 +168,10 @@ export default function EmployeeDetailPage() {
           
           try {
             // La progression est dans une SOUS-COLLECTION
+            // ✅ Nouvelle structure: /userProgress/{userId}__{programId}
+            const progressDocId = `${employeeId}__${progId}`;
             const progressDoc = await getDoc(
-              doc(db, 'userProgress', employeeId, 'programs', progId)
+              doc(db, 'userProgress', progressDocId)
             );
             
             if (progressDoc.exists()) {

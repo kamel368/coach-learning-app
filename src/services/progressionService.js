@@ -13,11 +13,17 @@ import { db } from '../firebase';
  * 📊 SERVICE GESTION PROGRESSION APPRENANT
  * 
  * Structure Firestore :
- * userProgress/{userId}/programs/{programId}
+ * ✅ NOUVELLE STRUCTURE : /userProgress/{userId}__{programId}
+ *   - userId: string
+ *   - programId: string
+ *   - organizationId: string
  *   - completedLessons: [lessonId1, lessonId2, ...]
  *   - currentLesson: lessonId
  *   - lastAccessedAt: timestamp
  *   - percentage: 0-100
+ *   - totalLessons: number
+ *   - createdAt: timestamp
+ *   - updatedAt: timestamp
  */
 
 /**
@@ -25,7 +31,9 @@ import { db } from '../firebase';
  */
 export async function getUserProgramProgress(userId, programId) {
   try {
-    const progressRef = doc(db, `userProgress/${userId}/programs/${programId}`);
+    // ✅ Nouvelle structure
+    const progressDocId = `${userId}__${programId}`;
+    const progressRef = doc(db, 'userProgress', progressDocId);
     const progressSnap = await getDoc(progressRef);
     
     if (progressSnap.exists()) {
@@ -50,12 +58,16 @@ export async function getUserProgramProgress(userId, programId) {
  */
 export async function getAllUserProgress(userId) {
   try {
-    const programsRef = collection(db, `userProgress/${userId}/programs`);
-    const snapshot = await getDocs(programsRef);
+    // ✅ Nouvelle structure : tous les documents commencent par userId__
+    const progressRef = collection(db, 'userProgress');
+    const q = query(progressRef, where('userId', '==', userId));
+    const snapshot = await getDocs(q);
     
     const progressMap = {};
     snapshot.forEach(doc => {
-      progressMap[doc.id] = doc.data();
+      const data = doc.data();
+      // La clé est le programId
+      progressMap[data.programId] = data;
     });
     
     return progressMap;
@@ -70,7 +82,9 @@ export async function getAllUserProgress(userId) {
  */
 export async function cleanObsoleteLessons(userId, programId, validLessonIds) {
   try {
-    const progressRef = doc(db, `userProgress/${userId}/programs/${programId}`);
+    // ✅ Nouvelle structure
+    const progressDocId = `${userId}__${programId}`;
+    const progressRef = doc(db, 'userProgress', progressDocId);
     const progressSnap = await getDoc(progressRef);
     
     if (!progressSnap.exists()) return;
@@ -165,11 +179,16 @@ export async function markLessonCompleted(userId, programId, lessonId, totalLess
  */
 export async function updateCurrentLesson(userId, programId, lessonId) {
   try {
-    const progressRef = doc(db, `userProgress/${userId}/programs/${programId}`);
+    // ✅ Nouvelle structure
+    const progressDocId = `${userId}__${programId}`;
+    const progressRef = doc(db, 'userProgress', progressDocId);
     
     await setDoc(progressRef, {
+      userId,
+      programId,
       currentLesson: lessonId,
-      lastAccessedAt: new Date().toISOString()
+      lastAccessedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     }, { merge: true });
   } catch (error) {
     console.error('Erreur updateCurrentLesson:', error);
@@ -259,27 +278,27 @@ export async function getUserAssignedProgramsWithDetails(userId, organizationId 
       assignedPrograms.map(async (program) => {
         let totalLessons = 0;
         
-        // Compter les leçons dans tous les modules (depuis l'organisation si disponible)
+        // Compter les leçons dans tous les chapters (depuis l'organisation si disponible)
         let modulesSnap;
         if (userOrgId) {
           modulesSnap = await getDocs(
-            collection(db, 'organizations', userOrgId, 'programs', program.id, 'modules')
+            collection(db, 'organizations', userOrgId, 'programs', program.id, 'chapitres')
           );
         } else {
           modulesSnap = await getDocs(
-            collection(db, 'programs', program.id, 'modules')
+            collection(db, 'programs', program.id, 'chapitres')
           );
         }
         
-        for (const moduleDoc of modulesSnap.docs) {
+        for (const chapterDoc of modulesSnap.docs) {
           let lessonsSnap;
           if (userOrgId) {
             lessonsSnap = await getDocs(
-              collection(db, 'organizations', userOrgId, 'programs', program.id, 'modules', moduleDoc.id, 'lessons')
+              collection(db, 'organizations', userOrgId, 'programs', program.id, 'chapitres', chapterDoc.id, 'lessons')
             );
           } else {
             lessonsSnap = await getDocs(
-              collection(db, 'programs', program.id, 'modules', moduleDoc.id, 'lessons')
+              collection(db, 'programs', program.id, 'chapitres', chapterDoc.id, 'lessons')
             );
           }
           totalLessons += lessonsSnap.size;

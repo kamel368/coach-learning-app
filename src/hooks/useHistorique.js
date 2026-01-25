@@ -2,6 +2,22 @@ import { useState, useEffect, useRef } from 'react';
 import { collection, getDocs, doc, getDoc, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 
+// Utilitaire pour timer compatible React StrictMode
+const safeTimer = {
+  timers: new Map(),
+  start: (label) => {
+    safeTimer.timers.set(label, performance.now());
+  },
+  end: (label) => {
+    const startTime = safeTimer.timers.get(label);
+    if (startTime) {
+      const duration = performance.now() - startTime;
+      console.log(`${label}: ${duration.toFixed(2)}ms`);
+      safeTimer.timers.delete(label);
+    }
+  }
+};
+
 // ⚡ CONSTANTE : Limite de tentatives par programme pour améliorer les performances
 const MAX_ATTEMPTS_PER_PROGRAM = 20;
 
@@ -22,7 +38,7 @@ export function useHistorique(userId) {
   // 🚀 CACHE : Évite de recharger les mêmes données plusieurs fois
   const cacheRef = useRef({ 
     programs: {},  // { programId: programName }
-    modules: {},   // { moduleId: moduleName }
+    chapters: {},   // { chapterId: chapterName }
     readingProgress: {} // { programId: percentage }
   });
 
@@ -44,22 +60,22 @@ export function useHistorique(userId) {
     }
   };
 
-  // 🚀 FONCTION HELPER : Récupérer le nom d'un module avec cache
-  const getModuleName = async (programId, moduleId) => {
-    const cacheKey = `${programId}_${moduleId}`;
-    if (cacheRef.current.modules[cacheKey]) {
-      return cacheRef.current.modules[cacheKey];
+  // 🚀 FONCTION HELPER : Récupérer le nom d'un chapitre avec cache
+  const getModuleName = async (programId, chapterId) => {
+    const cacheKey = `${programId}_${chapterId}`;
+    if (cacheRef.current.chapters[cacheKey]) {
+      return cacheRef.current.chapters[cacheKey];
     }
     
     try {
       // ⚠️ FALLBACK : Utiliser l'ancienne structure (chemin valide avec 4 segments)
-      const moduleDoc = await getDoc(doc(db, 'programs', programId, 'modules', moduleId));
-      const name = moduleDoc.exists() ? (moduleDoc.data().title || 'Module') : 'Module';
-      cacheRef.current.modules[cacheKey] = name;
+      const chapterDoc = await getDoc(doc(db, 'programs', programId, 'chapitres', chapterId));
+      const name = chapterDoc.exists() ? (chapterDoc.data().title || 'Chapitre') : 'Chapitre';
+      cacheRef.current.chapters[cacheKey] = name;
       return name;
     } catch (error) {
-      console.error('⚠️ Erreur récupération module:', moduleId, error);
-      return 'Module';
+      console.error('⚠️ Erreur récupération chapitre:', chapterId, error);
+      return 'Chapitre';
     }
   };
 
@@ -70,8 +86,9 @@ export function useHistorique(userId) {
     }
     
     try {
-      // ⚠️ FALLBACK : Utiliser l'ancienne structure (chemin valide avec 4 segments)
-      const progressRef = doc(db, 'userProgress', userId, 'programs', programId);
+      // ✅ Nouvelle structure : /userProgress/{userId}__{programId}
+      const progressDocId = `${userId}__${programId}`;
+      const progressRef = doc(db, 'userProgress', progressDocId);
       const progressSnap = await getDoc(progressRef);
       const progress = progressSnap.exists() ? (progressSnap.data().percentage || 0) : 0;
       cacheRef.current.readingProgress[programId] = progress;
@@ -100,8 +117,8 @@ export function useHistorique(userId) {
           type: 'evaluation',
           programId: programId,
           programName: programName,
-          moduleId: null,
-          moduleName: null,
+          chapterId: null,
+          chapterName: null,
           // ✅ CORRECTION : Inclure tous les champs nécessaires
           score: evalData.earnedPoints || evalData.score || 0,
           maxScore: evalData.totalPoints || evalData.maxScore || 100,
@@ -125,21 +142,21 @@ export function useHistorique(userId) {
   const loadExercisesForProgram = async (programId, programName) => {
     try {
       // ⚠️ FALLBACK : Utiliser l'ancienne structure (chemin valide avec 3 segments)
-      const modulesSnapshot = await getDocs(collection(db, 'programs', programId, 'modules'));
-      console.log('📘 Modules trouvés pour programme', programId, ':', modulesSnapshot.size);
+      const modulesSnapshot = await getDocs(collection(db, 'programs', programId, 'chapitres'));
+      console.log('📘 Chapitres trouvés pour programme', programId, ':', modulesSnapshot.size);
       
-      // ⚡ PARALLÉLISATION : Charger toutes les tentatives de modules en parallèle
-      const moduleAttemptsPromises = modulesSnapshot.docs.map(async (moduleDoc) => {
-        const moduleName = await getModuleName(programId, moduleDoc.id);
+      // ⚡ PARALLÉLISATION : Charger toutes les tentatives de chapters en parallèle
+      const moduleAttemptsPromises = modulesSnapshot.docs.map(async (chapterDoc) => {
+        const chapterName = await getModuleName(programId, chapterDoc.id);
         
         try {
           // ⚠️ FALLBACK : Utiliser l'ancienne structure (chemin valide avec 7 segments)
-          const moduleAttemptsRef = collection(db, 'users', userId, 'programs', programId, 'modules', moduleDoc.id, 'attempts');
-          // ⚡ OPTIMISATION : Limiter le nombre de tentatives par module
+          const moduleAttemptsRef = collection(db, 'users', userId, 'programs', programId, 'chapitres', chapterDoc.id, 'attempts');
+          // ⚡ OPTIMISATION : Limiter le nombre de tentatives par chapitre
           const q = query(moduleAttemptsRef, orderBy('completedAt', 'desc'), limit(MAX_ATTEMPTS_PER_PROGRAM));
           const moduleAttemptsSnapshot = await getDocs(q);
           
-          console.log('  📝 Tentatives module', moduleDoc.id, ':', moduleAttemptsSnapshot.size);
+          console.log('  📝 Tentatives chapitre', chapterDoc.id, ':', moduleAttemptsSnapshot.size);
           
           return moduleAttemptsSnapshot.docs.map((attemptDoc) => {
             const attemptData = attemptDoc.data();
@@ -148,8 +165,8 @@ export function useHistorique(userId) {
               type: 'exercise',
               programId: programId,
               programName: programName,
-              moduleId: moduleDoc.id,
-              moduleName: moduleName,
+              chapterId: chapterDoc.id,
+              chapterName: chapterName,
               score: attemptData.earnedPoints || attemptData.score || 0,
               maxScore: attemptData.totalPoints || attemptData.maxScore || 100,
               percentage: attemptData.score || attemptData.percentage || 0,
@@ -160,7 +177,7 @@ export function useHistorique(userId) {
             };
           });
         } catch (error) {
-          console.error('  ⚠️ Erreur récupération tentatives module', moduleDoc.id, ':', error);
+          console.error('  ⚠️ Erreur récupération tentatives chapitre', chapterDoc.id, ':', error);
           return [];
         }
       });
@@ -168,7 +185,7 @@ export function useHistorique(userId) {
       const allModuleAttempts = await Promise.all(moduleAttemptsPromises);
       return allModuleAttempts.flat();
     } catch (error) {
-      console.error('⚠️ Erreur récupération modules pour', programId, ':', error);
+      console.error('⚠️ Erreur récupération chapters pour', programId, ':', error);
       return [];
     }
   };
@@ -183,7 +200,7 @@ export function useHistorique(userId) {
 
       try {
         console.log('🚀 Chargement historique pour userId:', userId);
-        console.time('⏱️ Temps de chargement total');
+        safeTimer.start('⏱️ Temps de chargement total');
 
         // 1. Récupérer le document utilisateur pour avoir les programmes assignés
         // ⚠️ FALLBACK : Utiliser l'ancienne structure (chemin valide avec 2 segments)
@@ -200,7 +217,7 @@ export function useHistorique(userId) {
         console.log('📚 Programmes assignés:', assignedPrograms);
 
         // ⚡ OPTIMISATION MAJEURE : Charger tous les programmes EN PARALLÈLE
-        console.time('⏱️ Chargement parallèle des tentatives');
+        safeTimer.start('⏱️ Chargement parallèle des tentatives');
         const programResults = await Promise.all(
           assignedPrograms.map(async (programId) => {
             const programName = await getProgramName(programId);
@@ -214,7 +231,7 @@ export function useHistorique(userId) {
             return { programId, programName, evaluations, exercises };
           })
         );
-        console.timeEnd('⏱️ Chargement parallèle des tentatives');
+        safeTimer.end('⏱️ Chargement parallèle des tentatives');
 
         // Fusionner toutes les tentatives
         const allAttempts = programResults.flatMap(({ evaluations, exercises }) => 
@@ -288,7 +305,7 @@ export function useHistorique(userId) {
         console.log('📊 Statistiques calculées:', stats);
 
         // ⚡ OPTIMISATION : Calculer les stats par programme EN PARALLÈLE
-        console.time('⏱️ Calcul des stats par programme');
+        safeTimer.start('⏱️ Calcul des stats par programme');
         const programStats = await Promise.all(
           assignedPrograms.map(async (programId) => {
             const programName = await getProgramName(programId);
@@ -311,7 +328,7 @@ export function useHistorique(userId) {
             };
           })
         );
-        console.timeEnd('⏱️ Calcul des stats par programme');
+        safeTimer.end('⏱️ Calcul des stats par programme');
 
         console.log('📊 Stats par programme (tous):', programStats);
 
@@ -324,10 +341,10 @@ export function useHistorique(userId) {
         setProgramStats(programStats);
         setLoading(false);
         
-        console.timeEnd('⏱️ Temps de chargement total');
+        safeTimer.end('⏱️ Temps de chargement total');
         console.log('🎯 Cache actuel:', {
           programs: Object.keys(cacheRef.current.programs).length,
-          modules: Object.keys(cacheRef.current.modules).length,
+          chapters: Object.keys(cacheRef.current.chapters).length,
           readingProgress: Object.keys(cacheRef.current.readingProgress).length
         });
 

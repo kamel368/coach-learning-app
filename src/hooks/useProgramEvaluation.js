@@ -1,10 +1,23 @@
 import { useState, useEffect, useCallback } from 'react';
-import { doc, getDoc, collection, getDocs, setDoc, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { saveEvaluationResult } from '../services/userDataService';
+
+// Types d'exercices évaluables (liste blanche)
+// Tout ce qui n'est pas dans cette liste sera ignoré
+const EVALUABLE_EXERCISE_TYPES = [
+  'flashcard',      // Carte mémoire avec auto-évaluation
+  'qcm',            // QCM simple (une seule bonne réponse)
+  'true_false',     // Vrai ou Faux
+  'qcm_selective',  // QCM multiple (plusieurs bonnes réponses)
+  'reorder',        // Réorganiser dans le bon ordre
+  'drag_drop',      // Glisser-déposer
+  'match_pairs'     // Associer des paires
+];
 
 /**
  * Hook pour gérer une évaluation complète de PROGRAMME
- * Mélange TOUS les exercices de TOUS les chapitres de TOUS les modules
+ * Mélange TOUS les exercices de TOUS les chapitres de TOUS les chapters
  * @param {string} userId - ID de l'utilisateur
  * @param {string} programId - ID du programme
  * @param {string} organizationId - ID de l'organisation (optionnel)
@@ -27,7 +40,7 @@ export function useProgramEvaluation(userId, programId, organizationId = null) {
     return shuffled;
   };
 
-  // Charger tous les exercices de tous les chapitres de tous les modules
+  // Charger tous les exercices de tous les chapitres de tous les chapters
   useEffect(() => {
     async function loadProgramEvaluation() {
       if (!programId) return;
@@ -35,59 +48,129 @@ export function useProgramEvaluation(userId, programId, organizationId = null) {
       try {
         setLoading(true);
         console.log('🔍 Chargement évaluation programme:', { programId });
+        console.log('🏢 organizationId:', organizationId);
+        console.log('👤 userId:', userId);
 
-        // 1. Récupérer tous les modules du programme
+        // Construire le chemin exact
+        const modulesPath = organizationId
+          ? `organizations/${organizationId}/programs/${programId}/chapters`
+          : `programs/${programId}/chapters`;
+        console.log('📍 Chemin chapters:', modulesPath);
+
+        // 1. Récupérer tous les chapters du programme
         const modulesRef = organizationId
-          ? collection(db, 'organizations', organizationId, 'programs', programId, 'modules')
-          : collection(db, 'programs', programId, 'modules');
+          ? collection(db, 'organizations', organizationId, 'programs', programId, 'chapitres')
+          : collection(db, 'programs', programId, 'chapitres');
         
         const modulesSnap = await getDocs(modulesRef);
+        console.log('📊 Résultat getDocs chapters:', {
+          size: modulesSnap.size,
+          empty: modulesSnap.empty,
+          docs: modulesSnap.docs.map(d => ({ id: d.id, title: d.data().title }))
+        });
         
-        console.log(`📚 ${modulesSnap.size} modules trouvés dans le programme`);
+        console.log(`📚 ${modulesSnap.size} chapters trouvés dans le programme`);
         if (organizationId) {
           console.log('🏢 Chargement depuis /organizations/' + organizationId);
         }
 
-        // 2. Pour chaque module, récupérer tous ses chapitres et exercices
+        // 2. Pour chaque chapitre, récupérer toutes ses lessons et leurs exercices
         const allBlocks = [];
         
-        for (const moduleDoc of modulesSnap.docs) {
-          const moduleId = moduleDoc.id;
-          const moduleData = moduleDoc.data();
+        for (const chapterDoc of modulesSnap.docs) {
+          const chapterId = chapterDoc.id;
+          const chapterData = chapterDoc.data();
           
-          console.log(`\n📘 Module "${moduleData.title}"`);
+          console.log(`\n📘 Chapitre "${chapterData.title}"`);
           
           try {
-            const exercisesRef = organizationId
-              ? doc(db, 'organizations', organizationId, 'programs', programId, 'modules', moduleId, 'exercises', 'main')
-              : doc(db, 'programs', programId, 'modules', moduleId, 'exercises', 'main');
+            // Récupérer toutes les lessons du chapitre
+            const lessonsRef = organizationId
+              ? collection(db, 'organizations', organizationId, 'programs', programId, 'chapitres', chapterId, 'lessons')
+              : collection(db, 'programs', programId, 'chapitres', chapterId, 'lessons');
             
-            const exercisesSnap = await getDoc(exercisesRef);
+            const lessonsSnap = await getDocs(lessonsRef);
+            console.log(`    📊 Résultat getDocs lessons (chapitre ${chapterId}):`, {
+              size: lessonsSnap.size,
+              empty: lessonsSnap.empty,
+              docs: lessonsSnap.docs.map(d => ({ id: d.id, title: d.data().title }))
+            });
+            console.log(`  📚 ${lessonsSnap.size} lessons trouvées dans ce chapitre`);
             
-            if (exercisesSnap.exists()) {
-              const exerciseData = exercisesSnap.data();
-              const blocks = exerciseData.blocks || [];
+            // Pour chaque lesson, récupérer ses exercices (directement dans le document lesson)
+            for (const lessonDoc of lessonsSnap.docs) {
+              const lessonId = lessonDoc.id;
+              const lessonData = lessonDoc.data();
               
-              console.log(`  ✅ ${blocks.length} exercices trouvés`);
+              console.log(`    📄 Lesson "${lessonData.title || lessonId}"`);
               
-              // Ajouter la source (module + chapitre) à chaque bloc
-              blocks.forEach(block => {
-                allBlocks.push({
-                  ...block,
-                  sourceModuleId: moduleId,
-                  sourceModuleName: moduleData.title || 'Module sans titre',
-                  sourceChapterId: moduleId, // Dans notre structure, module = chapitre
-                  sourceChapterName: moduleData.title || 'Chapitre sans titre'
+              try {
+                // Les exercices sont dans le champ "blocks" du document lesson
+                console.log(`    🔍 lessonData complet:`, lessonData);
+                console.log(`    🔍 lessonData.blocks existe?`, !!lessonData.blocks);
+                console.log(`    🔍 Type de lessonData.blocks:`, Array.isArray(lessonData.blocks) ? 'array' : typeof lessonData.blocks);
+                
+                const allLessonBlocks = lessonData.blocks || [];
+                // Filtrer : garder UNIQUEMENT les types d'exercices évaluables
+                const blocks = allLessonBlocks.filter(block => {
+                  const blockType = block.type || block.data?.type;
+                  return blockType && EVALUABLE_EXERCISE_TYPES.includes(blockType);
                 });
-              });
-            } else {
-              console.log(`  ⚠️ Pas d'exercices dans ce module`);
+
+                console.log(`    🔍 Total blocks:`, allLessonBlocks.length);
+                console.log(`    🔍 Blocks exercices (filtrés):`, blocks.length);
+                
+                if (blocks.length > 0) {
+                  console.log(`      ✅ ${blocks.length} exercices trouvés`);
+                  
+                  // Ajouter la source (chapitre + lesson) à chaque bloc
+                  // ET aplatir la structure si le bloc a un champ "data"
+                  blocks.forEach((block, index) => {
+                    console.log(`      📦 Block ${index}:`, {
+                      hasData: !!block.data,
+                      blockType: block.type,
+                      dataType: block.data?.type,
+                      keys: Object.keys(block)
+                    });
+                    
+                    // Aplatir en fusionnant le parent et data
+                    // Le type vient du parent, le reste vient de data
+                    const flatBlock = block.data 
+                      ? { 
+                          type: block.type,           // Type du parent
+                          ...block.data,              // Contenu de data (html, id, etc.)
+                          order: block.order          // Conserver l'ordre si présent
+                        }
+                      : { ...block };
+                    
+                    console.log(`      ✨ Flat block ${index}:`, {
+                      type: flatBlock.type,
+                      id: flatBlock.id,
+                      html: flatBlock.html?.substring(0, 50)
+                    });
+                    
+                    allBlocks.push({
+                      ...flatBlock,
+                      sourceChapterId: chapterId,
+                      sourceChapterName: chapterData.title || 'Chapitre sans titre',
+                      sourceLessonId: lessonId,
+                      sourceLessonName: lessonData.title || 'Lesson sans titre'
+                    });
+                  });
+                } else {
+                  console.log(`      ⚠️ Pas de blocks dans cette lesson`);
+                }
+              } catch (error) {
+                console.error(`      ❌ Erreur lesson ${lessonId}:`, error);
+              }
             }
           } catch (error) {
-            console.error(`  ❌ Erreur module ${moduleId}:`, error);
+            console.error(`  ❌ Erreur chapitre ${chapterId}:`, error);
           }
         }
 
+        console.log('\n🔍 Premier block de allBlocks:', allBlocks[0]);
+        console.log('🔍 Structure complète du premier block:', JSON.stringify(allBlocks[0], null, 2));
         console.log(`\n🎯 Total exercices avant mélange: ${allBlocks.length}`);
 
         if (allBlocks.length === 0) {
@@ -175,35 +258,45 @@ export function useProgramEvaluation(userId, programId, organizationId = null) {
           isCorrect = answer?.selfEvaluation === 'correct';
           break;
         case 'true_false':
-          isCorrect = answer === block.content.correct;
+          const correctTF = block.content?.correct !== undefined ? block.content.correct : block.correct;
+          isCorrect = answer === correctTF;
           break;
         case 'qcm':
-          isCorrect = answer === block.content.correctIndex;
+          const correctQCM = block.content?.correctIndex !== undefined ? block.content.correctIndex : block.correctIndex;
+          isCorrect = answer === correctQCM;
           break;
         case 'qcm_selective':
-          if (Array.isArray(answer) && Array.isArray(block.content.correctIndices)) {
+          const correctIndices = block.content?.correctIndices || block.correctIndices;
+          if (Array.isArray(answer) && Array.isArray(correctIndices)) {
             const sortedAnswer = [...answer].sort();
-            const sortedCorrect = [...block.content.correctIndices].sort();
+            const sortedCorrect = [...correctIndices].sort();
             isCorrect = JSON.stringify(sortedAnswer) === JSON.stringify(sortedCorrect);
           }
           break;
         case 'reorder':
-          if (Array.isArray(answer) && Array.isArray(block.content.items)) {
-            const correctOrder = block.content.items.map((_, i) => i);
+          const items = block.content?.items || block.items;
+          if (Array.isArray(answer) && Array.isArray(items)) {
+            const correctOrder = items.map((_, i) => i);
             isCorrect = JSON.stringify(answer) === JSON.stringify(correctOrder);
           }
           break;
         case 'drag_drop':
-          if (typeof answer === 'object' && Array.isArray(block.content.dropZones)) {
-            isCorrect = block.content.dropZones.every(zone => {
-              const zoneId = zone.id || `zone_${block.content.dropZones.indexOf(zone)}`;
+          const dropZones = block.content?.dropZones || block.dropZones;
+          if (typeof answer === 'object' && Array.isArray(dropZones)) {
+            isCorrect = dropZones.every(zone => {
+              const zoneId = zone.id || `zone_${dropZones.indexOf(zone)}`;
               return answer[zoneId] === zone.correctAnswer;
             });
           }
           break;
+        case 'text':
+          // Les exercices text sont toujours considérés comme corrects (lecture uniquement)
+          isCorrect = answer?.read === true;
+          break;
         case 'match_pairs':
-          if (typeof answer === 'object' && Array.isArray(block.content.pairs)) {
-            isCorrect = block.content.pairs.every((pair, index) => {
+          const pairs = block.content?.pairs || block.pairs;
+          if (typeof answer === 'object' && Array.isArray(pairs)) {
+            isCorrect = pairs.every((pair, index) => {
               return answer[index] === index;
             });
           }
@@ -224,8 +317,8 @@ export function useProgramEvaluation(userId, programId, organizationId = null) {
         earnedPoints: isCorrect ? blockPoints : 0,
         correctAnswer,
         userAnswer: answer,
-        sourceModuleId: block.sourceModuleId,
-        sourceModuleName: block.sourceModuleName,
+        sourceChapterId: block.sourceChapterId,
+        sourceChapterName: block.sourceChapterName,
         sourceChapterId: block.sourceChapterId,
         sourceChapterName: block.sourceChapterName
       });
@@ -238,7 +331,7 @@ export function useProgramEvaluation(userId, programId, organizationId = null) {
 
   // Soumettre l'évaluation
   const submitEvaluation = useCallback(async () => {
-    if (!userId || !programId || !evaluation) {
+    if (!userId || !programId || !evaluation || !organizationId) {
       console.error('❌ Paramètres manquants pour soumettre');
       return { success: false };
     }
@@ -250,35 +343,28 @@ export function useProgramEvaluation(userId, programId, organizationId = null) {
 
       const results = calculateResults();
 
-      // Sauvegarder dans Firebase
-      const evaluationId = `program_eval_${Date.now()}`;
-      const evaluationRef = doc(
-        db,
-        `users/${userId}/programs/${programId}/evaluations/${evaluationId}`
-      );
-
-      // Préparer les données à sauvegarder
-      const evaluationData = {
-        evaluationId,
-        programId,
+      // ✅ Utiliser la nouvelle structure /evaluationResults/{resultId}
+      console.log('💾 Sauvegarde résultat évaluation programme avec userDataService');
+      
+      const resultDoc = await saveEvaluationResult({
+        organizationId,
         userId,
-        type: 'program', // Type pour différencier des évaluations de module
-        answers,
-        results: results.results,
+        programId,
+        chapterId: 'program_full', // Identifiant spécial pour évaluation complète
         score: results.score,
-        totalPoints: results.totalPoints,
-        earnedPoints: results.earnedPoints,
+        maxScore: 100,
         duration,
-        completedAt: Timestamp.now(),
-        createdAt: Timestamp.now()
-      };
-
-      // Nettoyer les valeurs undefined (Firebase ne les accepte pas)
-      const cleanData = JSON.parse(JSON.stringify(evaluationData));
-
-      await setDoc(evaluationRef, cleanData);
+        answers: {
+          type: 'program', // Type pour différencier des évaluations de chapitre
+          userAnswers: answers,
+          results: results.results,
+          totalPoints: results.totalPoints,
+          earnedPoints: results.earnedPoints
+        }
+      });
 
       console.log('✅ Évaluation programme soumise avec succès:', {
+        resultId: resultDoc.id,
         score: results.score,
         duration,
         totalBlocks: evaluation.blocks.length
@@ -291,7 +377,7 @@ export function useProgramEvaluation(userId, programId, organizationId = null) {
     } finally {
       setSubmitting(false);
     }
-  }, [userId, programId, evaluation, answers, calculateResults, startTime]);
+  }, [userId, programId, organizationId, evaluation, answers, calculateResults, startTime]);
 
   return {
     evaluation,
@@ -315,25 +401,42 @@ export function useProgramEvaluation(userId, programId, organizationId = null) {
 
 // Helper pour obtenir la réponse correcte d'un bloc
 function getCorrectAnswer(block) {
+  // Gérer structure aplatie (après migration) et structure avec content
   switch (block.type) {
     case 'flashcard':
-      return block.content.answer;
+      return block.content?.answer || block.answer || null;
+      
     case 'true_false':
-      return block.content.correct;
+      return block.content?.correct !== undefined 
+        ? block.content.correct 
+        : (block.correct !== undefined ? block.correct : null);
+      
     case 'qcm':
-      return block.content.correctIndex;
+      return block.content?.correctIndex !== undefined
+        ? block.content.correctIndex
+        : (block.correctIndex !== undefined ? block.correctIndex : null);
+      
     case 'qcm_selective':
-      return block.content.correctIndices;
+      return block.content?.correctIndices || block.correctIndices || null;
+      
     case 'reorder':
-      return block.content.items?.map((_, i) => i);
+      // Ordre correct = indices dans l'ordre [0, 1, 2, ...]
+      const items = block.content?.items || block.items;
+      return items ? items.map((_, i) => i) : null;
+      
     case 'drag_drop':
-      return block.content.dropZones?.reduce((acc, zone, index) => {
+      const dropZones = block.content?.dropZones || block.dropZones;
+      if (!dropZones) return null;
+      return dropZones.reduce((acc, zone, index) => {
         const zoneId = zone.id || `zone_${index}`;
         acc[zoneId] = zone.correctAnswer;
         return acc;
       }, {});
+      
     case 'match_pairs':
-      return block.content.pairs?.map((_, i) => i);
+      const pairs = block.content?.pairs || block.pairs;
+      return pairs ? pairs.map((_, i) => i) : null;
+      
     default:
       return null;
   }

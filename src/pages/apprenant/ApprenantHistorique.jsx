@@ -372,7 +372,7 @@ const AttemptRow = ({ attempt, navigate }) => {
       type: attempt.type,
       isEval: isEval,
       programId: attempt.programId,
-      moduleId: attempt.moduleId
+      chapterId: attempt.chapterId
     });
     
     if (isEval) {
@@ -381,7 +381,7 @@ const AttemptRow = ({ attempt, navigate }) => {
       return url;
     }
     
-    const url = `/apprenant/programs/${attempt.programId}/modules/${attempt.moduleId}/exercises/results`;
+    const url = `/apprenant/programs/${attempt.programId}/chapitres/${attempt.chapterId}/exercises/results`;
     console.log('🔗 URL Exercise:', url);
     return url;
   };
@@ -417,7 +417,7 @@ const AttemptRow = ({ attempt, navigate }) => {
             earnedPoints: attempt.earnedPoints,
             totalPoints: attempt.totalPoints,
             programName: attempt.programName,
-            moduleName: attempt.moduleName,
+            chapterName: attempt.chapterName,
             completedAt: attempt.completedAt,
             answers: attempt.answers,
             results: attempt.results,

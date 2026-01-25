@@ -37,7 +37,7 @@ export default function AdminPrograms() {
   const { user, organizationId } = useAuth();
 
   const [programs, setPrograms] = useState([]);
-  const [categories, setCategories] = useState([]); // rôles métier
+  const [categories, setCategories] = useState([]); // catégories
   const [loadingList, setLoadingList] = useState(false);
   const [error, setError] = useState("");
 
@@ -49,6 +49,11 @@ export default function AdminPrograms() {
   const [status, setStatus] = useState("draft");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+  
+  // Modal création catégorie
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
 
   // Popup vue (inchangé)
   const [isViewOpen, setIsViewOpen] = useState(false);
@@ -70,8 +75,8 @@ export default function AdminPrograms() {
   const fetchChaptersCount = async (programId) => {
     try {
       const modulesRef = organizationId
-        ? collection(db, "organizations", organizationId, "programs", programId, "modules")
-        : collection(db, "programs", programId, "modules");
+        ? collection(db, "organizations", organizationId, "programs", programId, "chapitres")
+        : collection(db, "programs", programId, "chapitres");
       const modulesSnap = await getDocs(modulesRef);
       return modulesSnap.size; // Nombre de documents
     } catch (err) {
@@ -138,7 +143,7 @@ export default function AdminPrograms() {
 
       } catch (err) {
         console.error(err);
-        setError("Impossible de charger les programmes ou les rôles métier.");
+        setError("Impossible de charger les programmes ou les catégories.");
       } finally {
         setLoadingList(false);
       }
@@ -148,9 +153,9 @@ export default function AdminPrograms() {
   }, [organizationId]);
 
   const getCategoryLabel = (id) => {
-    if (!id) return "Non défini";
+    if (!id) return "Sans catégorie";
     const cat = categories.find((c) => c.id === id);
-    return cat ? cat.label : "Rôle inconnu";
+    return cat ? cat.label : "Catégorie inconnue";
   };
 
   const formatDate = (ts) => {
@@ -259,6 +264,48 @@ export default function AdminPrograms() {
     setStatus("draft");
     setFormError("");
   };
+  
+  // Créer une nouvelle catégorie
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    
+    setIsCreatingCategory(true);
+    
+    try {
+      const categoryRef = organizationId
+        ? collection(db, 'organizations', organizationId, 'categories')
+        : collection(db, 'categories');
+        
+      const docRef = await addDoc(categoryRef, {
+        label: newCategoryName.trim(),
+        organizationId,
+        createdAt: Timestamp.now(),
+        createdBy: user?.uid
+      });
+      
+      // Ajouter la nouvelle catégorie à la liste
+      const newCategory = {
+        id: docRef.id,
+        label: newCategoryName.trim()
+      };
+      setCategories([...categories, newCategory]);
+      
+      // Sélectionner automatiquement la nouvelle catégorie
+      setCategoryId(docRef.id);
+      
+      // Fermer la modal
+      setShowCategoryModal(false);
+      setNewCategoryName('');
+      
+      console.log('✅ Catégorie créée avec succès:', docRef.id);
+      
+    } catch (error) {
+      console.error('❌ Erreur création catégorie:', error);
+      setFormError("Erreur lors de la création de la catégorie.");
+    } finally {
+      setIsCreatingCategory(false);
+    }
+  };
 
   // Création + redirection vers page détail
   const handleSave = async (e) => {
@@ -269,10 +316,7 @@ export default function AdminPrograms() {
       setFormError("Le nom du programme est obligatoire.");
       return;
     }
-    if (!categoryId) {
-      setFormError("Le rôle métier est obligatoire.");
-      return;
-    }
+    // ✅ categoryId n'est plus obligatoire
 
     try {
       setSaving(true);
@@ -286,7 +330,7 @@ export default function AdminPrograms() {
       const ref = await addDoc(programsCollection, {
         name,
         description,
-        categoryId,
+        categoryId: categoryId || null, // ✅ null si pas de catégorie
         status: status || "draft",
         createdAt: now,
         updatedAt: now,
@@ -298,7 +342,7 @@ export default function AdminPrograms() {
         id: ref.id,
         name,
         description,
-        categoryId,
+        categoryId: categoryId || null,
         status: status || "draft",
         createdAt: now,
         updatedAt: now,
@@ -1808,13 +1852,13 @@ export default function AdminPrograms() {
           </div>
 
           <div className="filter-group">
-            <label className="filter-label">Métier</label>
+            <label className="filter-label">Catégorie</label>
             <select
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
               className="filter-select"
             >
-              <option value="all">Tous</option>
+              <option value="all">Toutes</option>
               {categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>
                   {cat.label}
@@ -1867,7 +1911,7 @@ export default function AdminPrograms() {
                   className={`sortable ${sortBy === "metier" ? "active" : ""} ${sortDirection === "desc" ? "desc" : ""}`}
                   onClick={() => handleSort("metier")}
                 >
-                  Métier
+                  Catégorie
                 </th>
                 <th
                   className={`sortable ${sortBy === "status" ? "active" : ""} ${sortDirection === "desc" ? "desc" : ""}`}
@@ -2039,7 +2083,7 @@ export default function AdminPrograms() {
           >
             <h3 className="modal-title">Nouveau programme</h3>
             <p className="modal-subtitle">
-              Créez un nouveau programme de formation et associez-le à un rôle métier.
+              Créez un nouveau programme de formation. La catégorie est optionnelle.
               Vous serez redirigé vers la page de contenu après la création.
             </p>
 
@@ -2056,19 +2100,41 @@ export default function AdminPrograms() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Rôle métier associé *</label>
+                <label className="form-label">Catégorie (optionnel)</label>
                 <select
                   value={categoryId}
                   onChange={(e) => setCategoryId(e.target.value)}
                   className="form-select"
                 >
-                  <option value="">Choisir un rôle métier</option>
+                  <option value="">-- Aucune catégorie --</option>
                   {categories.map((cat) => (
                     <option key={cat.id} value={cat.id}>
                       {cat.label}
                     </option>
                   ))}
                 </select>
+                
+                {/* Bouton pour créer une catégorie */}
+                <button
+                  type="button"
+                  onClick={() => setShowCategoryModal(true)}
+                  style={{
+                    marginTop: '8px',
+                    fontSize: '13px',
+                    color: '#3B82F6',
+                    background: 'none',
+                    border: 'none',
+                    padding: '4px 0',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontWeight: 500
+                  }}
+                >
+                  <Plus size={14} />
+                  Créer une nouvelle catégorie
+                </button>
               </div>
 
               <div className="form-group">
@@ -2122,7 +2188,7 @@ export default function AdminPrograms() {
             <h3 className="modal-title">{viewProgram.name}</h3>
 
             <div className="form-group">
-              <label className="form-label">Rôle métier</label>
+              <label className="form-label">Catégorie</label>
               <p style={{ margin: 0, fontSize: 14, color: "#374151" }}>
                 {getCategoryLabel(viewProgram.categoryId)}
               </p>
@@ -2170,6 +2236,78 @@ export default function AdminPrograms() {
           </div>
         </div>,
         modalRoot
+        );
+      })()}
+      
+      {/* Modal création catégorie */}
+      {showCategoryModal && (() => {
+        const modalRoot = document.getElementById('modal-root');
+        if (!modalRoot) return null;
+        return createPortal(
+          <div 
+            className="modal-backdrop" 
+            onClick={() => {
+              setShowCategoryModal(false);
+              setNewCategoryName('');
+            }}
+            style={{ zIndex: 999999 }}
+          >
+            <div 
+              className="modal" 
+              onClick={(e) => e.stopPropagation()}
+              style={{ 
+                zIndex: 1000000,
+                maxWidth: '450px'
+              }}
+            >
+              <h3 className="modal-title">Nouvelle catégorie</h3>
+              <p className="modal-subtitle">
+                Créez une nouvelle catégorie pour organiser vos programmes.
+              </p>
+              
+              <div className="form-group">
+                <label className="form-label">
+                  Nom de la catégorie *
+                </label>
+                <input
+                  type="text"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="Ex: Sécurité routière"
+                  className="form-input"
+                  autoFocus
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && newCategoryName.trim()) {
+                      e.preventDefault();
+                      handleCreateCategory();
+                    }
+                  }}
+                />
+              </div>
+              
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCategoryModal(false);
+                    setNewCategoryName('');
+                  }}
+                  className="cancel-button"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateCategory}
+                  disabled={!newCategoryName.trim() || isCreatingCategory}
+                  className="submit-button"
+                >
+                  {isCreatingCategory ? 'Création...' : 'Créer'}
+                </button>
+              </div>
+            </div>
+          </div>,
+          modalRoot
         );
       })()}
     </div>

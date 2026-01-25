@@ -20,54 +20,54 @@ import { db } from "../firebase";
  * 
  * @param {string} lessonId - ID de la leçon
  * @param {string} programId - ID du programme (optionnel pour compatibilité)
- * @param {string} moduleId - ID du module (optionnel pour compatibilité)
+ * @param {string} chapterId - ID du chapitre (optionnel pour compatibilité)
  * @param {string} organizationId - ID de l'organisation (optionnel pour multi-tenant)
  * @returns {Object|null} - La leçon ou null si non trouvée
  * 
- * NOUVEAU : Si programId, moduleId et organizationId sont fournis, lit depuis /organizations/{orgId}/programs/...
+ * NOUVEAU : Si programId, chapterId et organizationId sont fournis, lit depuis /organizations/{orgId}/programs/...
  * ANCIEN : Si organizationId absent, lit depuis /programs/... (fallback)
  */
-export async function getLesson(lessonId, programId = null, moduleId = null, organizationId = null) {
+export async function getLesson(lessonId, programId = null, chapterId = null, organizationId = null) {
   try {
     // ✅ STRUCTURE MULTI-TENANT : /organizations/{orgId}/programs/...
-    if (programId && moduleId && organizationId) {
-      const ref = doc(db, "organizations", organizationId, "programs", programId, "modules", moduleId, "lessons", lessonId);
+    if (programId && chapterId && organizationId) {
+      const ref = doc(db, "organizations", organizationId, "programs", programId, "chapitres", chapterId, "lessons", lessonId);
       const snap = await getDoc(ref);
       
       if (!snap.exists()) {
-        console.warn(`⚠️ Leçon ${lessonId} introuvable dans /organizations/${organizationId}/programs/${programId}/modules/${moduleId}`);
+        console.warn(`⚠️ Leçon ${lessonId} introuvable dans /organizations/${organizationId}/programs/${programId}/chapitres/${chapterId}`);
         // Fallback vers ancienne structure
-        const fallbackRef = doc(db, "programs", programId, "modules", moduleId, "lessons", lessonId);
+        const fallbackRef = doc(db, "programs", programId, "chapitres", chapterId, "lessons", lessonId);
         const fallbackSnap = await getDoc(fallbackRef);
         
         if (fallbackSnap.exists()) {
-          console.log(`✅ Leçon trouvée dans l'ancienne structure: programs/${programId}/modules/${moduleId}/lessons/${lessonId}`);
+          console.log(`✅ Leçon trouvée dans l'ancienne structure: programs/${programId}/chapitres/${chapterId}/lessons/${lessonId}`);
           return { id: fallbackSnap.id, ...fallbackSnap.data() };
         }
         
         return null;
       }
       
-      console.log(`✅ Leçon chargée depuis /organizations/${organizationId}/programs/${programId}/modules/${moduleId}/lessons/${lessonId}`);
+      console.log(`✅ Leçon chargée depuis /organizations/${organizationId}/programs/${programId}/chapitres/${chapterId}/lessons/${lessonId}`);
       return { id: snap.id, ...snap.data() };
     }
 
     // ✅ ANCIENNE STRUCTURE : Subcollections imbriquées sans organization
-    if (programId && moduleId) {
-      const ref = doc(db, "programs", programId, "modules", moduleId, "lessons", lessonId);
+    if (programId && chapterId) {
+      const ref = doc(db, "programs", programId, "chapitres", chapterId, "lessons", lessonId);
       const snap = await getDoc(ref);
       
       if (!snap.exists()) {
-        console.warn(`⚠️ Leçon ${lessonId} introuvable dans le module ${moduleId} du programme ${programId}`);
+        console.warn(`⚠️ Leçon ${lessonId} introuvable dans le chapitre ${chapterId} du programme ${programId}`);
         return null;
       }
       
-      console.log(`✅ Leçon chargée depuis subcollection: programs/${programId}/modules/${moduleId}/lessons/${lessonId}`);
+      console.log(`✅ Leçon chargée depuis subcollection: programs/${programId}/chapitres/${chapterId}/lessons/${lessonId}`);
       return { id: snap.id, ...snap.data() };
     }
 
     // ❌ ANCIEN SYSTÈME : Collection plate (fallback pour compatibilité temporaire)
-    console.warn(`⚠️ getLesson() appelé sans programId/moduleId. Utilisation du système legacy.`);
+    console.warn(`⚠️ getLesson() appelé sans programId/chapterId. Utilisation du système legacy.`);
     const ref = doc(db, "lessons", lessonId);
     const snap = await getDoc(ref);
     
@@ -93,18 +93,18 @@ export async function getLesson(lessonId, programId = null, moduleId = null, org
  * 
  * @param {Object} lesson - Objet leçon contenant { id, title, blocks, ... }
  * @param {string} programId - ID du programme (REQUIS)
- * @param {string} moduleId - ID du module (REQUIS)
+ * @param {string} chapterId - ID du chapitre (REQUIS)
  * @param {string} organizationId - ID de l'organisation (optionnel pour multi-tenant)
- * @throws {Error} - Si programId ou moduleId sont manquants
+ * @throws {Error} - Si programId ou chapterId sont manquants
  * 
- * IMPORTANT : Les paramètres programId et moduleId sont OBLIGATOIRES
+ * IMPORTANT : Les paramètres programId et chapterId sont OBLIGATOIRES
  * Si organizationId est fourni, sauvegarde dans /organizations/{orgId}/programs/...
  */
-export async function saveLesson(lesson, programId, moduleId, organizationId = null) {
-  // ✅ VALIDATION : Vérifier que programId et moduleId sont fournis
-  if (!programId || !moduleId) {
-    const errorMsg = "❌ saveLesson() nécessite programId et moduleId pour sauvegarder dans les subcollections";
-    console.error(errorMsg, { lesson, programId, moduleId });
+export async function saveLesson(lesson, programId, chapterId, organizationId = null) {
+  // ✅ VALIDATION : Vérifier que programId et chapterId sont fournis
+  if (!programId || !chapterId) {
+    const errorMsg = "❌ saveLesson() nécessite programId et chapterId pour sauvegarder dans les subcollections";
+    console.error(errorMsg, { lesson, programId, chapterId });
     throw new Error(errorMsg);
   }
 
@@ -117,14 +117,14 @@ export async function saveLesson(lesson, programId, moduleId, organizationId = n
   try {
     // ✅ CHEMIN SUBCOLLECTION (multi-tenant ou ancien)
     const ref = organizationId
-      ? doc(db, "organizations", organizationId, "programs", programId, "modules", moduleId, "lessons", lesson.id)
-      : doc(db, "programs", programId, "modules", moduleId, "lessons", lesson.id);
+      ? doc(db, "organizations", organizationId, "programs", programId, "chapitres", chapterId, "lessons", lesson.id)
+      : doc(db, "programs", programId, "chapitres", chapterId, "lessons", lesson.id);
     
     // ✅ PAYLOAD avec métadonnées
     const payload = {
       ...lesson,
       programId,      // ✅ Ajouter programId dans le document
-      moduleId,       // ✅ Ajouter moduleId dans le document
+      chapterId,       // ✅ Ajouter chapterId dans le document
       organizationId: organizationId || null, // ✅ Ajouter organizationId
       updatedAt: serverTimestamp(),
       createdAt: lesson.createdAt || serverTimestamp(),
@@ -134,8 +134,8 @@ export async function saveLesson(lesson, programId, moduleId, organizationId = n
     await setDoc(ref, payload, { merge: true });
 
     const path = organizationId 
-      ? `organizations/${organizationId}/programs/${programId}/modules/${moduleId}/lessons/${lesson.id}`
-      : `programs/${programId}/modules/${moduleId}/lessons/${lesson.id}`;
+      ? `organizations/${organizationId}/programs/${programId}/chapitres/${chapterId}/lessons/${lesson.id}`
+      : `programs/${programId}/chapitres/${chapterId}/lessons/${lesson.id}`;
     
     console.log(`✅ Leçon sauvegardée avec succès: ${path}`);
     console.log(`   Titre: "${lesson.title || 'Sans titre'}"`);
@@ -153,23 +153,23 @@ export async function saveLesson(lesson, programId, moduleId, organizationId = n
  * ============================================
  * FONCTION : getLessonsByModule()
  * ============================================
- * Récupère toutes les leçons d'un module, triées par ordre.
+ * Récupère toutes les leçons d'un chapitre, triées par ordre.
  * 
- * @param {string} moduleId - ID du module
+ * @param {string} chapterId - ID du chapitre
  * @param {string} programId - ID du programme
  * @param {string} organizationId - ID de l'organisation (optionnel pour multi-tenant)
  * @returns {Array} - Liste des leçons triées par order
  */
-export async function getLessonsByModule(moduleId, programId, organizationId = null) {
-  if (!programId || !moduleId) {
-    console.error("❌ getLessonsByModule() nécessite programId et moduleId");
-    throw new Error("programId et moduleId sont requis");
+export async function getLessonsByModule(chapterId, programId, organizationId = null) {
+  if (!programId || !chapterId) {
+    console.error("❌ getLessonsByModule() nécessite programId et chapterId");
+    throw new Error("programId et chapterId sont requis");
   }
 
   try {
     const lessonsRef = organizationId
-      ? collection(db, "organizations", organizationId, "programs", programId, "modules", moduleId, "lessons")
-      : collection(db, "programs", programId, "modules", moduleId, "lessons");
+      ? collection(db, "organizations", organizationId, "programs", programId, "chapitres", chapterId, "lessons")
+      : collection(db, "programs", programId, "chapitres", chapterId, "lessons");
     
     const q = query(lessonsRef, orderBy("order", "asc"));
     const snap = await getDocs(q);
@@ -180,14 +180,14 @@ export async function getLessonsByModule(moduleId, programId, organizationId = n
     }));
 
     const path = organizationId 
-      ? `/organizations/${organizationId}/programs/${programId}/modules/${moduleId}`
-      : `/programs/${programId}/modules/${moduleId}`;
+      ? `/organizations/${organizationId}/programs/${programId}/chapitres/${chapterId}`
+      : `/programs/${programId}/chapitres/${chapterId}`;
     
     console.log(`✅ ${lessons.length} leçon(s) chargée(s) depuis ${path}`);
     return lessons;
 
   } catch (error) {
-    console.error(`❌ Erreur lors du chargement des leçons du module ${moduleId}:`, error);
+    console.error(`❌ Erreur lors du chargement des leçons du chapitre ${chapterId}:`, error);
     throw error;
   }
 }
@@ -199,14 +199,14 @@ export async function getLessonsByModule(moduleId, programId, organizationId = n
  * Récupère la leçon précédente dans l'ordre.
  * 
  * @param {string} currentLessonId - ID de la leçon actuelle
- * @param {string} moduleId - ID du module
+ * @param {string} chapterId - ID du chapitre
  * @param {string} programId - ID du programme
  * @returns {Object|null} - La leçon précédente ou null
  */
-export async function getPreviousLesson(currentLessonId, moduleId, programId) {
+export async function getPreviousLesson(currentLessonId, chapterId, programId) {
   try {
     // 1. Récupérer la leçon actuelle pour connaître son order
-    const currentLesson = await getLesson(currentLessonId, programId, moduleId);
+    const currentLesson = await getLesson(currentLessonId, programId, chapterId);
     if (!currentLesson || currentLesson.order === undefined) {
       console.warn(`⚠️ Leçon actuelle ${currentLessonId} introuvable ou sans order`);
       return null;
@@ -214,8 +214,8 @@ export async function getPreviousLesson(currentLessonId, moduleId, programId) {
 
     const currentOrder = currentLesson.order;
 
-    // 2. Récupérer toutes les leçons du module
-    const allLessons = await getLessonsByModule(moduleId, programId);
+    // 2. Récupérer toutes les leçons du chapitre
+    const allLessons = await getLessonsByModule(chapterId, programId);
 
     // 3. Trouver la leçon avec l'order immédiatement inférieur
     const previousLessons = allLessons.filter(lesson => lesson.order < currentOrder);
@@ -243,14 +243,14 @@ export async function getPreviousLesson(currentLessonId, moduleId, programId) {
  * Récupère la leçon suivante dans l'ordre.
  * 
  * @param {string} currentLessonId - ID de la leçon actuelle
- * @param {string} moduleId - ID du module
+ * @param {string} chapterId - ID du chapitre
  * @param {string} programId - ID du programme
  * @returns {Object|null} - La leçon suivante ou null
  */
-export async function getNextLesson(currentLessonId, moduleId, programId) {
+export async function getNextLesson(currentLessonId, chapterId, programId) {
   try {
     // 1. Récupérer la leçon actuelle pour connaître son order
-    const currentLesson = await getLesson(currentLessonId, programId, moduleId);
+    const currentLesson = await getLesson(currentLessonId, programId, chapterId);
     if (!currentLesson || currentLesson.order === undefined) {
       console.warn(`⚠️ Leçon actuelle ${currentLessonId} introuvable ou sans order`);
       return null;
@@ -258,8 +258,8 @@ export async function getNextLesson(currentLessonId, moduleId, programId) {
 
     const currentOrder = currentLesson.order;
 
-    // 2. Récupérer toutes les leçons du module
-    const allLessons = await getLessonsByModule(moduleId, programId);
+    // 2. Récupérer toutes les leçons du chapitre
+    const allLessons = await getLessonsByModule(chapterId, programId);
 
     // 3. Trouver la leçon avec l'order immédiatement supérieur
     const nextLessons = allLessons.filter(lesson => lesson.order > currentOrder);

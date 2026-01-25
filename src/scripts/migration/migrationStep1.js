@@ -61,7 +61,7 @@ export const migrationStep1 = async () => {
         logoUrl: null,
         createdAt: serverTimestamp()
       },
-      modules: ['learning'],
+      chapters: ['learning'],
       status: 'active',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),

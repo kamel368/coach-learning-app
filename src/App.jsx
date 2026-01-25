@@ -4,6 +4,16 @@ import { AuthProvider } from "./context/AuthContext";
 import { ToastProvider } from "./contexts/ToastContext";
 import ToastContainer from "./components/Toast/ToastContainer";
 import ProtectedRoute from "./components/ProtectedRoute";
+
+// Script d'audit des exercices (disponible via window.auditExercises dans la console)
+import './scripts/auditExercises';
+import './scripts/migrateToMultiTenant';
+import './scripts/migrateExercises';
+import './scripts/verifyBeforeCleanup';
+import './scripts/cleanupOldStructure';
+import './scripts/resetDatabasePartial';
+import './scripts/resetDatabaseTotal';
+import './scripts/cleanupModulesCollections';
 import Sidebar, { SIDEBAR_WIDTH, SIDEBAR_WIDTH_COLLAPSED } from "./components/Sidebar";
 import { useState, useEffect } from "react";
 
@@ -21,11 +31,10 @@ import SuperAdminSettings from "./pages/superadmin/SuperAdminSettings";
 
 // Pages Admin
 import Dashboard from "./pages/Dashboard";
-import AdminRolesMetier from "./pages/AdminRolesMetier";
 import AdminPrograms from "./pages/AdminPrograms";
 import AdminProgramDetail from "./pages/AdminProgramDetail";
-import AdminQuiz from "./pages/AdminQuiz";
-import AdminAIExercises from "./pages/AdminAIExercises";
+import AuditPage from "./pages/admin/AuditPage";
+import CreateTestExercises from "./pages/admin/CreateTestExercises";
 import AdminUsers from "./pages/AdminUsers";
 import MigrationPage from "./pages/admin/MigrationPage";
 import EmployeeDetailPage from "./pages/admin/EmployeeDetailPage";
@@ -43,12 +52,12 @@ import CleanupPage from "./pages/CleanupPage";
 import ApprenantLayout from './components/apprenant/ApprenantLayout';
 import ApprenantDashboard from './pages/apprenant/ApprenantDashboard';
 import ApprenantProgramDetail from './pages/apprenant/ApprenantProgramDetail';
-import ApprenantModuleDetail from './pages/apprenant/ApprenantModuleDetail';
+import ApprenantChapterDetail from './pages/apprenant/ApprenantChapterDetail';
 import ApprenantLessonViewer from './pages/apprenant/ApprenantLessonViewer';
 import ApprenantExercises from './pages/apprenant/ApprenantExercises';
 import ApprenantExercisesResults from './pages/apprenant/ApprenantExercisesResults';
-import ApprenantModuleEvaluation from './pages/apprenant/ApprenantModuleEvaluation';
-import ApprenantModuleEvaluationResults from './pages/apprenant/ApprenantModuleEvaluationResults';
+import ApprenantChapterEvaluation from './pages/apprenant/ApprenantChapterEvaluation';
+import ApprenantChapterEvaluationResults from './pages/apprenant/ApprenantChapterEvaluationResults';
 import ApprenantProgramEvaluation from './pages/apprenant/ApprenantProgramEvaluation';
 import ApprenantProgramEvaluationResults from './pages/apprenant/ApprenantProgramEvaluationResults';
 import ApprenantHistorique from './pages/apprenant/ApprenantHistorique';
@@ -183,24 +192,27 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-          {/* Redirection pour rétrocompatibilité */}
-          <Route
-            path="/admin/categories"
-            element={<Navigate to="/admin/roles-metier" replace />}
-          />
-          <Route
-            path="/admin/roles-metier"
-            element={
-              <ProtectedRoute>
-                <AdminRolesMetier />
-              </ProtectedRoute>
-            }
-          />
           <Route
             path="/admin/programs"
             element={
               <ProtectedRoute>
                 <AdminPrograms />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/audit"
+            element={
+              <ProtectedRoute>
+                <AuditPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/create-test-exercises"
+            element={
+              <ProtectedRoute>
+                <CreateTestExercises />
               </ProtectedRoute>
             }
           />
@@ -215,7 +227,7 @@ function AppContent() {
 
           {/* ✅ Édition riche React-Quill d'une leçon (PLEIN ÉCRAN) */}
           <Route
-            path="/admin/programs/:programId/modules/:moduleId/lessons/:lessonId/edit"
+            path="/admin/programs/:programId/chapitres/:chapterId/lessons/:lessonId/edit"
             element={
               <ProtectedRoute>
                 <LessonEditorPage />
@@ -225,7 +237,7 @@ function AppContent() {
 
           {/* ✅ Builder d'exercices (PLEIN ÉCRAN) */}
           <Route
-            path="/admin/programs/:programId/modules/:moduleId/exercises"
+            path="/admin/programs/:programId/chapitres/:chapterId/exercises"
             element={
               <ProtectedRoute>
                 <ExerciseEditorPage />
@@ -243,22 +255,6 @@ function AppContent() {
             }
           />
 
-          <Route
-            path="/admin/quizzes"
-            element={
-              <ProtectedRoute>
-                <AdminQuiz />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/ai-exercises"
-            element={
-              <ProtectedRoute>
-                <AdminAIExercises />
-              </ProtectedRoute>
-            }
-          />
           <Route
             path="/admin/users"
             element={
@@ -299,45 +295,45 @@ function AppContent() {
               </ProtectedRoute>
             } />
             
-            {/* ✅ Détail d'un module */}
-            <Route path="programs/:programId/modules/:moduleId" element={
+            {/* ✅ Détail d'un chapitre */}
+            <Route path="programs/:programId/chapitres/:chapterId" element={
               <ProtectedRoute>
-                <ApprenantModuleDetail />
+                <ApprenantChapterDetail />
               </ProtectedRoute>
             } />
             
-            {/* ✅ Exercices d'un module */}
-            <Route path="programs/:programId/modules/:moduleId/exercises" element={
+            {/* ✅ Exercices d'un chapitre */}
+            <Route path="programs/:programId/chapitres/:chapterId/exercises" element={
               <ProtectedRoute>
                 <ApprenantExercises />
               </ProtectedRoute>
             } />
             
             {/* 🔍 DEBUG exercices */}
-            <Route path="programs/:programId/modules/:moduleId/exercises/debug" element={
+            <Route path="programs/:programId/chapitres/:chapterId/exercises/debug" element={
               <ProtectedRoute>
                 <ExerciseDebugPage />
               </ProtectedRoute>
             } />
             
             {/* ✅ Résultats des exercices */}
-            <Route path="programs/:programId/modules/:moduleId/exercises/results" element={
+            <Route path="programs/:programId/chapitres/:chapterId/exercises/results" element={
               <ProtectedRoute>
                 <ApprenantExercisesResults />
               </ProtectedRoute>
             } />
             
-            {/* 🏆 Évaluation complète du module */}
-            <Route path="evaluation/:programId/:moduleId" element={
+            {/* 🏆 Évaluation complète du chapitre */}
+            <Route path="evaluation/:programId/:chapterId" element={
               <ProtectedRoute>
-                <ApprenantModuleEvaluation />
+                <ApprenantChapterEvaluation />
               </ProtectedRoute>
             } />
             
-            {/* 🏆 Résultats évaluation module */}
-            <Route path="evaluation/:programId/:moduleId/results" element={
+            {/* 🏆 Résultats évaluation chapitre */}
+            <Route path="evaluation/:programId/:chapterId/results" element={
               <ProtectedRoute>
-                <ApprenantModuleEvaluationResults />
+                <ApprenantChapterEvaluationResults />
               </ProtectedRoute>
             } />
             
@@ -356,7 +352,7 @@ function AppContent() {
             } />
             
             {/* ✅ Lecteur de leçon */}
-            <Route path="programs/:programId/modules/:moduleId/lessons/:lessonId" element={
+            <Route path="programs/:programId/chapitres/:chapterId/lessons/:lessonId" element={
               <ProtectedRoute>
                 <ApprenantLessonViewer />
               </ProtectedRoute>
