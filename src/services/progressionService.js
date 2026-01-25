@@ -123,11 +123,13 @@ export async function cleanObsoleteLessons(userId, programId, validLessonIds) {
 /**
  * Marquer une leçon comme terminée
  */
-export async function markLessonCompleted(userId, programId, lessonId, totalLessons) {
+export async function markLessonCompleted(userId, programId, lessonId, totalLessons, organizationId = null) {
   try {
     console.log('📝 markLessonCompleted appelé:', { userId, programId, lessonId, totalLessons });
     
-    const progressRef = doc(db, `userProgress/${userId}/programs/${programId}`);
+    // ✅ NOUVELLE STRUCTURE
+    const progressDocId = `${userId}__${programId}`;
+    const progressRef = doc(db, 'userProgress', progressDocId);
     const progressSnap = await getDoc(progressRef);
     
     let completedLessons = [];
@@ -158,14 +160,20 @@ export async function markLessonCompleted(userId, programId, lessonId, totalLess
       liste: completedLessons
     });
     
+    // ✅ SAUVEGARDE AVEC NOUVELLE STRUCTURE
     await setDoc(progressRef, {
+      userId,
+      programId,
+      organizationId: organizationId || null,
       completedLessons,
       currentLesson: lessonId,
       lastAccessedAt: new Date().toISOString(),
-      percentage
+      percentage,
+      totalLessons,
+      updatedAt: new Date().toISOString()
     }, { merge: true });
     
-    console.log('💾 Progression sauvegardée dans Firebase');
+    console.log('💾 Progression sauvegardée dans Firebase (nouvelle structure)');
     
     return { completedLessons, percentage };
   } catch (error) {

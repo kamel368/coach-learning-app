@@ -8,7 +8,7 @@ import { useGamification } from '../../hooks/useGamification';
 import { useViewAs } from '../../hooks/useViewAs';
 import ViewAsBanner from '../../components/ViewAsBanner';
 import { useAuth } from '../../context/AuthContext';
-import { cleanObsoleteLessons } from '../../services/progressionService';
+// import { cleanObsoleteLessons } from '../../services/progressionService'; // 🚨 DÉSACTIVÉ temporairement
 
 export default function ApprenantChapterDetail() {
   const { programId, chapterId } = useParams();
@@ -77,11 +77,16 @@ export default function ApprenantChapterDetail() {
       
       if (effectiveUserId) {
         const validLessonIds = lessons.map(l => l.id);
-        cleanObsoleteLessons(effectiveUserId, programId, validLessonIds)
-          .then(() => {
-            console.log('✅ Nettoyage terminé, rechargement progression');
-            loadProgress(); // ✅ Rechargement explicite après nettoyage
-          });
+        
+        // 🚨 TEMPORAIREMENT DÉSACTIVÉ - Bug de nettoyage
+        // cleanObsoleteLessons(effectiveUserId, programId, validLessonIds)
+        //   .then(() => {
+        //     console.log('✅ Nettoyage terminé, rechargement progression');
+        //     loadProgress(); // ✅ Rechargement explicite après nettoyage
+        //   });
+        
+        // Charger directement la progression
+        loadProgress();
       } else {
         // Si pas d'utilisateur, charger quand même la progression
         loadProgress();

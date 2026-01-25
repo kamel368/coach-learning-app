@@ -175,7 +175,7 @@ export default function ApprenantLessonViewer() {
       console.log('📖 Nombre de leçons du chapitre actuel:', allLessons.length);
       
       // Marquer la leçon comme terminée avec le VRAI nombre total de leçons
-      await markLessonCompleted(targetUserId, programId, lessonId, totalProgramLessons);
+      await markLessonCompleted(targetUserId, programId, lessonId, totalProgramLessons, effectiveOrgId);
 
       // 🎮 GAMIFICATION : Ajouter XP et badges pour leçon complétée
       if (onLessonCompleted) {
@@ -235,7 +235,7 @@ export default function ApprenantLessonViewer() {
         console.log('📚 Total leçons du programme:', totalProgramLessons);
         
         // Marquer la leçon actuelle comme terminée
-        await markLessonCompleted(targetUserId, programId, lessonId, totalProgramLessons);
+        await markLessonCompleted(targetUserId, programId, lessonId, totalProgramLessons, effectiveOrgId);
         
         // 🎮 GAMIFICATION : Ajouter XP pour leçon complétée
         if (onLessonCompleted) {
