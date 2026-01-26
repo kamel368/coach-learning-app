@@ -43,16 +43,27 @@ export function useHistorique(userId, organizationId = null) {
   });
 
   // 🚀 FONCTION HELPER : Récupérer le nom d'un programme avec cache
-  const getProgramName = async (programId) => {
+  const getProgramName = async (programId, orgId = null) => {
     if (cacheRef.current.programs[programId]) {
       return cacheRef.current.programs[programId];
     }
     
     try {
-      // ⚠️ FALLBACK : Utiliser l'ancienne structure (chemin valide avec 2 segments)
-      const programDoc = await getDoc(doc(db, 'programs', programId));
+      let programDoc;
+      
+      // Essayer d'abord depuis organizations
+      if (orgId) {
+        programDoc = await getDoc(doc(db, 'organizations', orgId, 'programs', programId));
+      }
+      
+      // Fallback vers /programs si pas trouvé
+      if (!programDoc || !programDoc.exists()) {
+        programDoc = await getDoc(doc(db, 'programs', programId));
+      }
+      
       const name = programDoc.exists() ? (programDoc.data().title || programDoc.data().name || 'Programme') : 'Programme';
       cacheRef.current.programs[programId] = name;
+      console.log('📚 Nom du programme chargé:', programId, '→', name);
       return name;
     } catch (error) {
       console.error('⚠️ Erreur récupération programme:', programId, error);
@@ -223,7 +234,7 @@ export function useHistorique(userId, organizationId = null) {
         safeTimer.start('⏱️ Chargement parallèle des tentatives');
         const programResults = await Promise.all(
           assignedPrograms.map(async (programId) => {
-            const programName = await getProgramName(programId);
+            const programName = await getProgramName(programId, organizationId);
             
             // Pour chaque programme, charger évaluations et exercices EN PARALLÈLE
             const [evaluations, exercises] = await Promise.all([
@@ -311,7 +322,7 @@ export function useHistorique(userId, organizationId = null) {
         safeTimer.start('⏱️ Calcul des stats par programme');
         const programStats = await Promise.all(
           assignedPrograms.map(async (programId) => {
-            const programName = await getProgramName(programId);
+            const programName = await getProgramName(programId, organizationId);
             const readingProgress = await getReadingProgress(programId);
             
             // Filtrer les tentatives de ce programme
