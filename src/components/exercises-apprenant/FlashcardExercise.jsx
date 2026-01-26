@@ -1,8 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { RotateCcw } from 'lucide-react';
 
 export default function FlashcardExercise({ block, answer, onAnswer }) {
   const [isFlipped, setIsFlipped] = useState(false);
+  
+  // Réinitialiser isFlipped quand la question change
+  useEffect(() => {
+    setIsFlipped(false);
+  }, [block.id, block.question]);
   
   // Gérer à la fois l'ancienne structure (content) et la nouvelle (aplatie)
   const question = block.content?.question || block.question || '';

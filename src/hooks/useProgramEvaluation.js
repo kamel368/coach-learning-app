@@ -83,89 +83,59 @@ export function useProgramEvaluation(userId, programId, organizationId = null) {
           
           console.log(`\n📘 Chapitre "${chapterData.title}"`);
           
+          // Récupérer le document main de la collection exercises
           try {
-            // Récupérer toutes les lessons du chapitre
-            const lessonsRef = organizationId
-              ? collection(db, 'organizations', organizationId, 'programs', programId, 'chapitres', chapterId, 'lessons')
-              : collection(db, 'programs', programId, 'chapitres', chapterId, 'lessons');
+            const exercisesMainRef = organizationId
+              ? doc(db, 'organizations', organizationId, 'programs', programId, 'chapitres', chapterId, 'exercises', 'main')
+              : doc(db, 'programs', programId, 'chapitres', chapterId, 'exercises', 'main');
             
-            const lessonsSnap = await getDocs(lessonsRef);
-            console.log(`    📊 Résultat getDocs lessons (chapitre ${chapterId}):`, {
-              size: lessonsSnap.size,
-              empty: lessonsSnap.empty,
-              docs: lessonsSnap.docs.map(d => ({ id: d.id, title: d.data().title }))
-            });
-            console.log(`  📚 ${lessonsSnap.size} lessons trouvées dans ce chapitre`);
+            const exercisesMainSnap = await getDoc(exercisesMainRef);
             
-            // Pour chaque lesson, récupérer ses exercices (directement dans le document lesson)
-            for (const lessonDoc of lessonsSnap.docs) {
-              const lessonId = lessonDoc.id;
-              const lessonData = lessonDoc.data();
+            if (exercisesMainSnap.exists()) {
+              const exercisesData = exercisesMainSnap.data();
+              console.log(`  📚 Document exercises/main trouvé pour chapitre ${chapterId}`);
+              console.log(`  🔍 exercisesData complet:`, exercisesData);
               
-              console.log(`    📄 Lesson "${lessonData.title || lessonId}"`);
+              // Les exercices sont dans le champ "blocks" du document main
+              const allExerciseBlocks = exercisesData.blocks || [];
               
-              try {
-                // Les exercices sont dans le champ "blocks" du document lesson
-                console.log(`    🔍 lessonData complet:`, lessonData);
-                console.log(`    🔍 lessonData.blocks existe?`, !!lessonData.blocks);
-                console.log(`    🔍 Type de lessonData.blocks:`, Array.isArray(lessonData.blocks) ? 'array' : typeof lessonData.blocks);
+              // Filtrer : garder UNIQUEMENT les types d'exercices évaluables
+              const blocks = allExerciseBlocks.filter(block => {
+                const blockType = block.type || block.data?.type;
+                return blockType && EVALUABLE_EXERCISE_TYPES.includes(blockType);
+              });
+              
+              console.log(`  🔍 Total blocks:`, allExerciseBlocks.length);
+              console.log(`  🔍 Blocks exercices (filtrés):`, blocks.length);
+              
+              if (blocks.length > 0) {
+                console.log(`    ✅ ${blocks.length} exercices trouvés`);
                 
-                const allLessonBlocks = lessonData.blocks || [];
-                // Filtrer : garder UNIQUEMENT les types d'exercices évaluables
-                const blocks = allLessonBlocks.filter(block => {
-                  const blockType = block.type || block.data?.type;
-                  return blockType && EVALUABLE_EXERCISE_TYPES.includes(blockType);
-                });
-
-                console.log(`    🔍 Total blocks:`, allLessonBlocks.length);
-                console.log(`    🔍 Blocks exercices (filtrés):`, blocks.length);
-                
-                if (blocks.length > 0) {
-                  console.log(`      ✅ ${blocks.length} exercices trouvés`);
+                // Ajouter la source (chapitre) à chaque bloc et aplatir la structure
+                blocks.forEach((block, index) => {
+                  // Aplatir en fusionnant le parent et data
+                  const flatBlock = block.data 
+                    ? { 
+                        type: block.type,
+                        ...block.data,
+                        order: block.order
+                      }
+                    : { ...block };
                   
-                  // Ajouter la source (chapitre + lesson) à chaque bloc
-                  // ET aplatir la structure si le bloc a un champ "data"
-                  blocks.forEach((block, index) => {
-                    console.log(`      📦 Block ${index}:`, {
-                      hasData: !!block.data,
-                      blockType: block.type,
-                      dataType: block.data?.type,
-                      keys: Object.keys(block)
-                    });
-                    
-                    // Aplatir en fusionnant le parent et data
-                    // Le type vient du parent, le reste vient de data
-                    const flatBlock = block.data 
-                      ? { 
-                          type: block.type,           // Type du parent
-                          ...block.data,              // Contenu de data (html, id, etc.)
-                          order: block.order          // Conserver l'ordre si présent
-                        }
-                      : { ...block };
-                    
-                    console.log(`      ✨ Flat block ${index}:`, {
-                      type: flatBlock.type,
-                      id: flatBlock.id,
-                      html: flatBlock.html?.substring(0, 50)
-                    });
-                    
-                    allBlocks.push({
-                      ...flatBlock,
-                      sourceChapterId: chapterId,
-                      sourceChapterName: chapterData.title || 'Chapitre sans titre',
-                      sourceLessonId: lessonId,
-                      sourceLessonName: lessonData.title || 'Lesson sans titre'
-                    });
+                  allBlocks.push({
+                    ...flatBlock,
+                    sourceChapterId: chapterId,
+                    sourceChapterName: chapterData.title || 'Chapitre sans titre'
                   });
-                } else {
-                  console.log(`      ⚠️ Pas de blocks dans cette lesson`);
-                }
-              } catch (error) {
-                console.error(`      ❌ Erreur lesson ${lessonId}:`, error);
+                });
+              } else {
+                console.log(`    ⚠️ Pas de blocks dans exercises/main`);
               }
+            } else {
+              console.log(`  ⚠️ Pas de document exercises/main pour ce chapitre`);
             }
           } catch (error) {
-            console.error(`  ❌ Erreur chapitre ${chapterId}:`, error);
+            console.error(`  ❌ Erreur chargement exercises chapitre ${chapterId}:`, error);
           }
         }
 

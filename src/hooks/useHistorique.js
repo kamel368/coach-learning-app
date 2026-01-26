@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { collection, getDocs, doc, getDoc, query, orderBy, limit } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, query, orderBy, limit, where } from 'firebase/firestore';
 import { db } from '../firebase';
 
 // Utilitaire pour timer compatible React StrictMode
@@ -110,16 +110,20 @@ export function useHistorique(userId, organizationId = null) {
     }
   };
 
-  // 🚀 FONCTION : Charger les évaluations d'un programme
-  const loadEvaluationsForProgram = async (programId, programName) => {
+  // 🚀 FONCTION : Charger les évaluations complètes depuis /evaluationResults
+  const loadProgramEvaluations = async (programId, programName) => {
     try {
-      // ⚠️ FALLBACK : Utiliser l'ancienne structure (chemin valide avec 5 segments)
-      const evaluationsRef = collection(db, 'users', userId, 'programs', programId, 'evaluations');
-      // ⚡ OPTIMISATION : Limiter le nombre d'évaluations chargées
-      const q = query(evaluationsRef, orderBy('completedAt', 'desc'), limit(MAX_ATTEMPTS_PER_PROGRAM));
+      const evaluationsRef = collection(db, 'evaluationResults');
+      const q = query(
+        evaluationsRef,
+        where('userId', '==', userId),
+        where('programId', '==', programId),
+        where('chapterId', '==', 'program_full')
+      );
+      
       const evaluationsSnapshot = await getDocs(q);
       
-      console.log('📊 Évaluations trouvées pour', programId, ':', evaluationsSnapshot.size);
+      console.log('📊 Évaluations programme trouvées pour', programId, ':', evaluationsSnapshot.size);
 
       return evaluationsSnapshot.docs.map((evalDoc) => {
         const evalData = evalDoc.data();
@@ -128,18 +132,17 @@ export function useHistorique(userId, organizationId = null) {
           type: 'evaluation',
           programId: programId,
           programName: programName,
-          chapterId: null,
-          chapterName: null,
-          // ✅ CORRECTION : Inclure tous les champs nécessaires
-          score: evalData.earnedPoints || evalData.score || 0,
-          maxScore: evalData.totalPoints || evalData.maxScore || 100,
-          earnedPoints: evalData.earnedPoints || evalData.score || 0,
-          totalPoints: evalData.totalPoints || evalData.maxScore || 100,
-          percentage: evalData.score || evalData.percentage || 0,
+          chapterId: 'program_full',
+          chapterName: 'Évaluation Complète',
+          score: evalData.score || 0,
+          maxScore: evalData.maxScore || 100,
+          earnedPoints: evalData.score || 0,
+          totalPoints: evalData.maxScore || 100,
+          percentage: evalData.percentage || 0,
           duration: evalData.duration || 0,
           completedAt: evalData.completedAt,
-          passed: (evalData.score || evalData.percentage || 0) >= 50,
-          results: evalData.results || [],
+          passed: (evalData.percentage || 0) >= 50,
+          results: evalData.answers?.results || [],
           answers: evalData.answers || {}
         };
       });
@@ -238,7 +241,7 @@ export function useHistorique(userId, organizationId = null) {
             
             // Pour chaque programme, charger évaluations et exercices EN PARALLÈLE
             const [evaluations, exercises] = await Promise.all([
-              loadEvaluationsForProgram(programId, programName),
+              loadProgramEvaluations(programId, programName),
               loadExercisesForProgram(programId, programName)
             ]);
             
