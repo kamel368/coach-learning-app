@@ -21,7 +21,7 @@ const safeTimer = {
 // ⚡ CONSTANTE : Limite de tentatives par programme pour améliorer les performances
 const MAX_ATTEMPTS_PER_PROGRAM = 20;
 
-export function useHistorique(userId) {
+export function useHistorique(userId, organizationId = null) {
   const [loading, setLoading] = useState(true);
   const [attempts, setAttempts] = useState([]);
   const [statistics, setStatistics] = useState({
@@ -141,8 +141,10 @@ export function useHistorique(userId) {
   // 🚀 FONCTION : Charger les tentatives d'exercices d'un programme
   const loadExercisesForProgram = async (programId, programName) => {
     try {
-      // ⚠️ FALLBACK : Utiliser l'ancienne structure (chemin valide avec 3 segments)
-      const modulesSnapshot = await getDocs(collection(db, 'programs', programId, 'chapitres'));
+      // Chapitres depuis organizations (structure partagée)
+      const modulesSnapshot = organizationId
+        ? await getDocs(collection(db, 'organizations', organizationId, 'programs', programId, 'chapitres'))
+        : await getDocs(collection(db, 'programs', programId, 'chapitres'));
       console.log('📘 Chapitres trouvés pour programme', programId, ':', modulesSnapshot.size);
       
       // ⚡ PARALLÉLISATION : Charger toutes les tentatives de chapters en parallèle
@@ -150,8 +152,9 @@ export function useHistorique(userId) {
         const chapterName = await getModuleName(programId, chapterDoc.id);
         
         try {
-          // ⚠️ FALLBACK : Utiliser l'ancienne structure (chemin valide avec 7 segments)
+          // Tentatives depuis users (données personnelles)
           const moduleAttemptsRef = collection(db, 'users', userId, 'programs', programId, 'chapitres', chapterDoc.id, 'attempts');
+          
           // ⚡ OPTIMISATION : Limiter le nombre de tentatives par chapitre
           const q = query(moduleAttemptsRef, orderBy('completedAt', 'desc'), limit(MAX_ATTEMPTS_PER_PROGRAM));
           const moduleAttemptsSnapshot = await getDocs(q);
@@ -169,7 +172,7 @@ export function useHistorique(userId) {
               chapterName: chapterName,
               score: attemptData.earnedPoints || attemptData.score || 0,
               maxScore: attemptData.totalPoints || attemptData.maxScore || 100,
-              percentage: attemptData.score || attemptData.percentage || 0,
+              percentage: attemptData.percentage || Math.round((attemptData.score / attemptData.maxScore) * 100) || 0,
               duration: attemptData.duration || 0,
               completedAt: attemptData.completedAt,
               passed: (attemptData.score || attemptData.percentage || 0) >= 50,

@@ -19,13 +19,13 @@ import {
 
 const ApprenantHistorique = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, organizationId } = useAuth();
   
   // Mode "Voir comme"
   const { targetUserId } = useViewAs();
   
   // ✅ Utiliser filter et setFilter du hook pour éviter le double filtrage
-  const { attempts, allAttempts, programStats, loading, filter, setFilter } = useHistorique(targetUserId);
+  const { attempts, allAttempts, programStats, loading, filter, setFilter } = useHistorique(targetUserId, organizationId);
   const [hoveredBar, setHoveredBar] = useState(null);
 
   // Les tentatives sont déjà filtrées par le hook
