@@ -124,7 +124,39 @@ export default function ApprenantProgramDetail() {
         });
       }
 
-      setModules(modulesData);
+      // Charger la progression utilisateur pour calculer les leçons complétées par chapitre
+      const progressDocId = `${targetUserId}__${programId}`;
+      const progressRef = doc(db, 'userProgress', progressDocId);
+      const progressSnap = await getDoc(progressRef);
+      const completedLessonsInProgram = progressSnap.exists() 
+        ? (progressSnap.data().completedLessons || []) 
+        : [];
+
+      console.log('📊 Leçons complétées dans le programme:', completedLessonsInProgram.length);
+
+      // Pour chaque chapitre, calculer combien de leçons sont complétées
+      const modulesWithProgress = await Promise.all(
+        modulesData.map(async (module) => {
+          // Charger les leçons de ce chapitre
+          const lessonsRef = effectiveOrgId
+            ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'chapitres', module.id, 'lessons')
+            : collection(db, 'programs', programId, 'chapitres', module.id, 'lessons');
+          
+          const lessonsSnap = await getDocs(lessonsRef);
+          const lessonIds = lessonsSnap.docs.map(doc => doc.id);
+          
+          // Compter combien de leçons de ce chapitre sont complétées
+          const completedInChapter = lessonIds.filter(id => completedLessonsInProgram.includes(id)).length;
+          
+          return {
+            ...module,
+            completedLessons: completedInChapter,
+            percentage: lessonIds.length > 0 ? Math.round((completedInChapter / lessonIds.length) * 100) : 0
+          };
+        })
+      );
+
+      setModules(modulesWithProgress);
 
       // Récupérer la progression utilisateur (utiliser targetUserId en mode viewAs)
       const progress = await getUserProgramProgress(targetUserId, programId);
@@ -392,8 +424,12 @@ export default function ApprenantProgramDetail() {
               gap: apprenantTheme.spacing.sm
             }}>
               {chapters.map((chapitre, index) => {
-                const status = getModuleStatus(chapitre.id);
-                const StatusIcon = status.label === 'Non commencé' ? Lock : PlayCircle;
+                // Déterminer l'icône et le label basé sur la progression
+                const percentage = chapitre.percentage || 0;
+                const StatusIcon = percentage === 0 ? Lock : PlayCircle;
+                const statusLabel = percentage === 100 ? 'Revoir' : 
+                                   percentage > 0 ? 'Continuer' : 
+                                   'Commencer';
 
                 return (
                   <div
@@ -471,11 +507,43 @@ export default function ApprenantProgramDetail() {
                         </p>
                       )}
 
-                      <div style={{
-                        fontSize: apprenantTheme.fontSize.sm,
-                        color: apprenantTheme.colors.textTertiary
+                      {/* Mini barre de progression */}
+                      <div style={{ 
+                        width: '100%', 
+                        height: '6px', 
+                        background: '#e2e8f0', 
+                        borderRadius: '999px', 
+                        overflow: 'hidden',
+                        marginTop: '8px',
+                        marginBottom: '8px'
                       }}>
-                        {chapitre.totalLessons} leçon{chapitre.totalLessons > 1 ? 's' : ''}
+                        <div style={{
+                          width: `${chapitre.percentage || 0}%`,
+                          height: '100%',
+                          background: chapitre.percentage === 100 ? '#10b981' : 
+                                     chapitre.percentage > 0 ? '#3b82f6' : '#cbd5e1',
+                          borderRadius: '999px',
+                          transition: 'width 0.3s'
+                        }} />
+                      </div>
+                      
+                      {/* Compteur de leçons */}
+                      <div style={{ 
+                        fontSize: '13px', 
+                        color: '#64748b',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}>
+                        <span style={{ 
+                          fontWeight: '600',
+                          color: chapitre.percentage === 100 ? '#10b981' : '#64748b'
+                        }}>
+                          {chapitre.completedLessons || 0}/{chapitre.totalLessons || 0} leçons
+                        </span>
+                        {chapitre.percentage === 100 && (
+                          <span style={{ color: '#10b981' }}>✓</span>
+                        )}
                       </div>
                     </div>
 
@@ -495,7 +563,7 @@ export default function ApprenantProgramDetail() {
                     }}>
                       <StatusIcon size={18} />
                       <span style={{ display: window.innerWidth < 400 ? 'none' : 'inline' }}>
-                        {status.label}
+                        {statusLabel}
                       </span>
                     </div>
                   </div>

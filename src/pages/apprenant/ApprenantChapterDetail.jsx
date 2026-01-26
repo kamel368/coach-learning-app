@@ -154,17 +154,24 @@ export default function ApprenantChapterDetail() {
       const progressSnap = await getDoc(progressRef);
       
       if (progressSnap.exists()) {
-        const completed = progressSnap.data().completedLessons || [];
-        setCompletedLessons(completed);
-        console.log('✅ Leçons complétées chargées depuis Firebase:', completed.length, '/', lessons.length);
-        console.log('   📋 IDs complétés:', completed);
-        console.log('   📋 Type des IDs complétés:', completed.map(id => typeof id));
-        console.log('   📚 IDs des leçons du chapitre:', lessons.map(l => l.id));
-        console.log('   📚 Type des IDs des leçons:', lessons.map(l => typeof l.id));
+        const progressData = progressSnap.data();
+        const allCompletedLessons = progressData.completedLessons || [];
+        
+        // ✅ FILTRER pour ne garder que les leçons de CE chapitre
+        const lessonIdsInChapter = lessons.map(l => l.id);
+        const completedLessonsInChapter = allCompletedLessons.filter(id => lessonIdsInChapter.includes(id));
+        
+        setCompletedLessons(completedLessonsInChapter);
+        console.log('✅ Leçons complétées chargées depuis Firebase:', completedLessonsInChapter.length, '/', lessons.length);
+        console.log('   📋 Total dans le programme:', allCompletedLessons.length);
+        console.log('   📋 IDs complétés dans ce chapitre:', completedLessonsInChapter);
+        console.log('   📋 Type des IDs complétés:', completedLessonsInChapter.map(id => typeof id));
+        console.log('   📚 IDs des leçons du chapitre:', lessonIdsInChapter);
+        console.log('   📚 Type des IDs des leçons:', lessonIdsInChapter.map(id => typeof id));
         
         // Vérifier les correspondances
         lessons.forEach(lesson => {
-          const isIncluded = completed.includes(lesson.id);
+          const isIncluded = completedLessonsInChapter.includes(lesson.id);
           console.log(`   ${isIncluded ? '✅' : '❌'} Leçon "${lesson.title}" (${lesson.id}) → ${isIncluded ? 'Complétée' : 'Non complétée'}`);
         });
       } else {

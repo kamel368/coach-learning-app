@@ -733,17 +733,42 @@ export default function ApprenantDashboard() {
                     })()}
                   </div>
 
-                  {/* Nombre de leçons */}
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    fontSize: apprenantTheme.fontSize.sm,
-                    color: apprenantTheme.colors.textTertiary,
+                  {/* Barre de progression */}
+                  <div style={{ 
+                    width: '100%', 
+                    height: '8px', 
+                    background: '#e2e8f0', 
+                    borderRadius: '999px', 
+                    overflow: 'hidden',
+                    marginBottom: '12px'
+                  }}>
+                    <div style={{
+                      width: `${program.readingProgress || 0}%`,
+                      height: '100%',
+                      background: (program.readingProgress || 0) === 100 ? '#10b981' : '#3b82f6',
+                      borderRadius: '999px',
+                      transition: 'width 0.3s'
+                    }} />
+                  </div>
+
+                  {/* Texte de progression */}
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px',
+                    fontSize: '14px',
                     marginBottom: '16px'
                   }}>
-                    <Clock size={14} />
-                    <span>{program.totalLessons} leçon{program.totalLessons > 1 ? 's' : ''}</span>
+                    <span style={{ 
+                      fontWeight: '700', 
+                      color: (program.readingProgress || 0) === 100 ? '#10b981' : '#3b82f6'
+                    }}>
+                      {program.readingProgress || 0}%
+                    </span>
+                    <span style={{ color: '#64748b' }}>•</span>
+                    <span style={{ color: '#64748b' }}>
+                      {program.completedLessons || 0}/{program.totalLessons || 0} leçons
+                    </span>
                   </div>
 
                   {/* Bouton */}
@@ -755,20 +780,41 @@ export default function ApprenantDashboard() {
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '8px',
-                      marginTop: 'auto'
+                      marginTop: 'auto',
+                      background: (program.readingProgress || 0) === 100 
+                        ? '#10b981' 
+                        : ((program.readingProgress || 0) > 0 ? '#8b5cf6' : buttonStyles.primary.base.background)
                     }}
                     onMouseEnter={(e) => {
-                      Object.assign(e.currentTarget.style, buttonStyles.primary.hover);
+                      const progress = program.readingProgress || 0;
+                      if (progress === 100) {
+                        e.currentTarget.style.background = '#059669';
+                      } else if (progress > 0) {
+                        e.currentTarget.style.background = '#7c3aed';
+                      } else {
+                        Object.assign(e.currentTarget.style, buttonStyles.primary.hover);
+                      }
                     }}
                     onMouseLeave={(e) => {
-                      Object.assign(e.currentTarget.style, buttonStyles.primary.base);
+                      const progress = program.readingProgress || 0;
+                      if (progress === 100) {
+                        e.currentTarget.style.background = '#10b981';
+                      } else if (progress > 0) {
+                        e.currentTarget.style.background = '#8b5cf6';
+                      } else {
+                        Object.assign(e.currentTarget.style, buttonStyles.primary.base);
+                      }
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
                       navigate(`/apprenant/programs/${program.id}`);
                     }}
                   >
-                    <span>Commencer</span>
+                    <span>
+                      {(program.readingProgress || 0) === 100 ? 'Revoir' : 
+                       (program.readingProgress || 0) > 0 ? 'Continuer' : 
+                       'Commencer'}
+                    </span>
                     <ArrowRight size={18} strokeWidth={2.5} />
                   </button>
                 </div>
