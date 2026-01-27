@@ -13,7 +13,7 @@ import {
   deleteDoc,
   setDoc,
 } from "firebase/firestore";
-import { Plus, FileText, HelpCircle, BrainCircuit, ListTree, Eye, EyeOff, Edit2, FileEdit, Trash2, GripVertical, Pencil, MoreVertical, ChevronDown, Layers, ArrowLeft } from "lucide-react";
+import { Plus, FileText, HelpCircle, BrainCircuit, ListTree, Eye, EyeOff, Edit2, FileEdit, Trash2, GripVertical, Pencil, ChevronDown, Layers, ArrowLeft } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 export default function AdminProgramDetail() {
@@ -34,9 +34,7 @@ export default function AdminProgramDetail() {
   const [quizzes, setQuizzes] = useState([]);
   const [aiExercises, setAiExercises] = useState([]);
 
-  const [activeTab, setActiveTab] = useState("content"); // content | learners
   const [expandedChapters, setExpandedChapters] = useState(new Set());
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(null);
 
   // --------- Chargement initial ---------
   useEffect(() => {
@@ -136,16 +134,6 @@ export default function AdminProgramDetail() {
 
     load();
   }, [programId, organizationId]);
-
-  // Fermer le menu mobile au clic outside
-  useEffect(() => {
-    const handleClickOutside = () => setMobileMenuOpen(null);
-    
-    if (mobileMenuOpen) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
-    }
-  }, [mobileMenuOpen]);
 
   const formatDate = (ts) => {
     if (!ts) return "—";
@@ -949,27 +937,11 @@ export default function AdminProgramDetail() {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 12,
-            flexWrap: "wrap",
-          }}
-        >
-          {/* Prévisualisation programme */}
-          <button
-            type="button"
-            onClick={() => navigate(`/programs/${program.id}/preview`)}
-            style={{
-              padding: "6px 10px",
-              borderRadius: 999,
-              border: "1px solid #d1d5db",
-              background: "#f3f4f6",
-              fontSize: 13,
-              cursor: "pointer",
-            }}
-          >
-            Prévisualiser le programme
-          </button>
-
-          {/* Sélecteur Catégorie avec bouton créer */}
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        {/* Sélecteur Catégorie avec bouton créer */}
           <div
             style={{
               display: "flex",
@@ -1046,83 +1018,41 @@ export default function AdminProgramDetail() {
         </div>
       </div>
 
-      {/* Onglets */}
+      {/* Bouton ajouter chapitre */}
       <div style={{ marginBottom: 16 }}>
         <button
           type="button"
-          onClick={() => setActiveTab("content")}
+          onClick={handleAddChapter}
           style={{
-            padding: "8px 12px",
+            padding: "8px 14px",
             borderRadius: 999,
             border: "none",
-            cursor: "pointer",
-            fontSize: 14,
-            fontWeight: activeTab === "content" ? 600 : 400,
             background:
-              activeTab === "content"
-                ? "var(--color-surface)"
-                : "transparent",
+              "linear-gradient(135deg, var(--color-primary), var(--color-primary-light))",
+            color: "#fff",
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
           }}
         >
-          Contenus
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("learners")}
-          style={{
-            padding: "8px 12px",
-            borderRadius: 999,
-            border: "none",
-            cursor: "pointer",
-            fontSize: 14,
-            fontWeight: activeTab === "learners" ? 600 : 400,
-            background:
-              activeTab === "learners"
-                ? "var(--color-surface)"
-                : "transparent",
-          }}
-        >
-          Apprenants
+          <ListTree className="w-4 h-4" />
+          Ajouter un chapitre
         </button>
       </div>
 
-      {activeTab === "content" && (
-        <div>
-          {/* Bouton ajouter chapitre */}
-          <div style={{ marginBottom: 16 }}>
-            <button
-              type="button"
-              onClick={handleAddChapter}
-              style={{
-                padding: "8px 14px",
-                borderRadius: 999,
-                border: "none",
-                background:
-                  "linear-gradient(135deg, var(--color-primary), var(--color-primary-light))",
-                color: "#fff",
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-              }}
-            >
-              <ListTree className="w-4 h-4" />
-              Ajouter un chapitre
-            </button>
-          </div>
-
-          {/* Liste des chapitres avec drag & drop */}
-          <div style={{ 
-            display: "flex", 
-            flexDirection: "column", 
-            gap: 12,
-            maxHeight: 'calc(100vh - 280px)',
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            paddingRight: 4
-          }}>
+      {/* Liste des chapitres avec drag & drop */}
+      <div style={{ 
+        display: "flex", 
+        flexDirection: "column", 
+        gap: 12,
+        maxHeight: 'calc(100vh - 280px)',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        paddingRight: 4
+      }}>
             {chapters.map((chapter) => {
               const lessons = lessonsByChapter[chapter.id] || [];
               const quizzesForChapter = quizzes.filter(
@@ -1545,230 +1475,6 @@ export default function AdminProgramDetail() {
                           🗑️
                         </button>
                       </div>
-
-                      {/* Menu hamburger - Mobile uniquement */}
-                      <div className="mobile-only" style={{ position: 'relative' }}>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setMobileMenuOpen(mobileMenuOpen === chapter.id ? null : chapter.id);
-                          }}
-                          style={{
-                            width: 36,
-                            height: 36,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            background: '#ffffff',
-                            border: '1px solid #e2e8f0',
-                            borderRadius: 6,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <MoreVertical size={20} color="#64748b" />
-                        </button>
-
-                        {/* Menu dropdown mobile */}
-                        {mobileMenuOpen === chapter.id && (
-                          <div style={{
-                            position: 'absolute',
-                            top: '100%',
-                            right: 0,
-                            marginTop: 8,
-                            zIndex: 1000,
-                            background: '#ffffff',
-                            border: '1px solid #e2e8f0',
-                            borderRadius: 8,
-                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                            padding: 8,
-                            minWidth: 200
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                          >
-                            <button
-                              onClick={() => {
-                                handleAddLessonForChapter(chapter.id);
-                                setMobileMenuOpen(null);
-                              }}
-                              style={{
-                                width: '100%',
-                                padding: '10px 12px',
-                                background: 'none',
-                                border: 'none',
-                                textAlign: 'left',
-                                cursor: 'pointer',
-                                borderRadius: 6,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8,
-                                fontSize: 14
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#f8fafc';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'none';
-                              }}
-                            >
-                              <FileText size={16} color="#64748b" />
-                              Ajouter une leçon
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                handleAddQuizForChapter(chapter.id);
-                                setMobileMenuOpen(null);
-                              }}
-                              style={{
-                                width: '100%',
-                                padding: '10px 12px',
-                                background: 'none',
-                                border: 'none',
-                                textAlign: 'left',
-                                cursor: 'pointer',
-                                borderRadius: 6,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8,
-                                fontSize: 14
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#f8fafc';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'none';
-                              }}
-                            >
-                              <HelpCircle size={16} color="#64748b" />
-                              Ajouter des exercices
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                handleAddAIExerciseForChapter(chapter.id);
-                                setMobileMenuOpen(null);
-                              }}
-                              style={{
-                                width: '100%',
-                                padding: '10px 12px',
-                                background: 'none',
-                                border: 'none',
-                                textAlign: 'left',
-                                cursor: 'pointer',
-                                borderRadius: 6,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8,
-                                fontSize: 14
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#f8fafc';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'none';
-                              }}
-                            >
-                              <BrainCircuit size={16} color="#64748b" />
-                              Ajouter Exercice IA
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                handleToggleChapterHidden(chapter.id, !chapter.hidden);
-                                setMobileMenuOpen(null);
-                              }}
-                              style={{
-                                width: '100%',
-                                padding: '10px 12px',
-                                background: 'none',
-                                border: 'none',
-                                textAlign: 'left',
-                                cursor: 'pointer',
-                                borderRadius: 6,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8,
-                                fontSize: 14,
-                                color: chapter.hidden ? '#10B981' : '#EF4444'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#f8fafc';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'none';
-                              }}
-                            >
-                              <span style={{ fontSize: 16 }}>{chapter.hidden ? '👁️' : '🚫'}</span>
-                              {chapter.hidden ? 'Afficher le chapitre' : 'Masquer le chapitre'}
-                            </button>
-
-                            <div style={{
-                              height: 1,
-                              background: '#e2e8f0',
-                              margin: '8px 0'
-                            }} />
-
-                            <button
-                              onClick={() => {
-                                handleRenameChapter(chapter);
-                                setMobileMenuOpen(null);
-                              }}
-                              style={{
-                                width: '100%',
-                                padding: '10px 12px',
-                                background: 'none',
-                                border: 'none',
-                                textAlign: 'left',
-                                cursor: 'pointer',
-                                borderRadius: 6,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8,
-                                fontSize: 14
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#f8fafc';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'none';
-                              }}
-                            >
-                              <Pencil size={16} color="#64748b" />
-                              Renommer
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                handleDeleteChapter(chapter.id);
-                                setMobileMenuOpen(null);
-                              }}
-                              style={{
-                                width: '100%',
-                                padding: '10px 12px',
-                                background: 'none',
-                                border: 'none',
-                                textAlign: 'left',
-                                cursor: 'pointer',
-                                borderRadius: 6,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8,
-                                fontSize: 14,
-                                color: '#ef4444'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#fef2f2';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'none';
-                              }}
-                            >
-                              <Trash2 size={16} color="#ef4444" />
-                              Supprimer
-                            </button>
-                          </div>
-                        )}
-                      </div>
                     </div>
                   </div>
 
@@ -2132,14 +1838,6 @@ export default function AdminProgramDetail() {
               );
             })}
           </div>
-        </div>
-      )}
-
-      {activeTab === "learners" && (
-        <div style={{ marginTop: 16, fontSize: 14, color: "var(--color-muted)" }}>
-          Gestion des apprenants à venir...
-        </div>
-      )}
 
       {/* Modal création catégorie */}
       {showCategoryModal && (

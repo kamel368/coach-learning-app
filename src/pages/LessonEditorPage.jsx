@@ -462,35 +462,6 @@ export default function LessonEditorPage() {
             Sauvegarder
           </button>
 
-          {/* Bouton Voir la page */}
-          <button
-            onClick={() => {
-              // TODO: Implémenter la vue apprenant
-              console.log('Voir la page apprenant');
-            }}
-            style={{
-              padding: '10px 20px',
-              background: '#ffffff',
-              color: '#3b82f6',
-              border: '1px solid #e2e8f0',
-              borderRadius: 10,
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#eff6ff';
-              e.currentTarget.style.borderColor = '#3b82f6';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#ffffff';
-              e.currentTarget.style.borderColor = '#e2e8f0';
-            }}
-          >
-            Voir la page
-          </button>
-
           {/* Bouton Quitter (X rouge) */}
           <button
             onClick={() => {

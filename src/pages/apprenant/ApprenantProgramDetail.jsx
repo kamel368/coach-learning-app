@@ -174,9 +174,30 @@ export default function ApprenantProgramDetail() {
 
       setModules(visibleChapters);
 
+      // ✅ Recalculer la progression du programme basée sur les leçons VISIBLES uniquement
+      const totalVisibleLessons = visibleChapters.reduce((sum, ch) => sum + (ch.totalLessons || 0), 0);
+      const totalCompletedLessons = visibleChapters.reduce((sum, ch) => sum + (ch.completedLessons || 0), 0);
+      const calculatedPercentage = totalVisibleLessons > 0 
+        ? Math.round((totalCompletedLessons / totalVisibleLessons) * 100) 
+        : 0;
+
+      console.log('📊 Progression recalculée:', {
+        totalVisibleLessons,
+        totalCompletedLessons,
+        calculatedPercentage,
+        visibleChapters: visibleChapters.length
+      });
+
       // Récupérer la progression utilisateur (utiliser targetUserId en mode viewAs)
       const progress = await getUserProgramProgress(targetUserId, programId);
-      setUserProgress(progress);
+      
+      // ✅ Remplacer le pourcentage par le calcul basé sur les leçons visibles
+      setUserProgress({
+        ...progress,
+        percentage: calculatedPercentage,
+        totalLessons: totalVisibleLessons,
+        completedLessons: totalCompletedLessons
+      });
 
     } catch (error) {
       console.error('Erreur chargement programme:', error);
