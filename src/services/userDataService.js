@@ -226,7 +226,16 @@ export async function createUserGamification(organizationId, userId) {
       exercisesCompleted: 0,
       evaluationsCompleted: 0,
       excellentScores: 0,
+      chaptersCompleted: 0,      // ✅ NOUVEAU
+      programsCompleted: 0,       // ✅ NOUVEAU
       totalTimeSpent: 0
+    },
+    rewardedActions: {
+      lessons: [],
+      chapters: [],               // ✅ NOUVEAU
+      programs: [],               // ✅ NOUVEAU
+      exercises: [],
+      evaluations: []
     },
     history: [],
     createdAt: Timestamp.now()

@@ -2,7 +2,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { doc, getDoc, collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
-import { markLessonCompleted, updateCurrentLesson } from '../../services/progressionService';
+import { markLessonCompleted, updateCurrentLesson, getUserProgress } from '../../services/progressionService';
 import { getLesson } from '../../services/lessonsService';
 import { useGamification } from '../../hooks/useGamification';
 import { useViewAs } from '../../hooks/useViewAs';
@@ -28,7 +28,7 @@ export default function ApprenantLessonViewer() {
   const { organizationId } = useAuth();
   
   // Hook gamification
-  const { onLessonCompleted } = useGamification(targetUserId);
+  const { onLessonCompleted, onChapterCompleted, onProgramCompleted } = useGamification(targetUserId);
 
   // Charger l'organizationId de l'utilisateur cible
   useEffect(() => {
@@ -177,9 +177,47 @@ export default function ApprenantLessonViewer() {
       // Marquer la leçon comme terminée avec le VRAI nombre total de leçons
       await markLessonCompleted(targetUserId, programId, lessonId, totalProgramLessons, effectiveOrgId);
 
-      // 🎮 GAMIFICATION : Ajouter XP et badges pour leçon complétée
-      if (onLessonCompleted) {
-        await onLessonCompleted();
+      // 🎮 GAMIFICATION : XP pour leçon complétée
+      if (onLessonCompleted && lessonId) {
+        await onLessonCompleted(lessonId);
+      }
+
+      // ✅ Vérifier si chapitre complété (3/3)
+      const updatedProgress = await getUserProgress(targetUserId, programId);
+      const allCompletedLessons = updatedProgress?.completedLessons || [];
+      const lessonIdsInChapter = allLessons.map(l => l.id);
+      const completedInChapter = allCompletedLessons.filter(id => lessonIdsInChapter.includes(id));
+
+      if (completedInChapter.length === allLessons.length && onChapterCompleted) {
+        console.log('🏆 Chapitre terminé, vérification XP bonus...');
+        await onChapterCompleted(chapterId);
+      }
+
+      // ✅ Vérifier si programme 100% complété
+      if (onProgramCompleted) {
+        // Charger tous les chapitres du programme
+        const effectiveOrgId = targetOrgId || organizationId;
+        const chaptersRef = effectiveOrgId
+          ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'chapitres')
+          : collection(db, 'programs', programId, 'chapitres');
+        
+        const chaptersSnap = await getDocs(chaptersRef);
+        let totalLessonsInProgram = 0;
+        
+        for (const chapterDoc of chaptersSnap.docs) {
+          const lessonsRef = effectiveOrgId
+            ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'chapitres', chapterDoc.id, 'lessons')
+            : collection(db, 'programs', programId, 'chapitres', chapterDoc.id, 'lessons');
+          
+          const lessonsSnap = await getDocs(lessonsRef);
+          totalLessonsInProgram += lessonsSnap.size;
+        }
+        
+        // Si toutes les leçons du programme sont complétées
+        if (allCompletedLessons.length >= totalLessonsInProgram) {
+          console.log('🎓 Programme 100%, vérification mega bonus...');
+          await onProgramCompleted(programId);
+        }
       }
 
       // Vérifier s'il y a une leçon suivante
@@ -237,9 +275,47 @@ export default function ApprenantLessonViewer() {
         // Marquer la leçon actuelle comme terminée
         await markLessonCompleted(targetUserId, programId, lessonId, totalProgramLessons, effectiveOrgId);
         
-        // 🎮 GAMIFICATION : Ajouter XP pour leçon complétée
-        if (onLessonCompleted) {
-          await onLessonCompleted();
+        // 🎮 GAMIFICATION : XP pour leçon complétée
+        if (onLessonCompleted && lessonId) {
+          await onLessonCompleted(lessonId);
+        }
+
+        // ✅ Vérifier si chapitre complété (3/3)
+        const updatedProgress = await getUserProgress(targetUserId, programId);
+        const allCompletedLessons = updatedProgress?.completedLessons || [];
+        const lessonIdsInChapter = allLessons.map(l => l.id);
+        const completedInChapter = allCompletedLessons.filter(id => lessonIdsInChapter.includes(id));
+
+        if (completedInChapter.length === allLessons.length && onChapterCompleted) {
+          console.log('🏆 Chapitre terminé, vérification XP bonus...');
+          await onChapterCompleted(chapterId);
+        }
+
+        // ✅ Vérifier si programme 100% complété
+        if (onProgramCompleted) {
+          // Charger tous les chapitres du programme
+          const effectiveOrgId = targetOrgId || organizationId;
+          const chaptersRef = effectiveOrgId
+            ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'chapitres')
+            : collection(db, 'programs', programId, 'chapitres');
+          
+          const chaptersSnap = await getDocs(chaptersRef);
+          let totalLessonsInProgram = 0;
+          
+          for (const chapterDoc of chaptersSnap.docs) {
+            const lessonsRef = effectiveOrgId
+              ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'chapitres', chapterDoc.id, 'lessons')
+              : collection(db, 'programs', programId, 'chapitres', chapterDoc.id, 'lessons');
+            
+            const lessonsSnap = await getDocs(lessonsRef);
+            totalLessonsInProgram += lessonsSnap.size;
+          }
+          
+          // Si toutes les leçons du programme sont complétées
+          if (allCompletedLessons.length >= totalLessonsInProgram) {
+            console.log('🎓 Programme 100%, vérification mega bonus...');
+            await onProgramCompleted(programId);
+          }
         }
         
         // Naviguer vers la leçon suivante

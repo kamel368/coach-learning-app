@@ -13,8 +13,9 @@ import { useToast } from '../contexts/ToastContext';
 
 // Configuration XP
 export const XP_CONFIG = {
-  LESSON_COMPLETED: 10,
-  MODULE_COMPLETED: 50,
+  LESSON_COMPLETED: 10,        // XP par leçon (1 fois)
+  CHAPTER_COMPLETED: 50,       // Bonus chapitre 100%
+  PROGRAM_COMPLETED: 200,      // Mega bonus programme 100%
   EXERCISE_PASSED: 20,
   EXERCISE_EXCELLENT: 40,
   EVALUATION_PASSED: 100,
@@ -352,44 +353,81 @@ export function useGamification(targetUserId) {
       return null;
     }
     
-    // Vérifier si déjà récompensé
-    const rewardedLessons = gamificationData.rewardedActions?.lessons || [];
-    if (lessonId && rewardedLessons.includes(lessonId)) {
+    // ✅ VÉRIFICATION : lessonId obligatoire
+    if (!lessonId) {
+      console.warn('⚠️ onLessonCompleted appelé sans lessonId');
+      return null;
+    }
+    
+    // ✅ Vérifier si leçon déjà récompensée
+    const rewardedActions = gamificationData.rewardedActions || {};
+    const rewardedLessons = rewardedActions.lessons || [];
+    
+    if (rewardedLessons.includes(lessonId)) {
       console.log('ℹ️ Leçon déjà récompensée:', lessonId);
       return null;
     }
+    
+    console.log('✅ Nouvelle leçon complétée:', lessonId);
     
     await updateStreak();
     const result = await addXPAction(XP_CONFIG.LESSON_COMPLETED, 'lesson_completed');
     await updateStat('lessonsCompleted');
     
-    // Vérifier early bird
+    // Early bird
     const hour = new Date().getHours();
     if (hour < 8) {
       await updateStat('earlyBird', 1);
     }
     
-    // Marquer comme récompensé
-    if (lessonId) {
-      const gamifRef = doc(db, 'gamification', userId);
-      await updateDoc(gamifRef, {
-        'rewardedActions.lessons': arrayUnion(lessonId)
-      });
-    }
+    // ✅ Marquer leçon comme récompensée
+    const gamifRef = doc(db, 'gamification', userId);
+    await updateDoc(gamifRef, {
+      'rewardedActions.lessons': arrayUnion(lessonId)
+    });
     
-    await loadGamification(); // Recharger pour voir les changements
+    console.log('💾 Leçon récompensée et sauvegardée:', lessonId);
+    
+    await loadGamification();
     return result;
   };
   
-  const onModuleCompleted = async (moduleId) => {
+  const onChapterCompleted = async (chapterId) => {
     if (!userId || !gamificationData) {
-      console.warn('⚠️ onModuleCompleted appelé avant chargement des données');
+      console.warn('⚠️ onChapterCompleted appelé avant chargement des données');
       return null;
     }
     
-    await addXPAction(XP_CONFIG.MODULE_COMPLETED, 'module_completed');
-    await updateStat('modulesCompleted');
+    // ✅ VÉRIFICATION : chapterId obligatoire
+    if (!chapterId) {
+      console.warn('⚠️ onChapterCompleted appelé sans chapterId');
+      return null;
+    }
+    
+    // ✅ Vérifier si chapitre déjà récompensé
+    const rewardedActions = gamificationData.rewardedActions || {};
+    const rewardedChapters = rewardedActions.chapters || [];
+    
+    if (rewardedChapters.includes(chapterId)) {
+      console.log('ℹ️ Chapitre déjà récompensé:', chapterId);
+      return null;
+    }
+    
+    console.log('🏆 Chapitre complété:', chapterId);
+    
+    const result = await addXPAction(XP_CONFIG.CHAPTER_COMPLETED, 'chapter_completed');
+    await updateStat('chaptersCompleted');
+    
+    // ✅ Marquer chapitre comme récompensé
+    const gamifRef = doc(db, 'gamification', userId);
+    await updateDoc(gamifRef, {
+      'rewardedActions.chapters': arrayUnion(chapterId)
+    });
+    
+    console.log('💾 Chapitre récompensé et sauvegardé:', chapterId);
+    
     await loadGamification();
+    return result;
   };
   
   const onExerciseCompleted = async (percentage, attemptId) => {
@@ -476,9 +514,36 @@ export function useGamification(targetUserId) {
       return null;
     }
     
-    await addXPAction(XP_CONFIG.MODULE_COMPLETED * 2, 'program_completed');
+    // ✅ VÉRIFICATION : programId obligatoire
+    if (!programId) {
+      console.warn('⚠️ onProgramCompleted appelé sans programId');
+      return null;
+    }
+    
+    // ✅ Vérifier si programme déjà récompensé
+    const rewardedActions = gamificationData.rewardedActions || {};
+    const rewardedPrograms = rewardedActions.programs || [];
+    
+    if (rewardedPrograms.includes(programId)) {
+      console.log('ℹ️ Programme déjà récompensé:', programId);
+      return null;
+    }
+    
+    console.log('🎓 Programme complété:', programId);
+    
+    const result = await addXPAction(XP_CONFIG.PROGRAM_COMPLETED, 'program_completed');
     await updateStat('programsCompleted');
+    
+    // ✅ Marquer programme comme récompensé
+    const gamifRef = doc(db, 'gamification', userId);
+    await updateDoc(gamifRef, {
+      'rewardedActions.programs': arrayUnion(programId)
+    });
+    
+    console.log('💾 Programme récompensé et sauvegardé:', programId);
+    
     await loadGamification();
+    return result;
   };
   
   // Effacer les nouveaux badges (après affichage)
@@ -501,7 +566,7 @@ export function useGamification(targetUserId) {
     
     // Actions
     onLessonCompleted,
-    onModuleCompleted,
+    onChapterCompleted,     // ✅ CHANGÉ
     onExerciseCompleted,
     onEvaluationCompleted,
     onProgramCompleted,

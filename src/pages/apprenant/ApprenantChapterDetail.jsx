@@ -28,10 +28,6 @@ export default function ApprenantChapterDetail() {
   const user = auth.currentUser;
   const { targetUserId } = useViewAs();
   const { organizationId } = useAuth();
-  
-  // Hook gamification
-  const { onModuleCompleted, loading: gamifLoading, gamificationData } = useGamification(targetUserId);
-  const moduleCompletionTracked = useRef(new Set());
 
   // Charger l'organizationId de l'utilisateur cible
   useEffect(() => {
@@ -119,21 +115,6 @@ export default function ApprenantChapterDetail() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [programId, chapterId, targetOrgId]);
-
-  // 🎮 GAMIFICATION : Détecter quand un chapitre est 100% complété
-  useEffect(() => {
-    if (lessons.length > 0 && completedLessons.length > 0 && !gamifLoading && gamificationData) {
-      const completedInThisModule = completedLessons.filter(id => lessons.find(l => l.id === id)).length;
-      const moduleProgress = (completedInThisModule / lessons.length) * 100;
-      
-      // Si le chapitre est 100% complété et qu'on ne l'a pas encore compté
-      if (moduleProgress >= 100 && !moduleCompletionTracked.current.has(chapterId) && onModuleCompleted) {
-        moduleCompletionTracked.current.add(chapterId);
-        onModuleCompleted();
-        console.log('🎮 Gamification: Chapitre complété !', chapterId);
-      }
-    }
-  }, [completedLessons, lessons, chapterId, onModuleCompleted, gamifLoading, gamificationData]);
   
   // Charger la progression des leçons complétées
   async function loadProgress() {
