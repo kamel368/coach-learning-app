@@ -19,12 +19,16 @@ import { useAuth } from "../context/AuthContext";
 export default function AdminProgramDetail() {
   const { programId } = useParams();
   const navigate = useNavigate();
-  const { organizationId } = useAuth();
+  const { organizationId, user } = useAuth();
 
   const [program, setProgram] = useState(null);
   const [loading, setLoading] = useState(true);
   const [statusSaving, setStatusSaving] = useState(false);
   const [error, setError] = useState("");
+  const [categories, setCategories] = useState([]); // Liste des catégories
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
 
   const [chapters, setChapters] = useState([]); // chapters
   const [lessonsByChapter, setLessonsByChapter] = useState({}); // { chapterId: [lessons] }
@@ -64,6 +68,21 @@ export default function AdminProgramDetail() {
           return;
         }
         setProgram({ id: programSnap.id, ...programSnap.data() });
+
+        // Charger les catégories
+        let categoriesSnap;
+        if (organizationId) {
+          categoriesSnap = await getDocs(collection(db, "organizations", organizationId, "categories"));
+        } else {
+          categoriesSnap = await getDocs(collection(db, "categories"));
+        }
+
+        const categoriesList = categoriesSnap.docs.map(d => ({
+          id: d.id,
+          ...d.data()
+        }));
+        setCategories(categoriesList);
+        console.log('📂 Catégories chargées:', categoriesList.length);
 
         // Chapitres (chapitres) - charger depuis l'organisation
         const modulesRef = organizationId
@@ -195,6 +214,78 @@ export default function AdminProgramDetail() {
       alert("Erreur lors du changement de statut.");
     } finally {
       setStatusSaving(false);
+    }
+  };
+
+  const handleCategoryChange = async (e) => {
+    if (!program) return;
+    const newCategoryId = e.target.value || null;
+    
+    try {
+      const ref = organizationId
+        ? doc(db, "organizations", organizationId, "programs", program.id)
+        : doc(db, "programs", program.id);
+      
+      await updateDoc(ref, {
+        categoryId: newCategoryId,
+        updatedAt: Timestamp.now(),
+      });
+      
+      setProgram((prev) => (prev ? { ...prev, categoryId: newCategoryId } : prev));
+      console.log('✅ Catégorie mise à jour:', newCategoryId || 'Aucune');
+    } catch (err) {
+      console.error(err);
+      alert("Erreur lors du changement de catégorie.");
+    }
+  };
+
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    
+    setIsCreatingCategory(true);
+    
+    try {
+      const categoryRef = organizationId
+        ? collection(db, 'organizations', organizationId, 'categories')
+        : collection(db, 'categories');
+        
+      const docRef = await addDoc(categoryRef, {
+        label: newCategoryName.trim(),
+        organizationId,
+        createdAt: Timestamp.now(),
+        createdBy: user?.uid
+      });
+      
+      // Ajouter la nouvelle catégorie à la liste
+      const newCategory = {
+        id: docRef.id,
+        label: newCategoryName.trim()
+      };
+      setCategories([...categories, newCategory]);
+      
+      // Sélectionner automatiquement la nouvelle catégorie
+      const ref = organizationId
+        ? doc(db, "organizations", organizationId, "programs", program.id)
+        : doc(db, "programs", program.id);
+      
+      await updateDoc(ref, {
+        categoryId: docRef.id,
+        updatedAt: Timestamp.now(),
+      });
+      
+      setProgram((prev) => (prev ? { ...prev, categoryId: docRef.id } : prev));
+      
+      // Fermer la modal
+      setShowCategoryModal(false);
+      setNewCategoryName('');
+      
+      console.log('✅ Catégorie créée et assignée:', docRef.id);
+      
+    } catch (error) {
+      console.error('❌ Erreur création catégorie:', error);
+      alert("Erreur lors de la création de la catégorie.");
+    } finally {
+      setIsCreatingCategory(false);
     }
   };
 
@@ -845,9 +936,10 @@ export default function AdminProgramDetail() {
             display: "flex",
             alignItems: "center",
             gap: 12,
+            flexWrap: "wrap",
           }}
         >
-          {/* Prévisualisation programme (URL à adapter) */}
+          {/* Prévisualisation programme */}
           <button
             type="button"
             onClick={() => navigate(`/programs/${program.id}/preview`)}
@@ -863,6 +955,82 @@ export default function AdminProgramDetail() {
             Prévisualiser le programme
           </button>
 
+          {/* Sélecteur Catégorie avec bouton créer */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 13,
+              }}
+            >
+              <span style={{ fontSize: 16 }}>📁</span>
+              <span>Catégorie :</span>
+            </div>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <select
+                value={program.categoryId || ""}
+                onChange={handleCategoryChange}
+                style={{
+                  padding: "6px 8px",
+                  borderRadius: 999,
+                  border: "1px solid #d1d5db",
+                  fontSize: 13,
+                  minWidth: "150px",
+                }}
+              >
+                <option value="">Sans catégorie</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.label}
+                  </option>
+                ))}
+              </select>
+              
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowCategoryModal(true);
+                }}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 999,
+                  border: '1px solid #d1d5db',
+                  background: '#f3f4f6',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  color: '#3b82f6',
+                  fontWeight: 500,
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#e5e7eb';
+                  e.currentTarget.style.borderColor = '#3b82f6';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#f3f4f6';
+                  e.currentTarget.style.borderColor = '#d1d5db';
+                }}
+                title="Créer une nouvelle catégorie"
+              >
+                <span style={{ fontSize: 14 }}>+</span>
+                <span>Créer</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Sélecteur Statut */}
           <div
             style={{
               display: "flex",
@@ -1855,6 +2023,145 @@ export default function AdminProgramDetail() {
       {activeTab === "learners" && (
         <div style={{ marginTop: 16, fontSize: 14, color: "var(--color-muted)" }}>
           Gestion des apprenants à venir...
+        </div>
+      )}
+
+      {/* Modal création catégorie */}
+      {showCategoryModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.5)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: 20
+          }}
+          onClick={() => {
+            setShowCategoryModal(false);
+            setNewCategoryName('');
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 450,
+              background: 'white',
+              borderRadius: 16,
+              padding: 24,
+              boxShadow: '0 20px 50px rgba(0,0,0,0.3)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{
+              fontSize: 20,
+              fontWeight: 700,
+              color: '#111827',
+              marginBottom: 8
+            }}>
+              Nouvelle catégorie
+            </h3>
+            <p style={{
+              fontSize: 14,
+              color: '#6B7280',
+              marginBottom: 20,
+              lineHeight: 1.5
+            }}>
+              Créez une nouvelle catégorie pour organiser vos programmes.
+            </p>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{
+                display: 'block',
+                fontSize: 13,
+                fontWeight: 600,
+                color: '#374151',
+                marginBottom: 6
+              }}>
+                Nom de la catégorie *
+              </label>
+              <input
+                type="text"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder="Ex: Sécurité routière"
+                autoFocus
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && newCategoryName.trim()) {
+                    e.preventDefault();
+                    handleCreateCategory();
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  border: '1px solid #E5E7EB',
+                  fontSize: 14,
+                  outline: 'none',
+                  transition: 'all 0.2s',
+                  boxSizing: 'border-box'
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#3B82F6';
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#E5E7EB';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              />
+            </div>
+
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: 12,
+              marginTop: 24
+            }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCategoryModal(false);
+                  setNewCategoryName('');
+                }}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: 8,
+                  border: '1px solid #E5E7EB',
+                  background: '#F9FAFB',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateCategory}
+                disabled={!newCategoryName.trim() || isCreatingCategory}
+                style={{
+                  padding: '10px 24px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #3B82F6, #60A5FA)',
+                  color: 'white',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: !newCategoryName.trim() || isCreatingCategory ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s',
+                  opacity: !newCategoryName.trim() || isCreatingCategory ? 0.7 : 1
+                }}
+              >
+                {isCreatingCategory ? 'Création...' : 'Créer'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

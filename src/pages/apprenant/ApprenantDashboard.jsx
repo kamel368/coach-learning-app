@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, getDocs, collection } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
 import { getAllUserProgress, calculateGlobalProgress, getUserAssignedProgramsWithDetails } from '../../services/progressionService';
 import { BookOpen, TrendingUp, ArrowRight, Clock, CheckCircle2, Zap, Flame, Trophy, Award, ChevronRight } from 'lucide-react';
@@ -18,6 +18,7 @@ export default function ApprenantDashboard() {
   const [globalProgress, setGlobalProgress] = useState(0);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState('');
+  const [categories, setCategories] = useState([]); // Liste des catégories
 
   // Mode "Voir comme"
   const user = auth.currentUser;
@@ -130,6 +131,26 @@ export default function ApprenantDashboard() {
         progress: p.readingProgress
       })));
       
+      // Charger les catégories
+      try {
+        let categoriesSnap;
+        if (organizationId) {
+          categoriesSnap = await getDocs(collection(db, "organizations", organizationId, "categories"));
+        } else {
+          categoriesSnap = await getDocs(collection(db, "categories"));
+        }
+        
+        const categoriesList = categoriesSnap.docs.map(d => ({
+          id: d.id,
+          ...d.data()
+        }));
+        setCategories(categoriesList);
+        console.log('📂 Catégories chargées:', categoriesList.length);
+      } catch (error) {
+        console.error('❌ Erreur chargement catégories:', error);
+        setCategories([]);
+      }
+      
       setPrograms(programsWithProgress);
 
       // Charger la progression utilisateur (utiliser targetUserId en mode viewAs)
@@ -197,6 +218,52 @@ export default function ApprenantDashboard() {
     } else {
       return { label: 'Continuer', color: '#8b5cf6' };
     }
+  }
+
+  // Grouper les programmes par catégorie
+  function groupProgramsByCategory() {
+    const grouped = {};
+    
+    programs.forEach(program => {
+      const categoryId = program.categoryId || 'uncategorized';
+      if (!grouped[categoryId]) {
+        grouped[categoryId] = [];
+      }
+      grouped[categoryId].push(program);
+    });
+    
+    return grouped;
+  }
+
+  // Obtenir le nom d'une catégorie
+  function getCategoryName(categoryId) {
+    if (categoryId === 'uncategorized') return 'Sans catégorie';
+    const category = categories.find(c => c.id === categoryId);
+    return category ? category.label : 'Catégorie inconnue';
+  }
+
+  // Obtenir l'icône d'une catégorie
+  function getCategoryIcon(categoryId) {
+    const icons = {
+      'uncategorized': '📁',
+      'commerce': '📊',
+      'rh': '👥',
+      'management': '💼',
+      'formation': '🎓',
+      'leadership': '🎯',
+    };
+    
+    // Chercher par ID exact ou par label partiel
+    const category = categories.find(c => c.id === categoryId);
+    const label = category?.label?.toLowerCase() || '';
+    
+    if (label.includes('commerc')) return '📊';
+    if (label.includes('rh') || label.includes('ressources')) return '👥';
+    if (label.includes('manage') || label.includes('direction')) return '💼';
+    if (label.includes('formation') || label.includes('enseign')) return '🎓';
+    if (label.includes('leader')) return '🎯';
+    
+    return icons[categoryId] || '📚';
   }
 
   if (loading) {
@@ -532,7 +599,7 @@ export default function ApprenantDashboard() {
           </div>
         </div>
 
-        {/* Section programmes */}
+        {/* Section programmes groupés par catégories */}
         <div>
           <div style={{
             display: 'flex',
@@ -541,7 +608,7 @@ export default function ApprenantDashboard() {
             fontSize: apprenantTheme.fontSize['3xl'],
             fontWeight: '800',
             color: apprenantTheme.colors.primary,
-            marginBottom: apprenantTheme.spacing.md,
+            marginBottom: apprenantTheme.spacing.lg,
             paddingLeft: 'clamp(0px, 2vw, 8px)'
           }}>
             <BookOpen size={28} strokeWidth={2.5} />
@@ -584,12 +651,71 @@ export default function ApprenantDashboard() {
               </p>
             </div>
           ) : (
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))',
-              gap: apprenantTheme.spacing.md
-            }}>
-              {programs.map((program) => (
+            <>
+              {(() => {
+                const groupedPrograms = groupProgramsByCategory();
+                const categoryIds = Object.keys(groupedPrograms);
+                
+                // Trier : catégories avec nom d'abord, "uncategorized" à la fin
+                const sortedCategoryIds = categoryIds.sort((a, b) => {
+                  if (a === 'uncategorized') return 1;
+                  if (b === 'uncategorized') return -1;
+                  return getCategoryName(a).localeCompare(getCategoryName(b));
+                });
+
+                return sortedCategoryIds.map(categoryId => {
+                  const categoryPrograms = groupedPrograms[categoryId];
+                  const categoryName = getCategoryName(categoryId);
+                  const categoryIcon = getCategoryIcon(categoryId);
+
+                  return (
+                    <div 
+                      key={categoryId}
+                      style={{
+                        marginBottom: 'clamp(32px, 5vw, 48px)'
+                      }}
+                    >
+                      {/* Header catégorie */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        marginBottom: '20px',
+                        paddingLeft: 'clamp(0px, 2vw, 8px)'
+                      }}>
+                        <div style={{
+                          fontSize: 'clamp(28px, 6vw, 36px)'
+                        }}>
+                          {categoryIcon}
+                        </div>
+                        <div>
+                          <h2 style={{
+                            fontSize: 'clamp(18px, 4vw, 22px)',
+                            fontWeight: '700',
+                            color: apprenantTheme.colors.textPrimary,
+                            margin: 0,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px'
+                          }}>
+                            {categoryName}
+                          </h2>
+                          <p style={{
+                            fontSize: 'clamp(12px, 2.5vw, 14px)',
+                            color: apprenantTheme.colors.textSecondary,
+                            margin: 0
+                          }}>
+                            {categoryPrograms.length} programme{categoryPrograms.length > 1 ? 's' : ''}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Grille programmes */}
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))',
+                        gap: apprenantTheme.spacing.md
+                      }}>
+                        {categoryPrograms.map((program) => (
                 <div
                   key={program.id}
                   style={{
@@ -819,7 +945,12 @@ export default function ApprenantDashboard() {
                   </button>
                 </div>
               ))}
-            </div>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </>
           )}
         </div>
       </div>
