@@ -10,8 +10,6 @@ export type BlockType =
   | "video"
   | "lessonLink";
 
-export type LessonStatus = "draft" | "published" | "suspended";
-
 export type BaseBlock = {
   id: string;        // uuid
   type: BlockType;
@@ -93,7 +91,7 @@ export type Lesson = {
   id: string;
   chapterId: string;
   title: string;
-  status: LessonStatus;
+  hidden?: boolean;
   blocks: Block[];
   createdAt?: any;
   updatedAt?: any;

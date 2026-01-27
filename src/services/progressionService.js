@@ -281,12 +281,12 @@ export async function getUserAssignedProgramsWithDetails(userId, organizationId 
     const assignedPrograms = allPrograms.filter(p => assignedProgramIds.includes(p.id));
     console.log('✅ Assigned programs found:', assignedPrograms.length);
     
-    // 4. Pour chaque programme, compter les leçons
+    // 4. Pour chaque programme, compter les leçons VISIBLES
     const programsWithLessons = await Promise.all(
       assignedPrograms.map(async (program) => {
         let totalLessons = 0;
         
-        // Compter les leçons dans tous les chapters (depuis l'organisation si disponible)
+        // Compter les leçons dans tous les chapters VISIBLES (depuis l'organisation si disponible)
         let modulesSnap;
         if (userOrgId) {
           modulesSnap = await getDocs(
@@ -299,6 +299,14 @@ export async function getUserAssignedProgramsWithDetails(userId, organizationId 
         }
         
         for (const chapterDoc of modulesSnap.docs) {
+          const chapterData = chapterDoc.data();
+          
+          // ✅ Exclure les chapitres masqués
+          if (chapterData.hidden === true) {
+            console.log(`  🚫 Chapitre masqué ignoré: ${chapterData.name || chapterData.title}`);
+            continue;
+          }
+          
           let lessonsSnap;
           if (userOrgId) {
             lessonsSnap = await getDocs(
@@ -309,10 +317,17 @@ export async function getUserAssignedProgramsWithDetails(userId, organizationId 
               collection(db, 'programs', program.id, 'chapitres', chapterDoc.id, 'lessons')
             );
           }
-          totalLessons += lessonsSnap.size;
+          
+          // ✅ Filtrer les leçons masquées
+          const visibleLessonsCount = lessonsSnap.docs.filter(lessonDoc => {
+            const lessonData = lessonDoc.data();
+            return lessonData.hidden !== true;
+          }).length;
+          
+          totalLessons += visibleLessonsCount;
         }
         
-        console.log(`  → ${program.name || program.title}: ${totalLessons} leçons`);
+        console.log(`  → ${program.name || program.title}: ${totalLessons} leçons visibles`);
         
         return {
           ...program,

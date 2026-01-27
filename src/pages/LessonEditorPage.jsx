@@ -417,52 +417,6 @@ export default function LessonEditorPage() {
           </div>
 
           {/* Divider */}
-          <div style={{
-            width: 1,
-            height: 32,
-            background: '#e2e8f0'
-          }} />
-
-          {/* Statut avec pastille */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {/* Pastille de couleur */}
-            <span style={{
-              width: 10,
-              height: 10,
-              borderRadius: '50%',
-              backgroundColor: 
-                lessonData?.lesson?.status === 'published' ? '#10b981' :
-                lessonData?.lesson?.status === 'disabled' ? '#ef4444' :
-                '#f59e0b',
-              display: 'inline-block',
-              flexShrink: 0
-            }} />
-            
-            {/* Select */}
-            <select
-              value={lessonData?.lesson?.status || 'draft'}
-              onChange={(e) => {
-                if (lessonData?.setLesson) {
-                  lessonData.setLesson(prev => ({ ...prev, status: e.target.value }));
-                }
-              }}
-              style={{
-                padding: '8px 16px',
-                border: '1px solid #e2e8f0',
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 500,
-                color: '#1e293b',
-                backgroundColor: '#ffffff',
-                cursor: 'pointer',
-                outline: 'none'
-              }}
-            >
-              <option value="draft">Brouillon</option>
-              <option value="published">Publié</option>
-              <option value="disabled">Désactivé</option>
-            </select>
-          </div>
         </div>
 
         {/* Section Droite */}

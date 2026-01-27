@@ -9,11 +9,13 @@ import {
   addDoc,
   deleteDoc,
   doc,
+  updateDoc,
   Timestamp,
 } from "firebase/firestore";
 import { 
   Plus, 
-  Eye, 
+  Eye,
+  EyeOff,
   Edit2, 
   Trash2, 
   BookOpen, 
@@ -32,6 +34,13 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
+// Labels de statut (temporaire - sera remplacé par badges Eye/EyeOff)
+const statusLabels = {
+  published: "Publié",
+  disabled: "Désactivé",
+  draft: "Brouillon",
+};
+
 export default function AdminPrograms() {
   const navigate = useNavigate();
   const { user, organizationId } = useAuth();
@@ -46,7 +55,7 @@ export default function AdminPrograms() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState("");
-  const [status, setStatus] = useState("draft");
+  const [status, setStatus] = useState(false); // false = non publié, true = publié
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   
@@ -54,10 +63,6 @@ export default function AdminPrograms() {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
-
-  // Popup vue (inchangé)
-  const [isViewOpen, setIsViewOpen] = useState(false);
-  const [viewProgram, setViewProgram] = useState(null);
 
   // Hover state pour les boutons
   const [hoveredButton, setHoveredButton] = useState(null);
@@ -173,24 +178,6 @@ export default function AdminPrograms() {
     }
   };
 
-  const statusLabels = {
-    published: "Publié",
-    disabled: "Désactivé",
-    draft: "Brouillon",
-  };
-
-  const getStatusColor = (s) => {
-    if (s === "published") return "#10B981";
-    if (s === "disabled") return "#EF4444";
-    return "#F59E0B";
-  };
-
-  const getStatusBg = (s) => {
-    if (s === "published") return "rgba(16, 185, 129, 0.1)";
-    if (s === "disabled") return "rgba(239, 68, 68, 0.1)";
-    return "rgba(245, 158, 11, 0.1)";
-  };
-
   // Helper pour récupérer l'icône Lucide du métier
   const getMetierIcon = (categoryLabel) => {
     const iconMap = {
@@ -243,17 +230,6 @@ export default function AdminPrograms() {
     setStatus("draft");
     setFormError("");
     setIsModalOpen(true);
-  };
-
-  // Ouvrir vue
-  const handleView = (program) => {
-    setViewProgram(program);
-    setIsViewOpen(true);
-  };
-
-  const closeView = () => {
-    setViewProgram(null);
-    setIsViewOpen(false);
   };
 
   const closeModal = () => {
@@ -393,9 +369,39 @@ export default function AdminPrograms() {
     }
   };
 
+  // Toggle visibilité
+  const handleToggleHidden = async (program) => {
+    const newHidden = !program.hidden;
+    
+    try {
+      const programDocRef = organizationId
+        ? doc(db, "organizations", organizationId, "programs", program.id)
+        : doc(db, "programs", program.id);
+        
+      await updateDoc(programDocRef, {
+        hidden: newHidden,
+        updatedAt: Timestamp.now()
+      });
+      
+      setPrograms((prev) =>
+        prev.map((p) =>
+          p.id === program.id ? { ...p, hidden: newHidden } : p
+        )
+      );
+      
+      console.log(`✅ Programme ${newHidden ? 'masqué' : 'affiché'}`);
+    } catch (err) {
+      console.error(err);
+      alert("Erreur lors de la mise à jour de la visibilité.");
+    }
+  };
+
   // Filtres + tri
   const filteredPrograms = programs.filter((p) => {
-    if (filterStatus !== "all" && (p.status || "draft") !== filterStatus) {
+    if (filterStatus === "visible" && p.hidden === true) {
+      return false;
+    }
+    if (filterStatus === "hidden" && p.hidden !== true) {
       return false;
     }
     if (filterCategory !== "all" && p.categoryId !== filterCategory) {
@@ -415,7 +421,8 @@ export default function AdminPrograms() {
         comparison = getCategoryLabel(a.categoryId).localeCompare(getCategoryLabel(b.categoryId));
         break;
       case "status":
-        comparison = (a.status || "draft").localeCompare(b.status || "draft");
+        // Tri : en ligne d'abord, puis masqués
+        comparison = (a.hidden ? 1 : 0) - (b.hidden ? 1 : 0);
         break;
       case "createdAt":
         comparison = (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0);
@@ -738,9 +745,12 @@ export default function AdminPrograms() {
           }
 
           .action-btn:hover {
-            background: #4F7FFF;
-            color: white;
             transform: translateY(-2px) scale(1.05);
+          }
+
+          .action-btn:not(.edit):not(.delete):hover {
+            background: #4F7FFF !important;
+            color: white !important;
             box-shadow: 0 4px 8px rgba(79, 127, 255, 0.3);
           }
 
@@ -1663,9 +1673,12 @@ export default function AdminPrograms() {
           }
 
           .action-btn:hover {
-            background: #4F7FFF;
-            color: white;
             transform: translateY(-2px) scale(1.05);
+          }
+
+          .action-btn:not(.edit):not(.delete):hover {
+            background: #4F7FFF !important;
+            color: white !important;
             box-shadow: 0 4px 8px rgba(79, 127, 255, 0.3);
           }
 
@@ -1838,16 +1851,15 @@ export default function AdminPrograms() {
         {/* Filtres */}
         <div className="filters-container">
           <div className="filter-group">
-            <label className="filter-label">Statut</label>
+            <label className="filter-label">Visibilité</label>
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
               className="filter-select"
             >
               <option value="all">Tous</option>
-              <option value="draft">En brouillon</option>
-              <option value="published">Publié</option>
-              <option value="disabled">Désactivé</option>
+              <option value="visible">En ligne</option>
+              <option value="hidden">Masqués</option>
             </select>
           </div>
 
@@ -1963,10 +1975,41 @@ export default function AdminPrograms() {
                       </div>
                     </td>
                     <td>
-                      <span className={`status-badge ${program.status || "draft"}`}>
-                        <span className="status-dot"></span>
-                        {statusLabels[program.status || "draft"]}
-                      </span>
+                      <div style={{ display: 'flex', justifyContent: 'center' }}>
+                        {program.hidden ? (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '6px 12px',
+                            background: '#FEE2E2',
+                            border: '1px solid #FCA5A5',
+                            borderRadius: 8,
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: '#DC2626'
+                          }}>
+                            <EyeOff size={14} strokeWidth={2.5} />
+                            MASQUÉ
+                          </span>
+                        ) : (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '6px 12px',
+                            background: '#DCFCE7',
+                            border: '1px solid #86EFAC',
+                            borderRadius: 8,
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: '#16A34A'
+                          }}>
+                            <Eye size={14} strokeWidth={2.5} />
+                            EN LIGNE
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td>
                       <div className="date-cell">{formatDate(program.createdAt)}</div>
@@ -1987,14 +2030,41 @@ export default function AdminPrograms() {
                           className="action-btn"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleView(program);
+                            handleToggleHidden(program);
                           }}
-                          title="Voir"
+                          title={program.hidden ? "Afficher le programme" : "Masquer le programme"}
+                          style={{
+                            background: program.hidden ? '#FEE2E2' : '#DCFCE7',
+                            color: program.hidden ? '#DC2626' : '#16A34A',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (program.hidden) {
+                              // Masqué → Hover vert (va afficher)
+                              e.currentTarget.style.background = '#10B981';
+                              e.currentTarget.style.color = '#FFFFFF';
+                              e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                              e.currentTarget.style.boxShadow = '0 4px 8px rgba(16, 185, 129, 0.3)';
+                            } else {
+                              // Visible → Hover rouge (va masquer)
+                              e.currentTarget.style.background = '#EF4444';
+                              e.currentTarget.style.color = '#FFFFFF';
+                              e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                              e.currentTarget.style.boxShadow = '0 4px 8px rgba(239, 68, 68, 0.3)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = program.hidden ? '#FEE2E2' : '#DCFCE7';
+                            e.currentTarget.style.color = program.hidden ? '#DC2626' : '#16A34A';
+                            e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                            e.currentTarget.style.boxShadow = 'none';
+                          }}
                         >
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                            <circle cx="12" cy="12" r="3"></circle>
-                          </svg>
+                          {program.hidden ? (
+                            <EyeOff size={20} strokeWidth={2.5} />
+                          ) : (
+                            <Eye size={20} strokeWidth={2.5} />
+                          )}
                         </button>
                         <button
                           className="action-btn edit"
@@ -2172,67 +2242,6 @@ export default function AdminPrograms() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>,
-        modalRoot
-        );
-      })()}
-
-      {/* Popup vue programme (métadonnées) */}
-      {isViewOpen && viewProgram && (() => {
-        const modalRoot = document.getElementById('modal-root');
-        if (!modalRoot) return null;
-        return createPortal(
-        <div className="modal-backdrop" onClick={closeView} style={{ zIndex: 9999 }}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ zIndex: 10000 }}>
-            <h3 className="modal-title">{viewProgram.name}</h3>
-
-            <div className="form-group">
-              <label className="form-label">Catégorie</label>
-              <p style={{ margin: 0, fontSize: 14, color: "#374151" }}>
-                {getCategoryLabel(viewProgram.categoryId)}
-              </p>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Statut</label>
-              <div>
-                <span className={`status-badge ${viewProgram.status || "draft"}`}>
-                  <span className="status-dot"></span>
-                  {statusLabels[viewProgram.status || "draft"]}
-                </span>
-              </div>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-              <div>
-                <label className="form-label">Créé le</label>
-                <p style={{ margin: 0, fontSize: 14, color: "#374151" }}>
-                  {formatDate(viewProgram.createdAt)}
-                </p>
-              </div>
-              <div>
-                <label className="form-label">Modifié le</label>
-                <p style={{ margin: 0, fontSize: 14, color: "#374151" }}>
-                  {formatDate(viewProgram.updatedAt || viewProgram.createdAt)}
-                </p>
-              </div>
-            </div>
-
-            {viewProgram.description && (
-              <div className="form-group">
-                <label className="form-label">Description</label>
-                <p style={{ margin: 0, fontSize: 14, color: "#374151", lineHeight: 1.6 }}>
-                  {viewProgram.description}
-                </p>
-              </div>
-            )}
-
-            <div style={{ display: "flex", justifyContent: "center", marginTop: 24 }}>
-              <button type="button" onClick={closeView} className="submit-button" style={{ width: "100%" }}>
-                Fermer
-              </button>
-            </div>
           </div>
         </div>,
         modalRoot

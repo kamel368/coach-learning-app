@@ -219,7 +219,18 @@ export default function ApprenantChapterDetail() {
         ...doc.data()
       }));
 
-      setLessons(lessonsData);
+      // ✅ Filtrer les leçons masquées
+      const visibleLessons = lessonsData.filter(lesson => {
+        // Leçon explicitement masquée → Masquer
+        if (lesson.hidden === true) {
+          console.log(`🚫 Leçon masquée filtrée: ${lesson.title}`);
+          return false;
+        }
+        
+        return true;
+      });
+
+      setLessons(visibleLessons);
 
       // Récupérer le QCM du chapitre
       const quizzesRef = effectiveOrgId

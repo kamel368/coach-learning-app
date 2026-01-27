@@ -60,7 +60,6 @@ export default function LessonBuilder({ lessonId, chapterId, programId, organiza
           chapterId,
           programId,
           title: 'Nouvelle leçon',
-          status: 'draft',
           blocks: [],
         };
         setLesson(empty);

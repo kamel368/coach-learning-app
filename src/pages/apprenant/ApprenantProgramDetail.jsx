@@ -143,20 +143,36 @@ export default function ApprenantProgramDetail() {
             : collection(db, 'programs', programId, 'chapitres', module.id, 'lessons');
           
           const lessonsSnap = await getDocs(lessonsRef);
-          const lessonIds = lessonsSnap.docs.map(doc => doc.id);
           
-          // Compter combien de leçons de ce chapitre sont complétées
-          const completedInChapter = lessonIds.filter(id => completedLessonsInProgram.includes(id)).length;
+          // ✅ Filtrer les leçons VISIBLES uniquement
+          const allLessons = lessonsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          const visibleLessons = allLessons.filter(lesson => lesson.hidden !== true);
+          const visibleLessonIds = visibleLessons.map(l => l.id);
+          
+          // Compter combien de leçons VISIBLES de ce chapitre sont complétées
+          const completedInChapter = visibleLessonIds.filter(id => completedLessonsInProgram.includes(id)).length;
           
           return {
             ...module,
             completedLessons: completedInChapter,
-            percentage: lessonIds.length > 0 ? Math.round((completedInChapter / lessonIds.length) * 100) : 0
+            totalLessons: visibleLessonIds.length,
+            percentage: visibleLessonIds.length > 0 ? Math.round((completedInChapter / visibleLessonIds.length) * 100) : 0
           };
         })
       );
 
-      setModules(modulesWithProgress);
+      // ✅ Filtrer les chapitres masqués
+      const visibleChapters = modulesWithProgress.filter(chapter => {
+        // Chapitre explicitement masqué → Masquer
+        if (chapter.hidden === true) {
+          console.log(`🚫 Chapitre masqué filtré: ${chapter.name || chapter.title}`);
+          return false;
+        }
+        
+        return true;
+      });
+
+      setModules(visibleChapters);
 
       // Récupérer la progression utilisateur (utiliser targetUserId en mode viewAs)
       const progress = await getUserProgramProgress(targetUserId, programId);

@@ -119,6 +119,39 @@ export default function ApprenantLessonViewer() {
         const lessonData = await getLesson(lessonId, programId, chapterId, effectiveOrgId);
         
         if (lessonData) {
+          // ✅ Vérifier si leçon masquée
+          if (lessonData.hidden === true) {
+            console.log('⚠️ Leçon masquée, redirection vers chapitre...');
+            navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}`);
+            return;
+          }
+
+          // ✅ Vérifier si chapitre masqué
+          const chapterRef = effectiveOrgId
+            ? doc(db, 'organizations', effectiveOrgId, 'programs', programId, 'chapitres', chapterId)
+            : doc(db, 'programs', programId, 'chapitres', chapterId);
+
+          const chapterSnap = await getDoc(chapterRef);
+
+          if (chapterSnap.exists() && chapterSnap.data().hidden === true) {
+            console.log('⚠️ Chapitre masqué, redirection vers programme...');
+            navigate(`/apprenant/programs/${programId}`);
+            return;
+          }
+
+          // ✅ Vérifier si programme masqué
+          const programRef = effectiveOrgId
+            ? doc(db, 'organizations', effectiveOrgId, 'programs', programId)
+            : doc(db, 'programs', programId);
+
+          const programSnap = await getDoc(programRef);
+
+          if (programSnap.exists() && programSnap.data().hidden === true) {
+            console.log('⚠️ Programme masqué, redirection vers dashboard...');
+            navigate('/apprenant/dashboard');
+            return;
+          }
+
           setLesson(lessonData);
           console.log('✅ Leçon chargée avec', lessonData.blocks?.length || 0, 'blocks');
           
@@ -149,9 +182,9 @@ export default function ApprenantLessonViewer() {
       
       const effectiveOrgId = targetOrgId || organizationId;
       
-      // 📊 CORRECTION BUG : Calculer le nombre TOTAL de leçons du programme
+      // 📊 CORRECTION BUG : Calculer le nombre TOTAL de leçons VISIBLES du programme
       // (pas seulement celles du chapitre actuel)
-      console.log('🔍 Calcul du nombre total de leçons du programme...');
+      console.log('🔍 Calcul du nombre total de leçons visibles du programme...');
       
       let totalProgramLessons = 0;
       
@@ -162,17 +195,32 @@ export default function ApprenantLessonViewer() {
       
       const modulesSnap = await getDocs(modulesRef);
       
-      // Pour chaque chapitre, compter les leçons
+      // Pour chaque chapitre VISIBLE, compter les leçons VISIBLES
       for (const chapterDoc of modulesSnap.docs) {
+        const chapterData = chapterDoc.data();
+        
+        // ✅ Exclure les chapitres masqués
+        if (chapterData.hidden === true) {
+          console.log(`  🚫 Chapitre masqué ignoré: ${chapterData.name || chapterData.title}`);
+          continue;
+        }
+        
         const lessonsRef = effectiveOrgId
           ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'chapitres', chapterDoc.id, 'lessons')
           : collection(db, 'programs', programId, 'chapitres', chapterDoc.id, 'lessons');
         
         const lessonsSnap = await getDocs(lessonsRef);
-        totalProgramLessons += lessonsSnap.size;
+        
+        // ✅ Filtrer les leçons masquées
+        const visibleLessonsCount = lessonsSnap.docs.filter(lessonDoc => {
+          const lessonData = lessonDoc.data();
+          return lessonData.hidden !== true;
+        }).length;
+        
+        totalProgramLessons += visibleLessonsCount;
       }
       
-      console.log('📚 Nombre total de leçons du programme:', totalProgramLessons);
+      console.log('📚 Nombre total de leçons visibles du programme:', totalProgramLessons);
       console.log('📖 Nombre de leçons du chapitre actuel:', allLessons.length);
       
       // Marquer la leçon comme terminée avec le VRAI nombre total de leçons
@@ -196,7 +244,7 @@ export default function ApprenantLessonViewer() {
 
       // ✅ Vérifier si programme 100% complété
       if (onProgramCompleted) {
-        // Charger tous les chapitres du programme
+        // Charger tous les chapitres VISIBLES du programme
         const effectiveOrgId = targetOrgId || organizationId;
         const chaptersRef = effectiveOrgId
           ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'chapitres')
@@ -206,15 +254,29 @@ export default function ApprenantLessonViewer() {
         let totalLessonsInProgram = 0;
         
         for (const chapterDoc of chaptersSnap.docs) {
+          const chapterData = chapterDoc.data();
+          
+          // ✅ Exclure les chapitres masqués
+          if (chapterData.hidden === true) {
+            continue;
+          }
+          
           const lessonsRef = effectiveOrgId
             ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'chapitres', chapterDoc.id, 'lessons')
             : collection(db, 'programs', programId, 'chapitres', chapterDoc.id, 'lessons');
           
           const lessonsSnap = await getDocs(lessonsRef);
-          totalLessonsInProgram += lessonsSnap.size;
+          
+          // ✅ Filtrer les leçons masquées
+          const visibleLessonsCount = lessonsSnap.docs.filter(lessonDoc => {
+            const lessonData = lessonDoc.data();
+            return lessonData.hidden !== true;
+          }).length;
+          
+          totalLessonsInProgram += visibleLessonsCount;
         }
         
-        // Si toutes les leçons du programme sont complétées
+        // Si toutes les leçons VISIBLES du programme sont complétées
         if (allCompletedLessons.length >= totalLessonsInProgram) {
           console.log('🎓 Programme 100%, vérification mega bonus...');
           await onProgramCompleted(programId);
@@ -251,8 +313,8 @@ export default function ApprenantLessonViewer() {
         
         const effectiveOrgId = targetOrgId || organizationId;
         
-        // Calculer le nombre total de leçons du programme
-        console.log('🔍 handleNext - Calcul du nombre total de leçons...');
+        // Calculer le nombre total de leçons VISIBLES du programme
+        console.log('🔍 handleNext - Calcul du nombre total de leçons visibles...');
         let totalProgramLessons = 0;
         
         const modulesRef = effectiveOrgId
@@ -262,16 +324,31 @@ export default function ApprenantLessonViewer() {
         const modulesSnap = await getDocs(modulesRef);
         
         for (const chapterDoc of modulesSnap.docs) {
+          const chapterData = chapterDoc.data();
+          
+          // ✅ Exclure les chapitres masqués
+          if (chapterData.hidden === true) {
+            console.log(`  🚫 Chapitre masqué ignoré: ${chapterData.name || chapterData.title}`);
+            continue;
+          }
+          
           const lessonsRef = effectiveOrgId
             ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'chapitres', chapterDoc.id, 'lessons')
             : collection(db, 'programs', programId, 'chapitres', chapterDoc.id, 'lessons');
           
           const lessonsSnap = await getDocs(lessonsRef);
-          totalProgramLessons += lessonsSnap.size;
+          
+          // ✅ Filtrer les leçons masquées
+          const visibleLessonsCount = lessonsSnap.docs.filter(lessonDoc => {
+            const lessonData = lessonDoc.data();
+            return lessonData.hidden !== true;
+          }).length;
+          
+          totalProgramLessons += visibleLessonsCount;
         }
         
         console.log('📖 handleNext - Marquage leçon comme lue:', lessonId);
-        console.log('📚 Total leçons du programme:', totalProgramLessons);
+        console.log('📚 Total leçons visibles du programme:', totalProgramLessons);
         
         // Marquer la leçon actuelle comme terminée
         await markLessonCompleted(targetUserId, programId, lessonId, totalProgramLessons, effectiveOrgId);

@@ -13,7 +13,7 @@ import {
   deleteDoc,
   setDoc,
 } from "firebase/firestore";
-import { Plus, FileText, HelpCircle, BrainCircuit, ListTree, Eye, Edit2, FileEdit, Trash2, GripVertical, Pencil, MoreVertical, ChevronDown, Layers, ArrowLeft } from "lucide-react";
+import { Plus, FileText, HelpCircle, BrainCircuit, ListTree, Eye, EyeOff, Edit2, FileEdit, Trash2, GripVertical, Pencil, MoreVertical, ChevronDown, Layers, ArrowLeft } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 export default function AdminProgramDetail() {
@@ -23,7 +23,6 @@ export default function AdminProgramDetail() {
 
   const [program, setProgram] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [statusSaving, setStatusSaving] = useState(false);
   const [error, setError] = useState("");
   const [categories, setCategories] = useState([]); // Liste des catégories
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -163,12 +162,6 @@ export default function AdminProgramDetail() {
     }
   };
 
-  const getStatusDotColor = (s) => {
-    if (s === "published") return "#22c55e";
-    if (s === "disabled") return "#ef4444";
-    return "#facc15";
-  };
-
   const handleTitleChange = (e) => {
     const value = e.target.value;
     setProgram((prev) => (prev ? { ...prev, name: value } : prev));
@@ -193,27 +186,50 @@ export default function AdminProgramDetail() {
     }
   };
 
-  const handleStatusChange = async (e) => {
-    if (!program) return;
-    const newStatus = e.target.value;
+  const handleToggleChapterHidden = async (chapterId, hidden) => {
     try {
-      setStatusSaving(true);
       const ref = organizationId
-        ? doc(db, "organizations", organizationId, "programs", program.id)
-        : doc(db, "programs", program.id);
+        ? doc(db, "organizations", organizationId, "programs", program.id, "chapitres", chapterId)
+        : doc(db, "programs", program.id, "chapitres", chapterId);
       
       await updateDoc(ref, {
-        status: newStatus,
+        hidden: hidden,
         updatedAt: Timestamp.now(),
       });
       
-      setProgram((prev) => (prev ? { ...prev, status: newStatus } : prev));
-      console.log('✅ Statut du programme mis à jour:', newStatus);
+      setChapters((prev) =>
+        prev.map((c) => (c.id === chapterId ? { ...c, hidden: hidden } : c))
+      );
+      
+      console.log('✅ Chapitre', hidden ? 'masqué' : 'affiché');
     } catch (err) {
       console.error(err);
-      alert("Erreur lors du changement de statut.");
-    } finally {
-      setStatusSaving(false);
+      alert("Erreur lors de la mise à jour de la visibilité.");
+    }
+  };
+
+  const handleToggleLessonHidden = async (chapterId, lessonId, hidden) => {
+    try {
+      const ref = organizationId
+        ? doc(db, "organizations", organizationId, "programs", program.id, "chapitres", chapterId, "lessons", lessonId)
+        : doc(db, "programs", program.id, "chapitres", chapterId, "lessons", lessonId);
+      
+      await updateDoc(ref, {
+        hidden: hidden,
+        updatedAt: Timestamp.now(),
+      });
+      
+      setLessonsByChapter((prev) => ({
+        ...prev,
+        [chapterId]: (prev[chapterId] || []).map((l) =>
+          l.id === lessonId ? { ...l, hidden: hidden } : l
+        ),
+      }));
+      
+      console.log('✅ Leçon', hidden ? 'masquée' : 'affichée');
+    } catch (err) {
+      console.error(err);
+      alert("Erreur lors de la mise à jour de la visibilité.");
     }
   };
 
@@ -348,7 +364,6 @@ export default function AdminProgramDetail() {
     const ref = await addDoc(lessonsCollection, {
       title,
         order: nextOrder,
-        status: "draft",
         editorData: null,
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
@@ -359,7 +374,6 @@ export default function AdminProgramDetail() {
       id: ref.id,
       title,
       order: nextOrder,
-      status: "draft",
     };
 
     setLessonsByChapter((prev) => ({
@@ -1029,41 +1043,6 @@ export default function AdminProgramDetail() {
               </button>
             </div>
           </div>
-
-          {/* Sélecteur Statut */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              fontSize: 13,
-            }}
-          >
-            <span
-              style={{
-                width: 10,
-                height: 10,
-                borderRadius: "999px",
-                background: getStatusDotColor(program.status),
-              }}
-            />
-            <span>Statut :</span>
-          </div>
-          <select
-            value={program.status || "draft"}
-            onChange={handleStatusChange}
-            disabled={statusSaving}
-            style={{
-              padding: "6px 8px",
-              borderRadius: 999,
-              border: "1px solid #d1d5db",
-              fontSize: 13,
-            }}
-          >
-            <option value="draft">Brouillon</option>
-            <option value="published">Publié</option>
-            <option value="disabled">Désactivé</option>
-          </select>
         </div>
       </div>
 
@@ -1254,6 +1233,25 @@ export default function AdminProgramDetail() {
                           {chapter.title}
                         </span>
                         
+                        {/* Badge "Masqué" si hidden */}
+                        {chapter.hidden && (
+                          <span style={{
+                            padding: '4px 10px',
+                            background: '#FEE2E2',
+                            border: '1px solid #FCA5A5',
+                            borderRadius: 6,
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: '#DC2626',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            flexShrink: 0
+                          }}>
+                            ❌ Masqué
+                          </span>
+                        )}
+                        
                         {/* Nombre de leçons */}
                         <span style={{ 
                           fontSize: 14, 
@@ -1276,6 +1274,72 @@ export default function AdminProgramDetail() {
                         />
                       </button>
                     </div>
+
+                    {/* Toggle Visibilité Chapitre - Desktop uniquement */}
+                    <button
+                      type="button"
+                      className="desktop-only"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleChapterHidden(chapter.id, !chapter.hidden);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '6px 12px',
+                        background: chapter.hidden ? '#FEE2E2' : '#DCFCE7',
+                        border: `1px solid ${chapter.hidden ? '#FCA5A5' : '#86EFAC'}`,
+                        borderRadius: 8,
+                        marginLeft: 'auto',
+                        marginRight: 12,
+                        cursor: 'pointer',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: chapter.hidden ? '#DC2626' : '#16A34A',
+                        transition: 'all 0.2s',
+                        boxShadow: chapter.hidden 
+                          ? '0 2px 4px rgba(239, 68, 68, 0.15)' 
+                          : '0 2px 4px rgba(16, 185, 129, 0.15)'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (chapter.hidden) {
+                          e.currentTarget.style.background = '#10B981';
+                          e.currentTarget.style.borderColor = '#10B981';
+                          e.currentTarget.style.color = '#FFFFFF';
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                          e.currentTarget.style.boxShadow = '0 4px 8px rgba(16, 185, 129, 0.3)';
+                        } else {
+                          e.currentTarget.style.background = '#EF4444';
+                          e.currentTarget.style.borderColor = '#EF4444';
+                          e.currentTarget.style.color = '#FFFFFF';
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                          e.currentTarget.style.boxShadow = '0 4px 8px rgba(239, 68, 68, 0.3)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = chapter.hidden ? '#FEE2E2' : '#DCFCE7';
+                        e.currentTarget.style.borderColor = chapter.hidden ? '#FCA5A5' : '#86EFAC';
+                        e.currentTarget.style.color = chapter.hidden ? '#DC2626' : '#16A34A';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = chapter.hidden 
+                          ? '0 2px 4px rgba(239, 68, 68, 0.15)' 
+                          : '0 2px 4px rgba(16, 185, 129, 0.15)';
+                      }}
+                      title={chapter.hidden ? 'Afficher le chapitre' : 'Masquer le chapitre'}
+                    >
+                      {chapter.hidden ? (
+                        <>
+                          <EyeOff size={14} strokeWidth={2.5} />
+                          <span>MASQUÉ</span>
+                        </>
+                      ) : (
+                        <>
+                          <Eye size={14} strokeWidth={2.5} />
+                          <span>EN LIGNE</span>
+                        </>
+                      )}
+                    </button>
 
                     {/* Partie droite : Actions */}
                     <div style={{
@@ -1608,6 +1672,36 @@ export default function AdminProgramDetail() {
                               Ajouter Exercice IA
                             </button>
 
+                            <button
+                              onClick={() => {
+                                handleToggleChapterHidden(chapter.id, !chapter.hidden);
+                                setMobileMenuOpen(null);
+                              }}
+                              style={{
+                                width: '100%',
+                                padding: '10px 12px',
+                                background: 'none',
+                                border: 'none',
+                                textAlign: 'left',
+                                cursor: 'pointer',
+                                borderRadius: 6,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                fontSize: 14,
+                                color: chapter.hidden ? '#10B981' : '#EF4444'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#f8fafc';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'none';
+                              }}
+                            >
+                              <span style={{ fontSize: 16 }}>{chapter.hidden ? '👁️' : '🚫'}</span>
+                              {chapter.hidden ? 'Afficher le chapitre' : 'Masquer le chapitre'}
+                            </button>
+
                             <div style={{
                               height: 1,
                               background: '#e2e8f0',
@@ -1804,6 +1898,22 @@ export default function AdminProgramDetail() {
                                   >
                                     {l.title}
                                   </span>
+                                  
+                                  {/* Badge "Masquée" si hidden */}
+                                  {l.hidden && (
+                                    <span style={{
+                                      padding: '3px 8px',
+                                      background: '#FEE2E2',
+                                      border: '1px solid #FCA5A5',
+                                      borderRadius: 4,
+                                      fontSize: 10,
+                                      fontWeight: 600,
+                                      color: '#DC2626',
+                                      marginLeft: 8
+                                    }}>
+                                      MASQUÉE
+                                    </span>
+                                  )}
                                 </div>
 
                                 {/* ACTIONS - TAILLES CORRIGÉES */}
@@ -1814,45 +1924,50 @@ export default function AdminProgramDetail() {
                                     alignItems: "center",
                                   }}
                                 >
-                                  {/* Bouton Voir/Prévisualiser */}
+                                  {/* Bouton Toggle Visibilité */}
                                   <button
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      navigate(
-                                        `/programs/${program.id}/chapitres/${chapter.id}/lessons/${l.id}/preview`
-                                      );
+                                      handleToggleLessonHidden(chapter.id, l.id, !l.hidden);
                                     }}
-                                    title="Prévisualiser la leçon"
+                                    title={l.hidden ? "Afficher la leçon" : "Masquer la leçon"}
                                     style={{
                                       width: "40px",
                                       height: "40px",
                                       border: "none",
-                                      background: "#F9FAFB",
+                                      background: l.hidden ? "#FEE2E2" : "#F9FAFB",
                                       borderRadius: "8px",
                                       display: "flex",
                                       alignItems: "center",
                                       justifyContent: "center",
                                       cursor: "pointer",
                                       transition: "all 0.2s ease",
-                                      color: "#6B7280",
+                                      color: l.hidden ? "#DC2626" : "#6B7280",
                                       flexShrink: 0,
                                       padding: 0,
                                     }}
                                     onMouseEnter={(e) => {
-                                      e.currentTarget.style.background = "#4F7FFF";
-                                      e.currentTarget.style.color = "#FFFFFF";
+                                      if (l.hidden) {
+                                        e.currentTarget.style.background = "#10B981";
+                                        e.currentTarget.style.color = "#FFFFFF";
+                                      } else {
+                                        e.currentTarget.style.background = "#EF4444";
+                                        e.currentTarget.style.color = "#FFFFFF";
+                                      }
                                       e.currentTarget.style.transform = "translateY(-2px) scale(1.05)";
-                                      e.currentTarget.style.boxShadow = "0 4px 8px rgba(79, 127, 255, 0.3)";
+                                      e.currentTarget.style.boxShadow = l.hidden 
+                                        ? "0 4px 8px rgba(16, 185, 129, 0.3)"
+                                        : "0 4px 8px rgba(239, 68, 68, 0.3)";
                                     }}
                                     onMouseLeave={(e) => {
-                                      e.currentTarget.style.background = "#F9FAFB";
-                                      e.currentTarget.style.color = "#6B7280";
+                                      e.currentTarget.style.background = l.hidden ? "#FEE2E2" : "#F9FAFB";
+                                      e.currentTarget.style.color = l.hidden ? "#DC2626" : "#6B7280";
                                       e.currentTarget.style.transform = "translateY(0) scale(1)";
                                       e.currentTarget.style.boxShadow = "none";
                                     }}
                                   >
-                                    <Eye size={20} strokeWidth={2.5} />
+                                    {l.hidden ? <EyeOff size={20} strokeWidth={2.5} /> : <Eye size={20} strokeWidth={2.5} />}
                                   </button>
 
                                   {/* Bouton Modifier (éditeur) */}

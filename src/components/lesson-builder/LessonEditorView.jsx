@@ -181,7 +181,7 @@ export default function LessonEditorView({
           placeholder="Titre de la leçon"
         />
         <p style={{ fontSize: '13px', color: '#6b7280' }}>
-          {blocks.length} blocs • statut : {lesson.status}
+          {blocks.length} blocs
         </p>
       </div>
       {/* Liste de blocs */}

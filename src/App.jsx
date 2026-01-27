@@ -14,6 +14,7 @@ import './scripts/cleanupOldStructure';
 import './scripts/resetDatabasePartial';
 import './scripts/resetDatabaseTotal';
 import './scripts/cleanupModulesCollections';
+import './utils/migrateProgramStatus';
 import Sidebar, { SIDEBAR_WIDTH, SIDEBAR_WIDTH_COLLAPSED } from "./components/Sidebar";
 import { useState, useEffect } from "react";
 

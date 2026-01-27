@@ -97,14 +97,22 @@ export default function ApprenantDashboard() {
             if (progressSnap.exists()) {
               const data = progressSnap.data();
               const completedCount = data.completedLessons?.length || 0;
+              
+              // ✅ Recalculer le pourcentage avec le nombre de leçons VISIBLES
+              const readingProgress = program.totalLessons > 0 
+                ? Math.min(Math.round((completedCount / program.totalLessons) * 100), 100)
+                : 0;
+              
               console.log(`  → ${program.name}: ${completedCount}/${program.totalLessons} leçons complétées`, {
                 completedLessons: data.completedLessons,
-                percentage: data.percentage
+                oldPercentage: data.percentage,
+                newPercentage: readingProgress,
+                totalVisibleLessons: program.totalLessons
               });
               return {
                 ...program,
                 completedLessons: completedCount,
-                readingProgress: data.percentage || 0
+                readingProgress
               };
             }
             console.log(`  → ${program.name}: 0/${program.totalLessons} leçons (pas de progression)`,);
@@ -151,39 +159,56 @@ export default function ApprenantDashboard() {
         setCategories([]);
       }
       
-      setPrograms(programsWithProgress);
+      // ✅ Filtrer les programmes masqués
+      const visiblePrograms = programsWithProgress.filter(program => {
+        // Programme explicitement masqué → Masquer
+        if (program.hidden === true) {
+          console.log(`🚫 Programme masqué filtré: ${program.name}`);
+          return false;
+        }
+        
+        return true;
+      });
+      
+      setPrograms(visiblePrograms);
 
       // Charger la progression utilisateur (utiliser targetUserId en mode viewAs)
       const allProgress = await getAllUserProgress(targetUserId);
       setUserProgress(allProgress);
 
-      // Calculer progression globale pour TOUS les programmes assignés (même ceux à 0%)
-      const userDocSnap = await getDoc(doc(db, 'users', targetUserId));
-      const assignedProgramIds = userDocSnap.exists() ? (userDocSnap.data().assignedPrograms || []) : [];
+      // Calculer progression globale pour TOUS les programmes VISIBLES assignés
+      console.log('📚 Calcul progression globale sur programmes visibles...');
       
-      console.log('📚 Programmes assignés (IDs):', assignedProgramIds);
-      
-      // Pour CHAQUE programme, récupérer sa progression (0 si pas de document)
+      // ✅ Utiliser visiblePrograms qui ont déjà le totalLessons correct
       const progressions = await Promise.all(
-        assignedProgramIds.map(async (programId) => {
+        visiblePrograms.map(async (program) => {
           try {
             // ✅ Nouvelle structure: /userProgress/{userId}__{programId}
-            const progressDocId = `${targetUserId}__${programId}`;
+            const progressDocId = `${targetUserId}__${program.id}`;
             const progressRef = doc(db, 'userProgress', progressDocId);
             const progressSnap = await getDoc(progressRef);
             
-            if (progressSnap.exists() && progressSnap.data().percentage !== undefined) {
-              return progressSnap.data().percentage;
+            if (progressSnap.exists()) {
+              const data = progressSnap.data();
+              const completedCount = data.completedLessons?.length || 0;
+              
+              // ✅ Recalculer le pourcentage avec les leçons VISIBLES
+              const percentage = program.totalLessons > 0
+                ? Math.min(Math.round((completedCount / program.totalLessons) * 100), 100)
+                : 0;
+              
+              console.log(`  → ${program.name}: ${percentage}% (${completedCount}/${program.totalLessons})`);
+              return percentage;
             }
             return 0; // Programme pas commencé = 0%
           } catch (error) {
-            console.error('Erreur récupération progression pour', programId, error);
+            console.error('Erreur récupération progression pour', program.id, error);
             return 0;
           }
         })
       );
       
-      console.log('📊 Progressions individuelles:', progressions);
+      console.log('📊 Progressions individuelles (recalculées):', progressions);
       
       // Calculer la MOYENNE (pas la somme !)
       const globalProg = progressions.length > 0
