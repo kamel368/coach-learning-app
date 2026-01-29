@@ -2,6 +2,7 @@
 import './lib/supabase';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { SupabaseAuthProvider } from "./contexts/SupabaseAuthContext";
 import { ToastProvider } from "./contexts/ToastContext";
 import ToastContainer from "./components/Toast/ToastContainer";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -49,6 +50,9 @@ import ExerciseEditorPage from "./pages/admin/ExerciseEditorPage";
 
 // ✅ Page temporaire de nettoyage Firebase
 import CleanupPage from "./pages/CleanupPage";
+
+// ✅ Page de test Supabase Auth
+import SupabaseTest from "./pages/SupabaseTest";
 
 // Pages Apprenant - V2
 import ApprenantLayout from './components/apprenant/ApprenantLayout';
@@ -161,6 +165,9 @@ function AppContent() {
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<RegisterPage />} />
+          
+          {/* ✅ Page de test Supabase Auth */}
+          <Route path="/supabase-test" element={<SupabaseTest />} />
 
           {/* Routes Super Admin avec layout spécifique */}
           <Route
@@ -392,11 +399,13 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <ToastProvider>
-        <Router>
-          <AppContent />
-        </Router>
-      </ToastProvider>
+      <SupabaseAuthProvider>
+        <ToastProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </ToastProvider>
+      </SupabaseAuthProvider>
     </AuthProvider>
   );
 }
