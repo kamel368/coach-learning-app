@@ -20,6 +20,7 @@
     "@editorjs/list": "^2.0.9",
     "@editorjs/paragraph": "^2.11.7",
     "@google/generative-ai": "^0.24.1",
+    "@supabase/supabase-js": "^2.93.3",
     "@tailwindcss/vite": "^4.1.18",
     "@tinymce/tinymce-react": "^6.3.0",
     "@tiptap/extension-gapcursor": "^3.15.3",

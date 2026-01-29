@@ -1,4 +1,5 @@
 // src/App.jsx
+import './lib/supabase';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { ToastProvider } from "./contexts/ToastContext";
