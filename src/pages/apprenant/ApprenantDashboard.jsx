@@ -9,6 +9,8 @@ import { useGamification, LEVELS, BADGES_CONFIG } from '../../hooks/useGamificat
 import { useViewAs } from '../../hooks/useViewAs';
 import ViewAsBanner from '../../components/ViewAsBanner';
 import { useAuth } from '../../context/AuthContext';
+import { getUserAssignedPrograms as getSupabaseAssignedPrograms } from '../../services/supabase/assignments';
+import { useSupabaseAuth } from '../../hooks/useSupabaseAuth';
 
 export default function ApprenantDashboard() {
   const navigate = useNavigate();
@@ -27,6 +29,10 @@ export default function ApprenantDashboard() {
   // Récupérer l'organizationId pour charger les programmes depuis l'organisation
   const { organizationId } = useAuth();
 
+  // ✅ États pour le toggle Firebase/Supabase
+  const [useSupabase, setUseSupabase] = useState(false); // false = Firebase, true = Supabase
+  const { user: supabaseUser, organizationId: supabaseOrgId } = useSupabaseAuth();
+
   // Hook gamification - utiliser targetUserId
   const { 
     gamificationData, 
@@ -38,17 +44,25 @@ export default function ApprenantDashboard() {
 
   // ✅ Recharger les données à chaque changement de location (navigation)
   useEffect(() => {
-    if (organizationId) {
-      console.log('🔄 Rechargement du dashboard (navigation détectée)', {
-        organizationId,
-        targetUserId,
-        locationKey: location.key,
-        pathname: location.pathname,
-        timestamp: new Date().toISOString()
-      });
-      loadData();
+    if (useSupabase) {
+      // Mode Supabase : attendre supabaseUser
+      if (supabaseUser && supabaseOrgId) {
+        loadData();
+      }
+    } else {
+      // Mode Firebase : attendre organizationId
+      if (organizationId) {
+        console.log('🔄 Rechargement du dashboard (navigation détectée)', {
+          organizationId,
+          targetUserId,
+          locationKey: location.key,
+          pathname: location.pathname,
+          timestamp: new Date().toISOString()
+        });
+        loadData();
+      }
     }
-  }, [organizationId, targetUserId, location.pathname, location.key]); // ✅ Ajout de pathname ET key
+  }, [organizationId, supabaseOrgId, supabaseUser, useSupabase, location.key]); // ✅ Ajout useSupabase
   
   // ✅ NOUVEAU: Recharger aussi quand la page redevient visible
   useEffect(() => {
@@ -64,25 +78,72 @@ export default function ApprenantDashboard() {
   }, [organizationId]);
 
   async function loadData() {
+    if (!user && !supabaseUser) {
+      navigate('/login');
+      return;
+    }
+
     try {
-      const user = auth.currentUser;
-      if (!user && !isViewingAs) {
-        navigate('/login');
-        return;
-      }
+      setLoading(true);
 
-      // Récupérer info utilisateur (utiliser targetUserId pour le mode viewAs)
-      const userDoc = await getDoc(doc(db, 'users', targetUserId));
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        setUserName(isViewingAs ? (viewAsUserName || userData.displayName || userData.name) : (userData.displayName || userData.name || 'Apprenant'));
-      }
+      // ========== MODE SUPABASE ==========
+      if (useSupabase) {
+        console.log('🔷 [Dashboard Apprenant] Chargement depuis SUPABASE');
+        
+        if (!supabaseUser || !supabaseOrgId) {
+          console.error('❌ Pas de user ou organization_id Supabase');
+          setLoading(false);
+          return;
+        }
 
-      // Récupérer les programmes affectés à l'utilisateur
-      console.log('🔍 Fetching assigned programs for user:', targetUserId, isViewingAs ? '(Mode Voir comme)' : '');
-      console.log('🏢 Using organizationId:', organizationId);
-      const assignedPrograms = await getUserAssignedProgramsWithDetails(targetUserId, organizationId);
-      console.log('✅ Assigned programs:', assignedPrograms);
+        console.log('🔍 Fetching assigned programs for Supabase user:', supabaseUser.id);
+
+        // Récupérer programmes assignés depuis Supabase
+        const { data: assignedPrograms, error } = await getSupabaseAssignedPrograms(
+          supabaseUser.id,
+          supabaseOrgId
+        );
+
+        if (error) {
+          console.error('❌ Erreur Supabase assignments:', error);
+          setPrograms([]);
+          setLoading(false);
+          return;
+        }
+
+        console.log('✅ Assigned programs (Supabase):', assignedPrograms);
+        setPrograms(assignedPrograms || []);
+
+        // Récupérer le nom de l'utilisateur
+        setUserName(viewAsUserName || supabaseUser.email?.split('@')[0] || 'Apprenant');
+
+        // Progression globale (à implémenter plus tard pour Supabase)
+        setGlobalProgress(0);
+        setUserProgress({});
+
+      } 
+      // ========== MODE FIREBASE (code existant) ==========
+      else {
+        console.log('🔥 [Dashboard Apprenant] Chargement depuis FIREBASE');
+
+        const firebaseUser = auth.currentUser;
+        if (!firebaseUser && !isViewingAs) {
+          navigate('/login');
+          return;
+        }
+
+        // Récupérer info utilisateur (utiliser targetUserId pour le mode viewAs)
+        const userDoc = await getDoc(doc(db, 'users', targetUserId));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUserName(isViewingAs ? (viewAsUserName || userData.displayName || userData.name) : (userData.displayName || userData.name || 'Apprenant'));
+        }
+
+        // Récupérer les programmes affectés à l'utilisateur
+        console.log('🔍 Fetching assigned programs for user:', targetUserId, isViewingAs ? '(Mode Voir comme)' : '');
+        console.log('🏢 Using organizationId:', organizationId);
+        const assignedPrograms = await getUserAssignedProgramsWithDetails(targetUserId, organizationId);
+        console.log('✅ Assigned programs:', assignedPrograms);
 
       // Enrichir chaque programme avec sa progression de lecture
       console.log('📊 Enrichissement des programmes avec progression...');
@@ -219,9 +280,11 @@ export default function ApprenantDashboard() {
       
       // Afficher avec protection max 100%
       setGlobalProgress(Math.min(globalProg, 100));
+      }
 
     } catch (error) {
-      console.error('Erreur chargement données:', error);
+      console.error('❌ Erreur loadData:', error);
+      setPrograms([]);
     } finally {
       setLoading(false);
     }
@@ -313,6 +376,55 @@ export default function ApprenantDashboard() {
     }}>
       {/* Bandeau Mode Voir comme */}
       <ViewAsBanner />
+      
+      {/* Toggle Firebase/Supabase */}
+      <div style={{
+        maxWidth: '1200px',
+        margin: '0 auto',
+        padding: '0 ' + apprenantTheme.spacing.md,
+        paddingTop: apprenantTheme.spacing.md
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: '12px 16px',
+          background: useSupabase ? '#e7f3ff' : '#fff5e6',
+          borderRadius: 8,
+          marginBottom: 20,
+          border: `2px solid ${useSupabase ? '#3b82f6' : '#f59e0b'}`
+        }}>
+          <div style={{ fontSize: 24 }}>
+            {useSupabase ? '🔷' : '🔥'}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
+              Source de données : {useSupabase ? 'Supabase (PostgreSQL)' : 'Firebase (Firestore)'}
+            </div>
+            <div style={{ fontSize: 12, color: '#666' }}>
+              {useSupabase 
+                ? `Organisation: ${supabaseOrgId || 'Non connecté'}` 
+                : `Organisation: ${organizationId || 'Chargement...'}`
+              }
+            </div>
+          </div>
+          <button
+            onClick={() => setUseSupabase(!useSupabase)}
+            style={{
+              padding: '8px 16px',
+              background: useSupabase ? '#3b82f6' : '#f59e0b',
+              color: 'white',
+              border: 'none',
+              borderRadius: 6,
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: 14
+            }}
+          >
+            Basculer vers {useSupabase ? 'Firebase' : 'Supabase'}
+          </button>
+        </div>
+      </div>
       
       <div style={{
         maxWidth: '1200px',

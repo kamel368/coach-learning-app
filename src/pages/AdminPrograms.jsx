@@ -33,7 +33,7 @@ import {
   ListTree,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { getPrograms as getSupabasePrograms } from '../services/supabase/programs';
+import { getPrograms as getSupabasePrograms, createProgram as createSupabaseProgram } from '../services/supabase/programs';
 import { getCategories as getSupabaseCategories } from '../services/supabase/categories';
 import { useSupabaseAuth } from '../hooks/useSupabaseAuth';
 
@@ -383,6 +383,7 @@ export default function AdminPrograms() {
     e.preventDefault();
     setFormError("");
 
+    // Validation
     if (!name.trim()) {
       setFormError("Le nom du programme est obligatoire.");
       return;
@@ -391,46 +392,107 @@ export default function AdminPrograms() {
 
     try {
       setSaving(true);
-      const now = Timestamp.now();
-      
-      // Créer dans l'organisation de l'utilisateur
-      const programsCollection = organizationId 
-        ? collection(db, "organizations", organizationId, "programs")
-        : collection(db, "programs");
-      
-      const ref = await addDoc(programsCollection, {
-        name,
-        description,
-        categoryId: categoryId || null, // ✅ null si pas de catégorie
-        status: status || "draft",
-        createdAt: now,
-        updatedAt: now,
-      });
-      
-      console.log('✅ Programme créé:', ref.id, 'dans', organizationId ? `/organizations/${organizationId}/programs` : '/programs');
 
-      const newProgram = {
-        id: ref.id,
-        name,
-        description,
-        categoryId: categoryId || null,
-        status: status || "draft",
-        createdAt: now,
-        updatedAt: now,
-      };
+      // ========== MODE SUPABASE ==========
+      if (useSupabase) {
+        console.log('🔷 [AdminPrograms] Création programme dans SUPABASE');
+        
+        if (!supabaseOrgId) {
+          setFormError("Organization ID manquant (Supabase)");
+          setSaving(false);
+          return;
+        }
 
-      setPrograms((prev) => [...prev, newProgram]);
-      
-      // Initialiser le compteur de chapitres à 0 pour le nouveau programme
-      setChaptersCount((prev) => ({ ...prev, [ref.id]: 0 }));
+        const programData = {
+          name: name,
+          title: name,
+          description: description,
+          categoryId: categoryId || null,
+          difficulty: 'beginner',
+          duration_minutes: 0,
+          hidden: status === 'draft'
+        };
 
-      closeModal();
+        const { data: newProgram, error } = await createSupabaseProgram(programData, supabaseOrgId);
 
-      // redirection vers la page de détail
-      navigate(`/admin/programs/${ref.id}`);
+        if (error) {
+          console.error('❌ Erreur création Supabase:', error);
+          setFormError("Erreur lors de la création du programme (Supabase): " + error.message);
+          setSaving(false);
+          return;
+        }
+
+        console.log('✅ Programme créé dans Supabase:', newProgram.id);
+
+        // Transformer pour l'affichage
+        const transformedProgram = {
+          id: newProgram.id,
+          name: newProgram.title,
+          description: newProgram.description,
+          categoryId: newProgram.category_id,
+          status: newProgram.hidden ? 'draft' : 'published',
+          hidden: newProgram.hidden,
+          createdAt: { seconds: new Date(newProgram.created_at).getTime() / 1000 },
+          updatedAt: { seconds: new Date(newProgram.updated_at).getTime() / 1000 }
+        };
+
+        // Ajouter à la liste (au début)
+        setPrograms((prev) => [transformedProgram, ...prev]);
+        
+        // Initialiser le compteur de chapitres à 0
+        setChaptersCount((prev) => ({ ...prev, [newProgram.id]: 0 }));
+
+        closeModal();
+
+        // Redirection vers la page de détail
+        navigate(`/admin/programs/${newProgram.id}`);
+      } 
+      // ========== MODE FIREBASE (code existant) ==========
+      else {
+        console.log('🔥 [AdminPrograms] Création programme dans FIREBASE');
+        
+        const now = Timestamp.now();
+        
+        // Créer dans l'organisation de l'utilisateur
+        const programsCollection = organizationId 
+          ? collection(db, "organizations", organizationId, "programs")
+          : collection(db, "programs");
+        
+        const ref = await addDoc(programsCollection, {
+          name,
+          description,
+          categoryId: categoryId || null, // ✅ null si pas de catégorie
+          status: status || "draft",
+          createdAt: now,
+          updatedAt: now,
+        });
+        
+        console.log('✅ Programme créé:', ref.id, 'dans', organizationId ? `/organizations/${organizationId}/programs` : '/programs');
+
+        const newProgram = {
+          id: ref.id,
+          name,
+          description,
+          categoryId: categoryId || null,
+          status: status || "draft",
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        setPrograms((prev) => [newProgram, ...prev]);
+        
+        // Initialiser le compteur de chapitres à 0 pour le nouveau programme
+        setChaptersCount((prev) => ({ ...prev, [ref.id]: 0 }));
+
+        closeModal();
+
+        // redirection vers la page de détail
+        navigate(`/admin/programs/${ref.id}`);
+      }
+
     } catch (err) {
-      console.error(err);
-      setFormError("Erreur lors de l'enregistrement du programme.");
+      console.error('❌ Erreur handleSave:', err);
+      setFormError("Erreur lors de l'enregistrement du programme: " + err.message);
     } finally {
       setSaving(false);
     }
