@@ -59,9 +59,7 @@ export default function ApprenantChapterDetail() {
   };
 
   const handleLessonClick = (lessonId) => {
-    // TODO: Navigation vers la page de lecture de leçon
-    console.log('Navigation vers leçon:', lessonId);
-    alert('Navigation vers la leçon - À implémenter prochainement !');
+    navigate(`/apprenant/programs/${programId}/chapters/${chapterId}/lessons/${lessonId}`);
   };
 
   const getCompletionStats = () => {
