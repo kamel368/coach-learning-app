@@ -240,7 +240,7 @@ function AppContent() {
 
           {/* ✅ Édition riche React-Quill d'une leçon (PLEIN ÉCRAN) */}
           <Route
-            path="/admin/programs/:programId/chapitres/:chapterId/lessons/:lessonId/edit"
+            path="/admin/programs/:programId/chapters/:chapterId/lessons/:lessonId/edit"
             element={
               <ProtectedRoute>
                 <LessonEditorPage />
@@ -250,7 +250,7 @@ function AppContent() {
 
           {/* ✅ Builder d'exercices (PLEIN ÉCRAN) */}
           <Route
-            path="/admin/programs/:programId/chapitres/:chapterId/exercises"
+            path="/admin/programs/:programId/chapters/:chapterId/exercises"
             element={
               <ProtectedRoute>
                 <ExerciseEditorPage />
@@ -309,28 +309,28 @@ function AppContent() {
             } />
             
             {/* ✅ Détail d'un chapitre */}
-            <Route path="programs/:programId/chapitres/:chapterId" element={
+            <Route path="programs/:programId/chapters/:chapterId" element={
               <ProtectedRoute>
                 <ApprenantChapterDetail />
               </ProtectedRoute>
             } />
             
             {/* ✅ Exercices d'un chapitre */}
-            <Route path="programs/:programId/chapitres/:chapterId/exercises" element={
+            <Route path="programs/:programId/chapters/:chapterId/exercises" element={
               <ProtectedRoute>
                 <ApprenantExercises />
               </ProtectedRoute>
             } />
             
             {/* 🔍 DEBUG exercices */}
-            <Route path="programs/:programId/chapitres/:chapterId/exercises/debug" element={
+            <Route path="programs/:programId/chapters/:chapterId/exercises/debug" element={
               <ProtectedRoute>
                 <ExerciseDebugPage />
               </ProtectedRoute>
             } />
             
             {/* ✅ Résultats des exercices */}
-            <Route path="programs/:programId/chapitres/:chapterId/exercises/results" element={
+            <Route path="programs/:programId/chapters/:chapterId/exercises/results" element={
               <ProtectedRoute>
                 <ApprenantExercisesResults />
               </ProtectedRoute>
@@ -365,7 +365,7 @@ function AppContent() {
             } />
             
             {/* ✅ Lecteur de leçon */}
-            <Route path="programs/:programId/chapitres/:chapterId/lessons/:lessonId" element={
+            <Route path="programs/:programId/chapters/:chapterId/lessons/:lessonId" element={
               <ProtectedRoute>
                 <ApprenantLessonViewer />
               </ProtectedRoute>

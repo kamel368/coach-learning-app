@@ -1,898 +1,437 @@
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { useEffect, useState, useRef } from 'react';
-import { collection, getDocs, doc, getDoc, query, where, orderBy } from 'firebase/firestore';
-import { db, auth } from '../../firebase';
-import { ArrowLeft, BookOpen, CheckCircle, AlertCircle, ChevronRight, Clock, Award } from 'lucide-react';
-import { apprenantTheme, buttonStyles } from '../../styles/apprenantTheme';
-import { useGamification } from '../../hooks/useGamification';
-import { useViewAs } from '../../hooks/useViewAs';
-import ViewAsBanner from '../../components/ViewAsBanner';
-import { useAuth } from '../../context/AuthContext';
-// import { cleanObsoleteLessons } from '../../services/progressionService'; // 🚨 DÉSACTIVÉ temporairement
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useSupabaseAuth } from '../../hooks/useSupabaseAuth';
+import { getChapter } from '../../services/supabase/chapters';
+import { getLessonsWithProgress } from '../../services/supabase/lessons';
+import { ArrowLeft, BookOpen, CheckCircle, Clock, Circle, PlayCircle } from 'lucide-react';
 
 export default function ApprenantChapterDetail() {
   const { programId, chapterId } = useParams();
   const navigate = useNavigate();
-  const location = useLocation(); // ✅ Ajout pour détecter les changements de navigation
-  
-  const [program, setProgram] = useState(null);
-  const [chapitre, setModule] = useState(null);
+  const { user } = useSupabaseAuth();
+
+  const [chapter, setChapter] = useState(null);
   const [lessons, setLessons] = useState([]);
-  const [quiz, setQuiz] = useState(null);
-  const [quizAttempts, setQuizAttempts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [completedLessons, setCompletedLessons] = useState([]);
-  const [targetOrgId, setTargetOrgId] = useState(null);
 
-  // Mode "Voir comme"
-  const user = auth.currentUser;
-  const { targetUserId } = useViewAs();
-  const { organizationId } = useAuth();
-
-  // Charger l'organizationId de l'utilisateur cible
   useEffect(() => {
-    const loadTargetOrgId = async () => {
-      const userId = targetUserId;
-      if (userId) {
-        const userDoc = await getDoc(doc(db, "users", userId));
-        if (userDoc.exists()) {
-          setTargetOrgId(userDoc.data().organizationId || organizationId);
-        } else {
-          setTargetOrgId(organizationId);
-        }
-      } else {
-        setTargetOrgId(organizationId);
-      }
-    };
-    loadTargetOrgId();
-  }, [targetUserId, organizationId]);
-
-  // ✅ Recharger les données à chaque affichage de la page
-  useEffect(() => {
-    if (programId && chapterId && targetOrgId) {
-      console.log('🔄 Rechargement du chapitre', {
-        programId,
-        chapterId,
-        targetOrgId,
-        targetUserId,
-        locationKey: location.key,
-        pathname: location.pathname
-      });
-      loadData(); // Charger d'abord les leçons
+    if (user && chapterId) {
+      loadChapterData();
     }
-  }, [programId, chapterId, targetOrgId, targetUserId, location.pathname, location.key]);
-  
-  // ✅ NOUVEAU: Charger la progression UNIQUEMENT quand les leçons sont chargées
-  useEffect(() => {
-    if (lessons.length > 0 && programId && targetOrgId) {
-      console.log('📊 Leçons chargées, maintenant chargement de la progression');
-      
-      // 🧹 Nettoyer les IDs obsolètes AVANT de charger la progression
-      const user = auth.currentUser;
-      const effectiveUserId = targetUserId || user?.uid;
-      
-      if (effectiveUserId) {
-        const validLessonIds = lessons.map(l => l.id);
-        
-        // 🚨 TEMPORAIREMENT DÉSACTIVÉ - Bug de nettoyage
-        // cleanObsoleteLessons(effectiveUserId, programId, validLessonIds)
-        //   .then(() => {
-        //     console.log('✅ Nettoyage terminé, rechargement progression');
-        //     loadProgress(); // ✅ Rechargement explicite après nettoyage
-        //   });
-        
-        // Charger directement la progression
-        loadProgress();
-      } else {
-        // Si pas d'utilisateur, charger quand même la progression
-        loadProgress();
-      }
-    }
-  }, [lessons, programId, targetOrgId, targetUserId]);
+  }, [user, chapterId]);
 
-  // ✅ AJOUT: Recharger la progression quand on revient sur la page (focus)
-  useEffect(() => {
-    const handleFocus = () => {
-      if (lessons.length > 0 && programId) {
-        console.log('👁️ Focus sur la page, rechargement progression');
-        loadProgress();
-      }
-    };
-    
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, [lessons, programId]);
-  
-  // ✅ Recharger aussi quand la page redevient visible (visibilitychange)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden && programId && chapterId && targetOrgId) {
-        console.log('👁️ Page visible, rechargement des données');
-        loadData(); // Recharger tout
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [programId, chapterId, targetOrgId]);
-  
-  // Charger la progression des leçons complétées
-  async function loadProgress() {
+  const loadChapterData = async () => {
     try {
-      const user = auth.currentUser;
-      const effectiveUserId = targetUserId || user?.uid;
-      
-      if (!effectiveUserId || !programId) {
-        console.log('⚠️ loadProgress: userId ou programId manquant');
-        return;
-      }
-      
-      console.log('📖 Chargement progression pour user:', effectiveUserId, 'programme:', programId);
-      
-      // ✅ Nouvelle structure: /userProgress/{userId}__{programId}
-      const progressDocId = `${effectiveUserId}__${programId}`;
-      const progressRef = doc(db, 'userProgress', progressDocId);
-      const progressSnap = await getDoc(progressRef);
-      
-      if (progressSnap.exists()) {
-        const progressData = progressSnap.data();
-        const allCompletedLessons = progressData.completedLessons || [];
-        
-        // ✅ FILTRER pour ne garder que les leçons de CE chapitre
-        const lessonIdsInChapter = lessons.map(l => l.id);
-        const completedLessonsInChapter = allCompletedLessons.filter(id => lessonIdsInChapter.includes(id));
-        
-        setCompletedLessons(completedLessonsInChapter);
-        console.log('✅ Leçons complétées chargées depuis Firebase:', completedLessonsInChapter.length, '/', lessons.length);
-        console.log('   📋 Total dans le programme:', allCompletedLessons.length);
-        console.log('   📋 IDs complétés dans ce chapitre:', completedLessonsInChapter);
-        console.log('   📋 Type des IDs complétés:', completedLessonsInChapter.map(id => typeof id));
-        console.log('   📚 IDs des leçons du chapitre:', lessonIdsInChapter);
-        console.log('   📚 Type des IDs des leçons:', lessonIdsInChapter.map(id => typeof id));
-        
-        // Vérifier les correspondances
-        lessons.forEach(lesson => {
-          const isIncluded = completedLessonsInChapter.includes(lesson.id);
-          console.log(`   ${isIncluded ? '✅' : '❌'} Leçon "${lesson.title}" (${lesson.id}) → ${isIncluded ? 'Complétée' : 'Non complétée'}`);
-        });
-      } else {
-        console.log('ℹ️ Aucune progression trouvée, initialisation à []');
-        setCompletedLessons([]);
-      }
-    } catch (error) {
-      console.error('❌ Erreur chargement progression:', error);
-    }
-  }
+      setLoading(true);
 
-  async function loadData() {
-    try {
-      const user = auth.currentUser;
-      if (!user) {
-        navigate('/login');
+      // 1. Charger le chapitre
+      const { data: chapterData, error: chapterError } = await getChapter(chapterId);
+      
+      if (chapterError) {
+        console.error('Erreur chargement chapitre:', chapterError);
+        setLoading(false);
         return;
       }
 
-      const effectiveOrgId = targetOrgId || organizationId;
-      console.log('📚 Chargement chapitre depuis org:', effectiveOrgId);
-
-      // Récupérer le programme
-      let programDoc;
-      if (effectiveOrgId) {
-        programDoc = await getDoc(doc(db, 'organizations', effectiveOrgId, 'programs', programId));
-      } else {
-        programDoc = await getDoc(doc(db, 'programs', programId));
-      }
-
-      if (programDoc.exists()) {
-        setProgram({ id: programDoc.id, ...programDoc.data() });
-      }
-
-      // Récupérer le chapitre
-      let chapterDoc;
-      if (effectiveOrgId) {
-        chapterDoc = await getDoc(
-          doc(db, 'organizations', effectiveOrgId, 'programs', programId, 'chapitres', chapterId)
-        );
-      } else {
-        chapterDoc = await getDoc(
-          doc(db, 'programs', programId, 'chapitres', chapterId)
-        );
-      }
-      
-      if (!chapterDoc.exists()) {
+      if (!chapterData) {
+        console.error('Chapitre non trouvé');
         navigate(`/apprenant/programs/${programId}`);
         return;
       }
-      
-      setModule({ id: chapterDoc.id, ...chapterDoc.data() });
 
-      // Récupérer les leçons du chapitre
-      const lessonsRef = effectiveOrgId
-        ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'chapitres', chapterId, 'lessons')
-        : collection(db, 'programs', programId, 'chapitres', chapterId, 'lessons');
-      
-      const lessonsQuery = query(lessonsRef, orderBy('order', 'asc'));
-      const lessonsSnap = await getDocs(lessonsQuery);
-      
-      const lessonsData = lessonsSnap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      setChapter(chapterData);
 
-      // ✅ Filtrer les leçons masquées
-      const visibleLessons = lessonsData.filter(lesson => {
-        // Leçon explicitement masquée → Masquer
-        if (lesson.hidden === true) {
-          console.log(`🚫 Leçon masquée filtrée: ${lesson.title}`);
-          return false;
-        }
-        
-        return true;
-      });
-
-      setLessons(visibleLessons);
-
-      // Récupérer le QCM du chapitre
-      const quizzesRef = effectiveOrgId
-        ? collection(db, 'organizations', effectiveOrgId, 'programs', programId, 'chapitres', chapterId, 'quizzes')
-        : collection(db, 'programs', programId, 'chapitres', chapterId, 'quizzes');
+      // 2. Charger les leçons avec progression
+      const { data: lessonsData, error: lessonsError } = await getLessonsWithProgress(chapterId, user.id);
       
-      const quizzesSnap = await getDocs(quizzesRef);
-      
-      if (!quizzesSnap.empty) {
-        const quizDoc = quizzesSnap.docs[0];
-        setQuiz({ id: quizDoc.id, ...quizDoc.data() });
+      if (lessonsError) {
+        console.error('Erreur chargement leçons:', lessonsError);
+        setLoading(false);
+        return;
       }
 
-      // Récupérer les tentatives QCM de l'utilisateur
-      const attemptsRef = collection(db, 'quizAttempts');
-      const attemptsQuery = query(
-        attemptsRef,
-        where('userId', '==', targetUserId),
-        where('chapterId', '==', chapterId),
-        orderBy('createdAt', 'desc')
-      );
-      
-      const attemptsSnap = await getDocs(attemptsQuery);
-      const attemptsData = attemptsSnap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      
-      setQuizAttempts(attemptsData);
-
+      setLessons(lessonsData || []);
+      setLoading(false);
     } catch (error) {
-      console.error('Erreur chargement chapitre:', error);
-    } finally {
+      console.error('Erreur:', error);
       setLoading(false);
     }
-  }
+  };
+
+  const handleLessonClick = (lessonId) => {
+    // TODO: Navigation vers la page de lecture de leçon
+    console.log('Navigation vers leçon:', lessonId);
+    alert('Navigation vers la leçon - À implémenter prochainement !');
+  };
+
+  const getCompletionStats = () => {
+    const completed = lessons.filter(l => l.completed).length;
+    const total = lessons.length;
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { completed, total, percentage };
+  };
 
   if (loading) {
     return (
-      <div style={{
-        display: 'flex',
+      <div style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
         justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        fontSize: '18px',
-        color: '#64748b'
+        background: '#f5f7fa'
       }}>
-        Chargement...
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>📖</div>
+          <div style={{ fontSize: 16, color: '#666' }}>
+            Chargement du chapitre...
+          </div>
+        </div>
       </div>
     );
   }
 
-  if (!chapitre) {
+  if (!chapter) {
     return (
-      <div style={{
-        padding: 'clamp(24px, 5vw, 40px)',
-        textAlign: 'center'
+      <div style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        background: '#f5f7fa'
       }}>
-        <p style={{ fontSize: 'clamp(16px, 3vw, 18px)', color: '#64748b' }}>
-          Chapitre introuvable
-        </p>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>❌</div>
+          <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
+            Chapitre introuvable
+          </div>
+          <button
+            onClick={() => navigate(`/apprenant/programs/${programId}`)}
+            style={{
+              marginTop: 16,
+              padding: '12px 24px',
+              background: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: 8,
+              cursor: 'pointer',
+              fontWeight: 600
+            }}
+          >
+            Retour au programme
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const stats = getCompletionStats();
+
+  return (
+    <div style={{ 
+      minHeight: '100vh', 
+      background: '#f5f7fa',
+      padding: 24
+    }}>
+      {/* Header */}
+      <div style={{ marginBottom: 24 }}>
         <button
           onClick={() => navigate(`/apprenant/programs/${programId}`)}
           style={{
-            marginTop: '20px',
-            padding: '12px 24px',
-            background: '#8b5cf6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '12px',
-            fontSize: 'clamp(14px, 3vw, 16px)',
-            fontWeight: '600',
-            cursor: 'pointer'
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '8px 16px',
+            background: 'white',
+            border: '1px solid #e0e0e0',
+            borderRadius: 8,
+            cursor: 'pointer',
+            fontSize: 14,
+            fontWeight: 500,
+            color: '#333'
           }}
         >
+          <ArrowLeft size={18} />
           Retour au programme
         </button>
       </div>
-    );
-  }
 
-  const lastAttempt = quizAttempts.length > 0 ? quizAttempts[0] : null;
-  const quizPassed = lastAttempt && lastAttempt.passed;
-
-  return (
-    <>
-      {/* Bandeau Mode Voir comme */}
-      <ViewAsBanner />
-      
+      {/* Chapter Info */}
       <div style={{
-        minHeight: '100%',
-        background: apprenantTheme.colors.bgApp
-    }}>
-      <div style={{
-        maxWidth: '1200px',
-        margin: '0 auto',
-        padding: apprenantTheme.spacing.lg + ' ' + apprenantTheme.spacing.md,
-        paddingBottom: 'clamp(40px, 6vw, 60px)'
+        background: 'white',
+        borderRadius: 16,
+        padding: 32,
+        marginBottom: 24,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
       }}>
-        
-        {/* Bouton retour */}
-        <button
-          onClick={() => navigate(`/apprenant/programs/${programId}`)}
-          style={{
-            background: apprenantTheme.colors.bgPrimary,
-            border: `2px solid ${apprenantTheme.colors.border}`,
-            color: apprenantTheme.colors.textSecondary,
-            padding: apprenantTheme.spacing.sm + ' ' + apprenantTheme.spacing.md,
-            borderRadius: apprenantTheme.radius.base,
-            fontSize: apprenantTheme.fontSize.sm,
-            fontWeight: '600',
-            cursor: 'pointer',
-            marginBottom: apprenantTheme.spacing.md,
-            transition: apprenantTheme.transitions.base,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            boxShadow: apprenantTheme.shadows.sm
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = apprenantTheme.colors.secondary;
-            e.currentTarget.style.color = apprenantTheme.colors.secondary;
-            e.currentTarget.style.boxShadow = apprenantTheme.shadows.md;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = apprenantTheme.colors.bgPrimary;
-            e.currentTarget.style.borderColor = apprenantTheme.colors.border;
-            e.currentTarget.style.color = apprenantTheme.colors.textSecondary;
-            e.currentTarget.style.boxShadow = apprenantTheme.shadows.sm;
-          }}
-        >
-          <ArrowLeft size={16} />
-          <span style={{ display: window.innerWidth < 400 ? 'none' : 'inline' }}>
-            Retour au programme
-          </span>
-          <span style={{ display: window.innerWidth >= 400 ? 'none' : 'inline' }}>
-            Retour
-          </span>
-        </button>
-
-        {/* Header Chapitre */}
-        <div style={{
-          background: 'rgba(255, 255, 255, 0.95)',
-          borderRadius: 'clamp(12px, 2.5vw, 20px)',
-          padding: 'clamp(20px, 4vw, 32px)',
-          marginBottom: 'clamp(20px, 3vw, 28px)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)'
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'flex-start', 
+          gap: 24 
         }}>
-          {/* Breadcrumb */}
-          {program && (
-            <div style={{
-              fontSize: 'clamp(12px, 2.5vw, 14px)',
-              color: '#64748b',
-              marginBottom: '16px',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis'
-            }}>
-              {program.name} / Chapitre
-            </div>
-          )}
-
           <div style={{
+            width: 80,
+            height: 80,
+            background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+            borderRadius: 16,
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 'clamp(12px, 3vw, 16px)',
-            marginBottom: '12px'
+            justifyContent: 'center',
+            flexShrink: 0
           }}>
-            <h1 style={{
-              fontSize: 'clamp(24px, 6vw, 36px)',
-              fontWeight: '700',
-              color: '#1e293b',
-              letterSpacing: '-0.5px',
-              lineHeight: '1.2',
-              margin: 0
-            }}>
-              {chapitre.title}
-            </h1>
-
-            {/* Badge progression chapitre */}
-            {lessons.length > 0 && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'clamp(8px, 2vw, 12px)'
-              }}>
-                <span style={{
-                  padding: 'clamp(5px, 1.5vw, 6px) clamp(10px, 2.5vw, 12px)',
-                  background: completedLessons.filter(id => lessons.find(l => l.id === id)).length === lessons.length ? '#dcfce7' : '#f1f5f9',
-                  color: completedLessons.filter(id => lessons.find(l => l.id === id)).length === lessons.length ? '#16a34a' : '#64748b',
-                  borderRadius: '20px',
-                  fontSize: 'clamp(11px, 2.5vw, 12px)',
-                  fontWeight: '600',
-                  whiteSpace: 'nowrap'
-                }}>
-                  {completedLessons.filter(id => lessons.find(l => l.id === id)).length === lessons.length 
-                    ? '✅ Terminé' 
-                    : `${completedLessons.filter(id => lessons.find(l => l.id === id)).length}/${lessons.length} lu${completedLessons.filter(id => lessons.find(l => l.id === id)).length > 1 ? 's' : ''}`}
-                </span>
-                
-                {/* Mini barre de progression */}
-                <div style={{
-                  width: 'clamp(50px, 12vw, 60px)',
-                  height: 'clamp(5px, 1.5vw, 6px)',
-                  background: '#e2e8f0',
-                  borderRadius: '3px',
-                  overflow: 'hidden'
-                }}>
-                  <div style={{
-                    width: `${lessons.length > 0 ? Math.round((completedLessons.filter(id => lessons.find(l => l.id === id)).length / lessons.length) * 100) : 0}%`,
-                    height: '100%',
-                    background: completedLessons.filter(id => lessons.find(l => l.id === id)).length === lessons.length ? '#10b981' : '#3b82f6',
-                    transition: 'width 0.3s'
-                  }} />
-                </div>
-              </div>
-            )}
+            <BookOpen size={36} color="white" />
           </div>
 
-          {chapitre.description && (
-            <p style={{
-              fontSize: 'clamp(14px, 3vw, 18px)',
-              color: '#64748b',
-              lineHeight: '1.6'
+          <div style={{ flex: 1 }}>
+            <h1 style={{ 
+              fontSize: 28, 
+              fontWeight: 700, 
+              marginBottom: 8,
+              color: '#1a1a1a'
             }}>
-              {chapitre.description}
-            </p>
-          )}
+              {chapter.title}
+            </h1>
+            
+            {chapter.description && (
+              <p style={{ 
+                fontSize: 15, 
+                color: '#666', 
+                lineHeight: 1.6,
+                marginBottom: 16 
+              }}>
+                {chapter.description}
+              </p>
+            )}
+
+            {/* Stats */}
+            <div style={{ 
+              display: 'flex', 
+              gap: 24, 
+              alignItems: 'center',
+              marginTop: 16 
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 8 
+              }}>
+                <BookOpen size={18} color="#666" />
+                <span style={{ fontSize: 14, color: '#666' }}>
+                  {stats.total} leçon{stats.total > 1 ? 's' : ''}
+                </span>
+              </div>
+
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 8 
+              }}>
+                <CheckCircle size={18} color="#4CAF50" />
+                <span style={{ fontSize: 14, color: '#666' }}>
+                  {stats.completed} complétée{stats.completed > 1 ? 's' : ''}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Progression */}
+          <div style={{
+            textAlign: 'right',
+            minWidth: 120
+          }}>
+            <div style={{ 
+              fontSize: 42, 
+              fontWeight: 700,
+              color: stats.percentage === 100 ? '#4CAF50' : '#3b82f6',
+              marginBottom: 4 
+            }}>
+              {stats.percentage}%
+            </div>
+            <div style={{ 
+              fontSize: 13, 
+              color: '#666' 
+            }}>
+              Complété
+            </div>
+          </div>
         </div>
 
-        {/* Grille : Leçons + QCM (responsive) */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: window.innerWidth >= 768 ? '2fr 1fr' : '1fr',
-          gap: 'clamp(20px, 4vw, 24px)',
-          alignItems: 'start'
-        }}>
-          
-          {/* Colonne leçons */}
+        {/* Barre de progression */}
+        <div style={{ marginTop: 24 }}>
           <div style={{
-            order: window.innerWidth >= 768 ? 1 : 2
+            width: '100%',
+            height: 12,
+            background: '#e0e0e0',
+            borderRadius: 6,
+            overflow: 'hidden'
           }}>
             <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              fontSize: apprenantTheme.fontSize['2xl'],
-              fontWeight: '800',
-              color: apprenantTheme.colors.primary,
-              marginBottom: apprenantTheme.spacing.md
-            }}>
-              <BookOpen size={24} strokeWidth={2.5} />
-              <span>Leçons</span>
-            </div>
-
-            {lessons.length === 0 ? (
-              <div style={{
-                background: 'rgba(255, 255, 255, 0.95)',
-                borderRadius: '16px',
-                padding: 'clamp(32px, 6vw, 40px)',
-                textAlign: 'center'
-              }}>
-                <p style={{
-                  fontSize: 'clamp(14px, 3vw, 16px)',
-                  color: '#64748b'
-                }}>
-                  Aucune leçon disponible pour ce chapitre
-                </p>
-              </div>
-            ) : (
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 'clamp(10px, 2vw, 12px)'
-              }}>
-                {lessons.map((lesson, index) => {
-                  const isCompleted = completedLessons.includes(lesson.id);
-                  
-                  // 🔍 Log pour débogage
-                  if (index === 0) {
-                    console.log('🎨 RENDU des leçons:', {
-                      totalLessons: lessons.length,
-                      completedCount: completedLessons.length,
-                      completedIds: completedLessons
-                    });
-                  }
-                  
-                  return (
-                    <div
-                      key={lesson.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: 'clamp(14px, 3vw, 16px)',
-                        background: isCompleted ? '#f0fdf4' : '#ffffff',
-                        borderRadius: 'clamp(10px, 2.5vw, 12px)',
-                        border: isCompleted ? '1px solid #bbf7d0' : '1px solid #e2e8f0',
-                        marginBottom: 'clamp(10px, 2vw, 12px)',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateX(4px)';
-                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateX(0)';
-                        e.currentTarget.style.boxShadow = 'none';
-                      }}
-                    >
-                      {/* Partie gauche : Icône + Titre */}
-                      <div style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: 'clamp(10px, 2.5vw, 12px)',
-                        flex: 1,
-                        minWidth: 0
-                      }}>
-                        {/* Icône statut */}
-                        <div style={{
-                          width: 'clamp(28px, 7vw, 32px)',
-                          height: 'clamp(28px, 7vw, 32px)',
-                          borderRadius: '50%',
-                          background: isCompleted ? '#10b981' : '#e2e8f0',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: isCompleted ? 'white' : '#94a3b8',
-                          fontSize: 'clamp(12px, 3vw, 14px)',
-                          fontWeight: '700',
-                          flexShrink: 0
-                        }}>
-                          {isCompleted ? '✓' : (index + 1)}
-                        </div>
-                        
-                        {/* Titre leçon */}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{
-                            fontSize: 'clamp(13px, 3vw, 15px)',
-                            fontWeight: '600',
-                            color: '#1e293b',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                          }}>
-                            {lesson.title || `Leçon ${index + 1}`}
-                          </div>
-                          {isCompleted && (
-                            <div style={{
-                              fontSize: 'clamp(10px, 2.5vw, 12px)',
-                              color: '#10b981',
-                              fontWeight: '500',
-                              marginTop: '2px'
-                            }}>
-                              ✅ Terminée
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* Partie droite : Badge Lu + Bouton */}
-                      <div style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: 'clamp(8px, 2vw, 12px)',
-                        flexShrink: 0
-                      }}>
-                        {isCompleted && (
-                          <span style={{
-                            padding: '4px 10px',
-                            background: '#dcfce7',
-                            color: '#16a34a',
-                            borderRadius: '20px',
-                            fontSize: 'clamp(10px, 2.5vw, 11px)',
-                            fontWeight: '600',
-                            whiteSpace: 'nowrap',
-                            display: window.innerWidth > 500 ? 'inline' : 'none'
-                          }}>
-                            Lu
-                          </span>
-                        )}
-                        
-                        <button
-                          onClick={() => navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}/lessons/${lesson.id}`)}
-                          style={{
-                            padding: 'clamp(6px, 2vw, 8px) clamp(12px, 3vw, 16px)',
-                            background: isCompleted ? 'white' : '#3b82f6',
-                            color: isCompleted ? '#3b82f6' : 'white',
-                            border: isCompleted ? '1px solid #3b82f6' : 'none',
-                            borderRadius: 'clamp(6px, 2vw, 8px)',
-                            fontSize: 'clamp(11px, 2.5vw, 13px)',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            whiteSpace: 'nowrap',
-                            transition: 'all 0.2s'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'scale(1.05)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'scale(1)';
-                          }}
-                        >
-                          {isCompleted ? 'Relire' : 'Lire'}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            
-            {/* Section Exercices - NOUVEAU */}
-            <div style={{ marginTop: 'clamp(20px, 4vw, 24px)' }}>
-              <button
-                onClick={() => navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}/exercises`)}
-                style={{
-                  width: '100%',
-                  padding: 'clamp(20px, 4vw, 24px)',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  borderRadius: 'clamp(12px, 2.5vw, 16px)',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                  boxShadow: '0 4px 16px rgba(102, 126, 234, 0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-4px)';
-                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(102, 126, 234, 0.4)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(102, 126, 234, 0.3)';
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(12px, 3vw, 16px)' }}>
-                  <div style={{
-                    width: 'clamp(48px, 10vw, 56px)',
-                    height: 'clamp(48px, 10vw, 56px)',
-                    borderRadius: '14px',
-                    background: 'rgba(255,255,255,0.2)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 'clamp(24px, 5vw, 28px)',
-                    flexShrink: 0
-                  }}>
-                    🎯
-                  </div>
-                  <div style={{ textAlign: 'left' }}>
-                    <div style={{
-                      fontSize: 'clamp(16px, 3.5vw, 20px)',
-                      fontWeight: '700',
-                      color: 'white',
-                      marginBottom: '4px'
-                    }}>
-                      Passer les exercices
-                    </div>
-                    <div style={{
-                      fontSize: 'clamp(13px, 2.5vw, 14px)',
-                      color: 'rgba(255,255,255,0.9)'
-                    }}>
-                      Teste tes connaissances sur ce chapitre
-                    </div>
-                  </div>
-                </div>
-                
-                <div style={{
-                  padding: 'clamp(8px, 2vw, 10px) clamp(14px, 3vw, 18px)',
-                  background: 'rgba(255,255,255,0.25)',
-                  borderRadius: '10px',
-                  fontSize: 'clamp(13px, 2.5vw, 14px)',
-                  fontWeight: '600',
-                  color: 'white',
-                  whiteSpace: 'nowrap',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}>
-                  <span style={{ display: window.innerWidth < 400 ? 'none' : 'inline' }}>
-                    Commencer
-                  </span>
-                  <ChevronRight size={18} />
-                </div>
-              </button>
-            </div>
-          </div>
-
-          {/* Colonne QCM */}
-          <div style={{
-            order: window.innerWidth >= 768 ? 2 : 1
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              fontSize: apprenantTheme.fontSize['2xl'],
-              fontWeight: '800',
-              color: apprenantTheme.colors.primary,
-              marginBottom: apprenantTheme.spacing.md
-            }}>
-              <Award size={24} strokeWidth={2.5} />
-              <span>Évaluation</span>
-            </div>
-
-            <div style={{
-              background: '#ffffff',
-              borderRadius: 'clamp(10px, 2vw, 14px)',
-              padding: 'clamp(18px, 3.5vw, 22px)',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
-              position: window.innerWidth >= 768 ? 'sticky' : 'static',
-              top: '24px'
-            }}>
-              {quiz ? (
-                <>
-                  <h3 style={{
-                    fontSize: 'clamp(16px, 3vw, 18px)',
-                    fontWeight: '700',
-                    color: '#1e293b',
-                    marginBottom: '8px',
-                    lineHeight: '1.3'
-                  }}>
-                    {quiz.title || 'QCM du chapitre'}
-                  </h3>
-
-                  <p style={{
-                    fontSize: 'clamp(13px, 2.5vw, 14px)',
-                    color: '#64748b',
-                    marginBottom: '16px',
-                    lineHeight: '1.5'
-                  }}>
-                    Score minimum pour validation : <strong>{quiz.passingScore || 80}%</strong>
-                  </p>
-
-                  {/* Dernier score */}
-                  {lastAttempt && (
-                    <div style={{
-                      padding: 'clamp(12px, 3vw, 16px)',
-                      borderRadius: '12px',
-                      background: lastAttempt.passed ? '#d1fae5' : '#fee2e2',
-                      marginBottom: '16px'
-                    }}>
-                      <div style={{
-                        fontSize: 'clamp(13px, 2.5vw, 14px)',
-                        fontWeight: '600',
-                        color: lastAttempt.passed ? '#065f46' : '#991b1b',
-                        marginBottom: '4px'
-                      }}>
-                        Dernier score : {lastAttempt.score}%
-                      </div>
-                      <div style={{
-                        fontSize: 'clamp(12px, 2.5vw, 13px)',
-                        color: lastAttempt.passed ? '#047857' : '#dc2626'
-                      }}>
-                        {lastAttempt.passed ? '✅ QCM réussi !' : '❌ Score insuffisant'}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Bouton passer QCM */}
-                  <button
-                    onClick={() => navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}/quiz`)}
-                    style={{
-                      width: '100%',
-                      padding: 'clamp(12px, 2.5vw, 14px)',
-                      background: quizPassed 
-                        ? 'linear-gradient(135deg, #10b981, #059669)'
-                        : 'linear-gradient(135deg, #667eea, #764ba2)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '12px',
-                      fontSize: 'clamp(14px, 3vw, 16px)',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      marginBottom: '12px'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'scale(1.02)';
-                      e.currentTarget.style.boxShadow = '0 8px 20px rgba(102, 126, 234, 0.4)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'scale(1)';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
-                  >
-                    {quizPassed ? 'Repasser le QCM' : 'Passer le QCM'}
-                  </button>
-
-                  {/* Historique tentatives */}
-                  {quizAttempts.length > 0 && (
-                    <details style={{
-                      marginTop: '16px',
-                      cursor: 'pointer'
-                    }}>
-                      <summary style={{
-                        fontSize: 'clamp(13px, 2.5vw, 14px)',
-                        fontWeight: '600',
-                        color: '#64748b',
-                        padding: '8px',
-                        borderRadius: '8px',
-                        background: '#f8fafc',
-                        listStyle: 'none'
-                      }}>
-                        📊 Historique ({quizAttempts.length} tentative{quizAttempts.length > 1 ? 's' : ''})
-                      </summary>
-                      
-                      <div style={{
-                        marginTop: '12px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '8px'
-                      }}>
-                        {quizAttempts.map((attempt, index) => (
-                          <div
-                            key={attempt.id}
-                            style={{
-                              padding: '10px 12px',
-                              borderRadius: '8px',
-                              background: '#f8fafc',
-                              fontSize: 'clamp(12px, 2.5vw, 13px)',
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center'
-                            }}
-                          >
-                            <span style={{ color: '#64748b' }}>
-                              Tentative {quizAttempts.length - index}
-                            </span>
-                            <span style={{
-                              fontWeight: '600',
-                              color: attempt.passed ? '#10b981' : '#ef4444'
-                            }}>
-                              {attempt.score}% {attempt.passed ? '✓' : '✗'}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </details>
-                  )}
-                </>
-              ) : (
-                <div style={{ textAlign: 'center', padding: 'clamp(16px, 3vw, 20px)' }}>
-                  <p style={{
-                    fontSize: 'clamp(13px, 2.5vw, 14px)',
-                    color: '#94a3b8'
-                  }}>
-                    Aucun QCM disponible pour ce chapitre
-                  </p>
-                </div>
-              )}
-            </div>
+              width: `${stats.percentage}%`,
+              height: '100%',
+              background: stats.percentage === 100 
+                ? 'linear-gradient(90deg, #4CAF50, #81C784)'
+                : 'linear-gradient(90deg, #f093fb, #f5576c)',
+              transition: 'width 0.5s ease'
+            }} />
           </div>
         </div>
       </div>
+
+      {/* Leçons */}
+      <div>
+        <h2 style={{ 
+          fontSize: 20, 
+          fontWeight: 700, 
+          marginBottom: 16,
+          color: '#1a1a1a'
+        }}>
+          Leçons
+        </h2>
+
+        {lessons.length === 0 ? (
+          <div style={{
+            background: 'white',
+            borderRadius: 12,
+            padding: 48,
+            textAlign: 'center',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+          }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>📖</div>
+            <div style={{ fontSize: 16, color: '#666' }}>
+              Aucune leçon disponible pour le moment
+            </div>
+          </div>
+        ) : (
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: 12 
+          }}>
+            {lessons.map((lesson, index) => (
+              <div
+                key={lesson.id}
+                onClick={() => handleLessonClick(lesson.id)}
+                style={{
+                  background: 'white',
+                  borderRadius: 12,
+                  padding: 20,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 16,
+                  cursor: 'pointer',
+                  border: '2px solid transparent',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                  opacity: lesson.completed ? 0.8 : 1
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = lesson.completed ? '#4CAF50' : '#3b82f6';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = lesson.completed 
+                    ? '0 4px 12px rgba(76, 175, 80, 0.2)'
+                    : '0 4px 12px rgba(59, 130, 246, 0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'transparent';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+                }}
+              >
+                {/* Icône de statut */}
+                <div style={{
+                  width: 48,
+                  height: 48,
+                  background: lesson.completed ? '#e8f5e9' : '#f0f4ff',
+                  borderRadius: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  {lesson.completed ? (
+                    <CheckCircle size={24} color="#4CAF50" />
+                  ) : lesson.reading_progress > 0 ? (
+                    <PlayCircle size={24} color="#3b82f6" />
+                  ) : (
+                    <Circle size={24} color="#999" />
+                  )}
+                </div>
+
+                {/* Contenu */}
+                <div style={{ flex: 1 }}>
+                  <div style={{ 
+                    fontSize: 16, 
+                    fontWeight: 600, 
+                    marginBottom: 4,
+                    color: '#1a1a1a',
+                    textDecoration: lesson.completed ? 'line-through' : 'none'
+                  }}>
+                    {lesson.title}
+                  </div>
+                  <div style={{ 
+                    fontSize: 13, 
+                    color: '#999',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8
+                  }}>
+                    {lesson.duration_minutes && (
+                      <>
+                        <Clock size={14} />
+                        <span>{lesson.duration_minutes} min</span>
+                      </>
+                    )}
+                    {lesson.completed && (
+                      <span style={{ 
+                        marginLeft: 8,
+                        padding: '2px 8px',
+                        background: '#e8f5e9',
+                        color: '#4CAF50',
+                        borderRadius: 4,
+                        fontSize: 12,
+                        fontWeight: 600
+                      }}>
+                        ✓ Terminée
+                      </span>
+                    )}
+                    {!lesson.completed && lesson.reading_progress > 0 && (
+                      <span style={{ 
+                        marginLeft: 8,
+                        padding: '2px 8px',
+                        background: '#f0f4ff',
+                        color: '#3b82f6',
+                        borderRadius: 4,
+                        fontSize: 12,
+                        fontWeight: 600
+                      }}>
+                        En cours ({lesson.reading_progress}%)
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Bouton */}
+                <button
+                  style={{
+                    padding: '10px 20px',
+                    background: lesson.completed 
+                      ? 'linear-gradient(135deg, #4CAF50, #81C784)'
+                      : 'linear-gradient(135deg, #3b82f6, #60a5fa)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: 14,
+                    flexShrink: 0
+                  }}
+                >
+                  {lesson.completed ? 'Revoir' : lesson.reading_progress > 0 ? 'Continuer' : 'Commencer'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
-    </>
   );
 }
