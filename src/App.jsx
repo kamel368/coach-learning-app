@@ -53,6 +53,7 @@ import CleanupPage from "./pages/CleanupPage";
 
 // ✅ Page de test Supabase Auth
 import SupabaseTest from "./pages/SupabaseTest";
+import SupabaseRLSTest from "./pages/SupabaseRLSTest";
 
 // Pages Apprenant - V2
 import ApprenantLayout from './components/apprenant/ApprenantLayout';
@@ -168,6 +169,9 @@ function AppContent() {
           
           {/* ✅ Page de test Supabase Auth */}
           <Route path="/supabase-test" element={<SupabaseTest />} />
+          
+          {/* ✅ Page de test RLS Supabase */}
+          <Route path="/supabase-rls-test" element={<SupabaseRLSTest />} />
 
           {/* Routes Super Admin avec layout spécifique */}
           <Route
