@@ -111,3 +111,140 @@ export const getLessonsWithProgress = async (chapterId, userId) => {
     return { data: null, error }
   }
 }
+
+/**
+ * Créer une nouvelle leçon
+ * @param {Object} lessonData - Données de la leçon
+ * @param {string} lessonData.chapter_id - UUID du chapitre
+ * @param {string} lessonData.title - Titre de la leçon
+ * @param {Object} lessonData.editor_data - Contenu JSON de la leçon
+ * @param {number} lessonData.order - Ordre d'affichage
+ * @param {number} lessonData.duration_minutes - Durée estimée
+ * @returns {Promise<{data: Object, error: any}>}
+ */
+export const createLesson = async (lessonData) => {
+  try {
+    console.log('[Supabase Lessons] ➕ Creating lesson:', lessonData.title)
+    
+    const { data, error } = await supabase
+      .from('lessons')
+      .insert({
+        chapter_id: lessonData.chapter_id,
+        title: lessonData.title,
+        editor_data: lessonData.editor_data || { blocks: [] },
+        order: lessonData.order || 1,
+        hidden: lessonData.hidden || false,
+        duration_minutes: lessonData.duration_minutes || 10,
+        reading_time_minutes: lessonData.reading_time_minutes || lessonData.duration_minutes || 10,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('[Supabase Lessons] ❌ Error creating lesson:', error)
+      return { data: null, error }
+    }
+
+    console.log('[Supabase Lessons] ✅ Lesson created:', data.id)
+    return { data, error: null }
+  } catch (error) {
+    console.error('[Supabase Lessons] ❌ Exception:', error)
+    return { data: null, error }
+  }
+}
+
+/**
+ * Mettre à jour une leçon
+ * @param {string} lessonId - UUID de la leçon
+ * @param {Object} updates - Données à mettre à jour
+ * @returns {Promise<{data: Object, error: any}>}
+ */
+export const updateLesson = async (lessonId, updates) => {
+  try {
+    console.log('[Supabase Lessons] 🔄 Updating lesson:', lessonId)
+    
+    const { data, error } = await supabase
+      .from('lessons')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', lessonId)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('[Supabase Lessons] ❌ Error updating lesson:', error)
+      return { data: null, error }
+    }
+
+    console.log('[Supabase Lessons] ✅ Lesson updated')
+    return { data, error: null }
+  } catch (error) {
+    console.error('[Supabase Lessons] ❌ Exception:', error)
+    return { data: null, error }
+  }
+}
+
+/**
+ * Supprimer une leçon
+ * @param {string} lessonId - UUID de la leçon
+ * @returns {Promise<{data: Object, error: any}>}
+ */
+export const deleteLesson = async (lessonId) => {
+  try {
+    console.log('[Supabase Lessons] 🗑️ Deleting lesson:', lessonId)
+    
+    const { data, error } = await supabase
+      .from('lessons')
+      .delete()
+      .eq('id', lessonId)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('[Supabase Lessons] ❌ Error deleting lesson:', error)
+      return { data: null, error }
+    }
+
+    console.log('[Supabase Lessons] ✅ Lesson deleted')
+    return { data, error: null }
+  } catch (error) {
+    console.error('[Supabase Lessons] ❌ Exception:', error)
+    return { data: null, error }
+  }
+}
+
+/**
+ * Réorganiser les leçons (mettre à jour l'ordre)
+ * @param {Array} lessonsOrder - Array of {id, order}
+ * @returns {Promise<{success: boolean, error: any}>}
+ */
+export const reorderLessons = async (lessonsOrder) => {
+  try {
+    console.log('[Supabase Lessons] 🔄 Reordering lessons:', lessonsOrder.length)
+    
+    const promises = lessonsOrder.map(({ id, order }) =>
+      supabase
+        .from('lessons')
+        .update({ order, updated_at: new Date().toISOString() })
+        .eq('id', id)
+    )
+
+    const results = await Promise.all(promises)
+    
+    const hasError = results.some(r => r.error)
+    if (hasError) {
+      console.error('[Supabase Lessons] ❌ Error reordering lessons')
+      return { success: false, error: 'Failed to reorder some lessons' }
+    }
+
+    console.log('[Supabase Lessons] ✅ Lessons reordered')
+    return { success: true, error: null }
+  } catch (error) {
+    console.error('[Supabase Lessons] ❌ Exception:', error)
+    return { success: false, error }
+  }
+}

@@ -18,7 +18,9 @@ import { useAuth } from "../context/AuthContext";
 import { useSupabaseAuth } from '../hooks/useSupabaseAuth';
 import { getPrograms } from '../services/supabase/programs';
 import { getChaptersByProgram, createChapter, updateChapter, deleteChapter } from '../services/supabase/chapters';
+import { getLessonsByChapter, createLesson, updateLesson, deleteLesson } from '../services/supabase/lessons';
 import ChapterModal from '../components/ChapterModal';
+import LessonModal from '../components/LessonModal';
 
 export default function AdminProgramDetail() {
   const { programId } = useParams();
@@ -47,6 +49,13 @@ export default function AdminProgramDetail() {
   // États modal
   const [isChapterModalOpen, setIsChapterModalOpen] = useState(false);
   const [editingChapter, setEditingChapter] = useState(null);
+
+  // États leçons
+  const [selectedChapterId, setSelectedChapterId] = useState(null);
+  const [chapterLessons, setChapterLessons] = useState([]);
+  const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
+  const [editingLesson, setEditingLesson] = useState(null);
+  const [loadingLessons, setLoadingLessons] = useState(false);
 
   // --------- Détection automatique de la source ---------
   useEffect(() => {
@@ -626,6 +635,78 @@ export default function AdminProgramDetail() {
     }
   };
 
+  const loadChapterLessons = async (chapterId) => {
+    try {
+      setLoadingLessons(true);
+      setSelectedChapterId(chapterId);
+
+      const { data: lessonsData, error } = await getLessonsByChapter(chapterId);
+      
+      if (error) {
+        console.error('Erreur chargement leçons:', error);
+        setChapterLessons([]);
+      } else {
+        setChapterLessons(lessonsData || []);
+      }
+
+      setLoadingLessons(false);
+    } catch (error) {
+      console.error('Erreur:', error);
+      setLoadingLessons(false);
+      setChapterLessons([]);
+    }
+  };
+
+  const handleOpenLessonModal = (chapterId, lesson = null) => {
+    setSelectedChapterId(chapterId);
+    setEditingLesson(lesson);
+    setIsLessonModalOpen(true);
+    
+    // Charger les leçons du chapitre si pas déjà fait
+    if (!lesson) {
+      loadChapterLessons(chapterId);
+    }
+  };
+
+  const handleSaveLesson = async (lessonData) => {
+    try {
+      if (editingLesson) {
+        // Modification
+        const { error } = await updateLesson(editingLesson.id, lessonData);
+        if (error) throw error;
+        console.log('✅ Leçon modifiée');
+      } else {
+        // Création
+        const { error } = await createLesson({
+          ...lessonData,
+          chapter_id: selectedChapterId
+        });
+        if (error) throw error;
+        console.log('✅ Leçon créée');
+      }
+
+      // Recharger les leçons du chapitre
+      await loadChapterLessons(selectedChapterId);
+      
+      // Recharger aussi les données du programme pour mettre à jour les compteurs
+      await loadSupabaseData();
+    } catch (error) {
+      console.error('Erreur sauvegarde leçon:', error);
+      throw error;
+    }
+  };
+
+  const handleToggleLessonsView = (chapterId) => {
+    if (selectedChapterId === chapterId) {
+      // Si déjà ouvert, fermer
+      setSelectedChapterId(null);
+      setChapterLessons([]);
+    } else {
+      // Sinon, charger et afficher
+      loadChapterLessons(chapterId);
+    }
+  };
+
   const handleRenameLesson = async (chapterId, lesson) => {
     const current = lesson.title || "";
     const newTitle = window.prompt("Nouveau titre de la leçon ?", current);
@@ -656,20 +737,36 @@ export default function AdminProgramDetail() {
   };
 
   const handleDeleteLesson = async (chapterId, lessonId) => {
+    // En mode Supabase, le premier argument est lessonId, le second est undefined
+    const actualLessonId = lessonId !== undefined ? lessonId : chapterId;
+    const actualChapterId = lessonId !== undefined ? chapterId : selectedChapterId;
+    
     if (!window.confirm("Supprimer cette leçon ?")) return;
+    
     try {
-      const ref = organizationId
-        ? doc(db, "organizations", organizationId, "programs", program.id, "chapitres", chapterId, "lessons", lessonId)
-        : doc(db, "programs", program.id, "chapitres", chapterId, "lessons", lessonId);
-      
-      await deleteDoc(ref);
-      
-      setLessonsByChapter((prev) => ({
-        ...prev,
-        [chapterId]: (prev[chapterId] || []).filter((l) => l.id !== lessonId),
-      }));
-      
-      console.log('✅ Leçon supprimée');
+      if (useSupabase) {
+        // Mode Supabase
+        const { error } = await deleteLesson(actualLessonId);
+        if (error) throw error;
+        
+        console.log('✅ Leçon supprimée (Supabase)');
+        await loadChapterLessons(actualChapterId);
+        await loadSupabaseData();
+      } else {
+        // Mode Firebase
+        const ref = organizationId
+          ? doc(db, "organizations", organizationId, "programs", program.id, "chapitres", actualChapterId, "lessons", actualLessonId)
+          : doc(db, "programs", program.id, "chapitres", actualChapterId, "lessons", actualLessonId);
+        
+        await deleteDoc(ref);
+        
+        setLessonsByChapter((prev) => ({
+          ...prev,
+          [actualChapterId]: (prev[actualChapterId] || []).filter((l) => l.id !== actualLessonId),
+        }));
+        
+        console.log('✅ Leçon supprimée (Firebase)');
+      }
     } catch (err) {
       console.error(err);
       alert("Erreur lors de la suppression de la leçon.");
@@ -1252,6 +1349,7 @@ export default function AdminProgramDetail() {
               const expanded = expandedChapters.has(chapter.id);
 
               return (
+                <>
                 <div
                   key={chapter.id}
                   draggable
@@ -1497,6 +1595,24 @@ export default function AdminProgramDetail() {
                           }}
                         >
                           🗑️ Supprimer
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleLessonsView(chapter.id);
+                          }}
+                          style={{
+                            padding: '6px 12px',
+                            background: selectedChapterId === chapter.id ? '#10b981' : '#6366f1',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: 6,
+                            cursor: 'pointer',
+                            fontSize: 13,
+                            fontWeight: 600
+                          }}
+                        >
+                          📖 Leçons ({/* TODO: Add lesson count */}0)
                         </button>
                       </div>
                     )}
@@ -2067,8 +2183,157 @@ export default function AdminProgramDetail() {
                     </div>
                   )}
                 </div>
-              );
-            })}
+
+                {/* Affichage des leçons (mode Supabase uniquement) */}
+                {useSupabase && selectedChapterId === chapter.id && (
+                  <div style={{
+                    marginTop: 16,
+                    marginLeft: 48,
+                    padding: 20,
+                    background: '#f9fafb',
+                    borderRadius: 12,
+                    border: '2px solid #e5e7eb'
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: 16
+                    }}>
+                      <h3 style={{
+                        fontSize: 16,
+                        fontWeight: 600,
+                        color: '#1a1a1a',
+                        margin: 0
+                      }}>
+                        Leçons de ce chapitre ({chapterLessons.length})
+                      </h3>
+                      <button
+                        onClick={() => handleOpenLessonModal(chapter.id)}
+                        style={{
+                          padding: '8px 16px',
+                          background: 'linear-gradient(135deg, #10b981, #34d399)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: 6,
+                          cursor: 'pointer',
+                          fontSize: 13,
+                          fontWeight: 600
+                        }}
+                      >
+                        ➕ Ajouter une leçon
+                      </button>
+                    </div>
+
+                    {loadingLessons ? (
+                      <div style={{ textAlign: 'center', padding: 20, color: '#666' }}>
+                        Chargement des leçons...
+                      </div>
+                    ) : chapterLessons.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: 20, color: '#666' }}>
+                        Aucune leçon pour le moment. Cliquez sur "Ajouter une leçon" pour commencer.
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {chapterLessons.map((lesson, index) => (
+                          <div
+                            key={lesson.id}
+                            style={{
+                              padding: 16,
+                              background: 'white',
+                              borderRadius: 8,
+                              border: '1px solid #e5e7eb',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 12
+                            }}
+                          >
+                            <div style={{
+                              width: 32,
+                              height: 32,
+                              background: '#e0e7ff',
+                              borderRadius: 6,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 14,
+                              fontWeight: 600,
+                              color: '#6366f1',
+                              flexShrink: 0
+                            }}>
+                              {index + 1}
+                            </div>
+
+                            <div style={{ flex: 1 }}>
+                              <div style={{
+                                fontSize: 14,
+                                fontWeight: 600,
+                                color: '#1a1a1a',
+                                marginBottom: 4
+                              }}>
+                                {lesson.title}
+                              </div>
+                              <div style={{
+                                fontSize: 12,
+                                color: '#666'
+                              }}>
+                                ⏱️ {lesson.duration_minutes} min
+                                {lesson.hidden && (
+                                  <span style={{
+                                    marginLeft: 8,
+                                    padding: '2px 6px',
+                                    background: '#fef3c7',
+                                    color: '#92400e',
+                                    borderRadius: 4,
+                                    fontSize: 11,
+                                    fontWeight: 600
+                                  }}>
+                                    Masqué
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button
+                                onClick={() => handleOpenLessonModal(chapter.id, lesson)}
+                                style={{
+                                  padding: '6px 12px',
+                                  background: '#6366f1',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: 6,
+                                  cursor: 'pointer',
+                                  fontSize: 12,
+                                  fontWeight: 600
+                                }}
+                              >
+                                ✏️
+                              </button>
+                              <button
+                                onClick={() => handleDeleteLesson(lesson.id)}
+                                style={{
+                                  padding: '6px 12px',
+                                  background: '#ef4444',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: 6,
+                                  cursor: 'pointer',
+                                  fontSize: 12,
+                                  fontWeight: 600
+                                }}
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                </>
+            );})}
           </div>
 
       {/* Modal création catégorie */}
@@ -2220,6 +2485,18 @@ export default function AdminProgramDetail() {
         onSave={handleSaveChapter}
         chapter={editingChapter}
         defaultOrder={(chapters?.length || 0) + 1}
+      />
+
+      {/* Modal Leçon */}
+      <LessonModal
+        isOpen={isLessonModalOpen}
+        onClose={() => {
+          setIsLessonModalOpen(false);
+          setEditingLesson(null);
+        }}
+        onSave={handleSaveLesson}
+        lesson={editingLesson}
+        defaultOrder={(chapterLessons?.length || 0) + 1}
       />
     </div>
   );
