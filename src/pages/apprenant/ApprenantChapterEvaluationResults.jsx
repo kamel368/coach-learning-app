@@ -44,7 +44,7 @@ export default function ApprenantChapterEvaluationResults() {
             Les résultats de l'évaluation n'ont pas pu être chargés.
           </p>
           <button
-            onClick={() => navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}`)}
+            onClick={() => navigate(`/apprenant/programs/${programId}/chapters/${chapterId}`)}
             style={{
               padding: '8px 14px',
               background: 'white',
@@ -306,7 +306,7 @@ export default function ApprenantChapterEvaluationResults() {
           gap: '10px'
         }}>
           <button
-            onClick={() => navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}`)}
+            onClick={() => navigate(`/apprenant/programs/${programId}/chapters/${chapterId}`)}
             style={{
               flex: 1,
               display: 'flex',

@@ -262,7 +262,7 @@ export default function ApprenantExercisesResults() {
   };
 
   const handleRestart = () => {
-    navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}/exercises`);
+    navigate(`/apprenant/programs/${programId}/chapters/${chapterId}/exercises`);
   };
 
   // Icône selon le type d'exercice
@@ -642,7 +642,7 @@ export default function ApprenantExercisesResults() {
         }}>
           {/* Retour au chapitre */}
           <button
-            onClick={() => navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}`)}
+            onClick={() => navigate(`/apprenant/programs/${programId}/chapters/${chapterId}`)}
             style={{
               display: 'flex',
               alignItems: 'center',

@@ -381,7 +381,7 @@ const AttemptRow = ({ attempt, navigate }) => {
       return url;
     }
     
-    const url = `/apprenant/programs/${attempt.programId}/chapitres/${attempt.chapterId}/exercises/results`;
+    const url = `/apprenant/programs/${attempt.programId}/chapters/${attempt.chapterId}/exercises/results`;
     console.log('🔗 URL Exercise:', url);
     return url;
   };

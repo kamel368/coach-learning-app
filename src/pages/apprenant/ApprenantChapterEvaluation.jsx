@@ -198,7 +198,7 @@ export default function ApprenantChapterEvaluation() {
             Ce chapitre ne contient pas encore d'exercices pour l'évaluation.
           </p>
           <button
-            onClick={() => navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}`)}
+            onClick={() => navigate(`/apprenant/programs/${programId}/chapters/${chapterId}`)}
             style={{
               padding: '8px 14px',
               background: 'white',
@@ -244,7 +244,7 @@ export default function ApprenantChapterEvaluation() {
           flexWrap: 'wrap'
         }}>
           <button
-            onClick={() => navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}`)}
+            onClick={() => navigate(`/apprenant/programs/${programId}/chapters/${chapterId}`)}
             style={{
               display: 'flex',
               alignItems: 'center',

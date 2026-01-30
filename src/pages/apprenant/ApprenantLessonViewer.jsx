@@ -122,7 +122,7 @@ export default function ApprenantLessonViewer() {
           // ✅ Vérifier si leçon masquée
           if (lessonData.hidden === true) {
             console.log('⚠️ Leçon masquée, redirection vers chapitre...');
-            navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}`);
+            navigate(`/apprenant/programs/${programId}/chapters/${chapterId}`);
             return;
           }
 
@@ -287,10 +287,10 @@ export default function ApprenantLessonViewer() {
       if (currentIndex < allLessons.length - 1) {
         // Aller à la leçon suivante
         const nextLesson = allLessons[currentIndex + 1];
-        navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}/lessons/${nextLesson.id}`);
+        navigate(`/apprenant/programs/${programId}/chapters/${chapterId}/lessons/${nextLesson.id}`);
       } else {
         // Dernière leçon, retour au chapitre
-        navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}`);
+        navigate(`/apprenant/programs/${programId}/chapters/${chapterId}`);
       }
     } catch (error) {
       console.error('Erreur marquage leçon:', error);
@@ -302,7 +302,7 @@ export default function ApprenantLessonViewer() {
   function handlePrevious() {
     if (currentIndex > 0) {
       const prevLesson = allLessons[currentIndex - 1];
-      navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}/lessons/${prevLesson.id}`);
+      navigate(`/apprenant/programs/${programId}/chapters/${chapterId}/lessons/${prevLesson.id}`);
     }
   }
 
@@ -398,13 +398,13 @@ export default function ApprenantLessonViewer() {
         
         // Naviguer vers la leçon suivante
         const nextLesson = allLessons[currentIndex + 1];
-        navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}/lessons/${nextLesson.id}`);
+        navigate(`/apprenant/programs/${programId}/chapters/${chapterId}/lessons/${nextLesson.id}`);
         
       } catch (error) {
         console.error('❌ Erreur handleNext:', error);
         // En cas d'erreur, naviguer quand même
         const nextLesson = allLessons[currentIndex + 1];
-        navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}/lessons/${nextLesson.id}`);
+        navigate(`/apprenant/programs/${programId}/chapters/${chapterId}/lessons/${nextLesson.id}`);
       } finally {
         setCompleting(false);
       }
@@ -663,7 +663,7 @@ export default function ApprenantLessonViewer() {
           Leçon introuvable
         </p>
         <button
-          onClick={() => navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}`)}
+          onClick={() => navigate(`/apprenant/programs/${programId}/chapters/${chapterId}`)}
           style={{
             marginTop: '20px',
             padding: '12px 24px',
@@ -775,7 +775,7 @@ export default function ApprenantLessonViewer() {
           }}>
             {/* Bouton retour */}
             <button
-              onClick={() => navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}`)}
+              onClick={() => navigate(`/apprenant/programs/${programId}/chapters/${chapterId}`)}
               style={{
                 background: 'transparent',
                 border: 'none',

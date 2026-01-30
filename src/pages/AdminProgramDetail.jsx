@@ -373,7 +373,7 @@ export default function AdminProgramDetail() {
 
     // ✅ On envoie aussi le titre à la page d’édition
     navigate(
-      `/admin/programs/${program.id}/chapitres/${chapterId}/lessons/${ref.id}/edit`,
+      `/admin/programs/${program.id}/chapters/${chapterId}/lessons/${ref.id}/edit`,
       {
         state: {
           initialTitle: title,
@@ -1322,7 +1322,7 @@ export default function AdminProgramDetail() {
                           onClick={(e) => {
                             e.stopPropagation();
                             // Navigation vers le builder d'exercices
-                            navigate(`/admin/programs/${program.id}/chapitres/${chapter.id}/exercises`);
+                            navigate(`/admin/programs/${program.id}/chapters/${chapter.id}/exercises`);
                           }}
                           style={{
                             padding: '8px 16px',
@@ -1682,7 +1682,7 @@ export default function AdminProgramDetail() {
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       navigate(
-                                        `/admin/programs/${program.id}/chapitres/${chapter.id}/lessons/${l.id}/edit`
+                                        `/admin/programs/${program.id}/chapters/${chapter.id}/lessons/${l.id}/edit`
                                       );
                                     }}
                                     title="Modifier (éditeur)"

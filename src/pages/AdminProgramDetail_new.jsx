@@ -250,7 +250,7 @@ export default function AdminProgramDetail() {
 
     // ✅ On envoie aussi le titre à la page d'édition
     navigate(
-      `/admin/programs/${program.id}/chapitres/${chapterId}/lessons/${ref.id}/edit`,
+      `/admin/programs/${program.id}/chapters/${chapterId}/lessons/${ref.id}/edit`,
       {
         state: {
           initialTitle: title,
@@ -1046,7 +1046,7 @@ export default function AdminProgramDetail() {
                     }}>
                       {/* Bouton Leçons */}
                       <button
-                        onClick={() => navigate(`/admin/programs/${programId}/chapitres/${chapter.id}/lessons`)}
+                        onClick={() => navigate(`/admin/programs/${programId}/chapters/${chapter.id}/lessons`)}
                         style={{
                           padding: '8px 12px',
                           background: '#ffffff',

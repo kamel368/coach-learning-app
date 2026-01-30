@@ -223,7 +223,7 @@ export default function ExerciseDebugPage() {
               </button>
               
               <a 
-                href={`/apprenant/programs/${debugInfo.programId}/chapitres/${debugInfo.chapterId}/exercises`}
+                href={`/apprenant/programs/${debugInfo.programId}/chapters/${debugInfo.chapterId}/exercises`}
                 style={{
                   padding: '10px 20px',
                   background: '#8b5cf6',

@@ -83,7 +83,7 @@ export default function ApprenantExercises() {
     
     const result = await submitAttempt();
     if (result.success) {
-      navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}/exercises/results`, {
+      navigate(`/apprenant/programs/${programId}/chapters/${chapterId}/exercises/results`, {
         state: { results: result.results, duration: result.duration }
       });
     } else {
@@ -188,7 +188,7 @@ export default function ApprenantExercises() {
         }}>
           {/* Gauche : Retour */}
           <button
-            onClick={() => navigate(`/apprenant/programs/${programId}/chapitres/${chapterId}`)}
+            onClick={() => navigate(`/apprenant/programs/${programId}/chapters/${chapterId}`)}
             style={{
               display: 'flex',
               alignItems: 'center',
