@@ -15,6 +15,10 @@ import {
 } from "firebase/firestore";
 import { Plus, FileText, HelpCircle, BrainCircuit, ListTree, Eye, EyeOff, Edit2, FileEdit, Trash2, GripVertical, Pencil, ChevronDown, Layers, ArrowLeft } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useSupabaseAuth } from '../hooks/useSupabaseAuth';
+import { getPrograms } from '../services/supabase/programs';
+import { getChaptersByProgram, createChapter, updateChapter, deleteChapter } from '../services/supabase/chapters';
+import ChapterModal from '../components/ChapterModal';
 
 export default function AdminProgramDetail() {
   const { programId } = useParams();
@@ -36,11 +40,52 @@ export default function AdminProgramDetail() {
 
   const [expandedChapters, setExpandedChapters] = useState(new Set());
 
+  // États Supabase
+  const [useSupabase, setUseSupabase] = useState(false);
+  const { user: supabaseUser, organizationId: supabaseOrgId } = useSupabaseAuth();
+
+  // États modal
+  const [isChapterModalOpen, setIsChapterModalOpen] = useState(false);
+  const [editingChapter, setEditingChapter] = useState(null);
+
+  // --------- Détection automatique de la source ---------
+  useEffect(() => {
+    // Détection automatique : si on a un user Supabase et pas de données Firebase, basculer sur Supabase
+    const autoDetectSource = async () => {
+      if (supabaseUser && supabaseOrgId && programId) {
+        // Essayer de charger depuis Supabase d'abord
+        const { data: programs } = await getPrograms(supabaseOrgId);
+        const foundInSupabase = programs?.some(p => p.id === programId);
+        
+        if (foundInSupabase) {
+          console.log('✅ Programme trouvé dans Supabase, bascule auto');
+          setUseSupabase(true);
+          return;
+        }
+      }
+      
+      // Sinon, rester sur Firebase
+      setUseSupabase(false);
+    };
+
+    autoDetectSource();
+  }, [programId, supabaseUser, supabaseOrgId]);
+
   // --------- Chargement initial ---------
   useEffect(() => {
-    if (!programId || !organizationId) return; // Attendre programId et organizationId
-    
-    const load = async () => {
+    if (useSupabase) {
+      // Mode Supabase
+      if (supabaseOrgId && programId) {
+        loadSupabaseData();
+      }
+    } else {
+      // Mode Firebase (code existant)
+      if (!programId || !organizationId) return; // Attendre programId et organizationId
+      load();
+    }
+  }, [programId, organizationId, supabaseOrgId, useSupabase]);
+
+  const load = async () => {
       try {
         setLoading(true);
 
@@ -124,16 +169,84 @@ export default function AdminProgramDetail() {
             .map((d) => ({ id: d.id, ...d.data() }))
             .filter((a) => a.programId === programId)
         );
-      } catch (err) {
-        console.error(err);
-        setError("Erreur lors du chargement du programme.");
-      } finally {
-        setLoading(false);
-      }
-    };
+    } catch (err) {
+      console.error(err);
+      setError("Erreur lors du chargement du programme.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    load();
-  }, [programId, organizationId]);
+  const loadSupabaseData = async () => {
+    if (!supabaseOrgId || !programId) return;
+
+    try {
+      setLoading(true);
+
+      // Charger le programme
+      const { data: programs, error: progError } = await getPrograms(supabaseOrgId);
+      
+      if (progError) {
+        console.error('Erreur chargement programme:', progError);
+        setLoading(false);
+        return;
+      }
+
+      const foundProgram = programs?.find(p => p.id === programId);
+      
+      if (!foundProgram) {
+        console.error('Programme non trouvé');
+        navigate('/admin/programs');
+        return;
+      }
+
+      setProgram(foundProgram);
+
+      // Charger les chapitres
+      const { data: chaptersData, error: chaptersError } = await getChaptersByProgram(programId);
+      
+      if (chaptersError) {
+        console.error('Erreur chargement chapitres:', chaptersError);
+      } else {
+        setChapters(chaptersData || []);
+      }
+
+      setLoading(false);
+    } catch (error) {
+      console.error('Erreur:', error);
+      setLoading(false);
+    }
+  };
+
+  const handleOpenChapterModal = (chapter = null) => {
+    setEditingChapter(chapter);
+    setIsChapterModalOpen(true);
+  };
+
+  const handleSaveChapter = async (chapterData) => {
+    try {
+      if (editingChapter) {
+        // Modification
+        const { error } = await updateChapter(editingChapter.id, chapterData);
+        if (error) throw error;
+        console.log('✅ Chapitre modifié');
+      } else {
+        // Création
+        const { error } = await createChapter({
+          ...chapterData,
+          program_id: programId
+        });
+        if (error) throw error;
+        console.log('✅ Chapitre créé');
+      }
+
+      // Recharger les données
+      await loadSupabaseData();
+    } catch (error) {
+      console.error('Erreur sauvegarde chapitre:', error);
+      throw error;
+    }
+  };
 
   const formatDate = (ts) => {
     if (!ts) return "—";
@@ -481,21 +594,32 @@ export default function AdminProgramDetail() {
 
   const handleDeleteChapter = async (chapterId) => {
     if (!window.confirm("Supprimer ce chapitre (les leçons associées resteront en base si tu ne les traites pas) ?")) return;
+    
     try {
-      const ref = organizationId
-        ? doc(db, "organizations", organizationId, "programs", program.id, "chapitres", chapterId)
-        : doc(db, "programs", program.id, "chapitres", chapterId);
-      
-      await deleteDoc(ref);
-      
-      setChapters((prev) => prev.filter((c) => c.id !== chapterId));
-      setLessonsByChapter((prev) => {
-        const copy = { ...prev };
-        delete copy[chapterId];
-        return copy;
-      });
-      
-      console.log('✅ Chapitre supprimé');
+      if (useSupabase) {
+        // Mode Supabase
+        const { error } = await deleteChapter(chapterId);
+        if (error) throw error;
+        
+        console.log('✅ Chapitre supprimé (Supabase)');
+        await loadSupabaseData();
+      } else {
+        // Mode Firebase
+        const ref = organizationId
+          ? doc(db, "organizations", organizationId, "programs", program.id, "chapitres", chapterId)
+          : doc(db, "programs", program.id, "chapitres", chapterId);
+        
+        await deleteDoc(ref);
+        
+        setChapters((prev) => prev.filter((c) => c.id !== chapterId));
+        setLessonsByChapter((prev) => {
+          const copy = { ...prev };
+          delete copy[chapterId];
+          return copy;
+        });
+        
+        console.log('✅ Chapitre supprimé (Firebase)');
+      }
     } catch (err) {
       console.error(err);
       alert("Erreur lors de la suppression du chapitre.");
@@ -879,6 +1003,48 @@ export default function AdminProgramDetail() {
         </button>
       </div>
 
+      {/* Toggle Firebase/Supabase */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        padding: '12px 16px',
+        background: useSupabase ? '#e7f3ff' : '#fff5e6',
+        borderRadius: 8,
+        marginBottom: 20,
+        border: `2px solid ${useSupabase ? '#3b82f6' : '#f59e0b'}`
+      }}>
+        <div style={{ fontSize: 24 }}>
+          {useSupabase ? '🔷' : '🔥'}
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
+            Source : {useSupabase ? 'Supabase (PostgreSQL)' : 'Firebase (Firestore)'}
+          </div>
+          <div style={{ fontSize: 12, color: '#666' }}>
+            {useSupabase 
+              ? `Organisation: ${supabaseOrgId || 'Non connecté'}` 
+              : `Organisation: ${organizationId || 'Chargement...'}`
+            }
+          </div>
+        </div>
+        <button
+          onClick={() => setUseSupabase(!useSupabase)}
+          style={{
+            padding: '8px 16px',
+            background: useSupabase ? '#3b82f6' : '#f59e0b',
+            color: 'white',
+            border: 'none',
+            borderRadius: 6,
+            cursor: 'pointer',
+            fontWeight: 600,
+            fontSize: 14
+          }}
+        >
+          → {useSupabase ? 'Firebase' : 'Supabase'}
+        </button>
+      </div>
+
       {/* Header programme */}
       <div
         style={{
@@ -1020,27 +1186,49 @@ export default function AdminProgramDetail() {
 
       {/* Bouton ajouter chapitre */}
       <div style={{ marginBottom: 16 }}>
-        <button
-          type="button"
-          onClick={handleAddChapter}
-          style={{
-            padding: "8px 14px",
-            borderRadius: 999,
-            border: "none",
-            background:
-              "linear-gradient(135deg, var(--color-primary), var(--color-primary-light))",
-            color: "#fff",
-            fontSize: 14,
-            fontWeight: 600,
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-          }}
-        >
-          <ListTree className="w-4 h-4" />
-          Ajouter un chapitre
-        </button>
+        {useSupabase ? (
+          <button
+            onClick={() => handleOpenChapterModal()}
+            style={{
+              marginBottom: 16,
+              padding: '12px 24px',
+              background: 'linear-gradient(135deg, #3b82f6, #60a5fa)',
+              color: 'white',
+              border: 'none',
+              borderRadius: 8,
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: 14,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8
+            }}
+          >
+            ➕ Ajouter un chapitre
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleAddChapter}
+            style={{
+              padding: "8px 14px",
+              borderRadius: 999,
+              border: "none",
+              background:
+                "linear-gradient(135deg, var(--color-primary), var(--color-primary-light))",
+              color: "#fff",
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+            }}
+          >
+            <ListTree className="w-4 h-4" />
+            Ajouter un chapitre
+          </button>
+        )}
       </div>
 
       {/* Liste des chapitres avec drag & drop */}
@@ -1271,6 +1459,48 @@ export default function AdminProgramDetail() {
                       )}
                     </button>
 
+                    {/* Boutons Éditer/Supprimer (mode Supabase uniquement) */}
+                    {useSupabase && (
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenChapterModal(chapter);
+                          }}
+                          style={{
+                            padding: '6px 12px',
+                            background: '#3b82f6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: 6,
+                            cursor: 'pointer',
+                            fontSize: 13,
+                            fontWeight: 600
+                          }}
+                        >
+                          ✏️ Éditer
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteChapter(chapter.id);
+                          }}
+                          style={{
+                            padding: '6px 12px',
+                            background: '#ef4444',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: 6,
+                            cursor: 'pointer',
+                            fontSize: 13,
+                            fontWeight: 600
+                          }}
+                        >
+                          🗑️ Supprimer
+                        </button>
+                      </div>
+                    )}
+
                     {/* Partie droite : Actions */}
                     <div style={{
                       display: 'flex',
@@ -1392,89 +1622,91 @@ export default function AdminProgramDetail() {
                         }}
                       />
 
-                      {/* Icônes actions - Desktop */}
-                      <div 
-                        className="desktop-only"
-                        style={{
-                          display: 'flex',
-                          gap: 4,
-                          flexShrink: 0
-                        }}
-                      >
-                        {/* Renommer */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRenameChapter(chapter);
-                          }}
+                      {/* Icônes actions - Desktop (Firebase uniquement) */}
+                      {!useSupabase && (
+                        <div 
+                          className="desktop-only"
                           style={{
-                            width: 36,
-                            height: 36,
                             display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)',
-                            border: '1px solid #e2e8f0',
-                            borderRadius: 8,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
-                            fontSize: 18
+                            gap: 4,
+                            flexShrink: 0
                           }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)';
-                            e.currentTarget.style.borderColor = '#3b82f6';
-                            e.currentTarget.style.boxShadow = '0 2px 4px rgba(59, 130, 246, 0.1)';
-                            e.currentTarget.style.transform = 'translateY(-1px)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)';
-                            e.currentTarget.style.borderColor = '#e2e8f0';
-                            e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
-                            e.currentTarget.style.transform = 'translateY(0)';
-                          }}
-                          title="Renommer le chapitre"
                         >
-                          ✏️
-                        </button>
+                          {/* Renommer */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRenameChapter(chapter);
+                            }}
+                            style={{
+                              width: 36,
+                              height: 36,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: 8,
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+                              fontSize: 18
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)';
+                              e.currentTarget.style.borderColor = '#3b82f6';
+                              e.currentTarget.style.boxShadow = '0 2px 4px rgba(59, 130, 246, 0.1)';
+                              e.currentTarget.style.transform = 'translateY(-1px)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)';
+                              e.currentTarget.style.borderColor = '#e2e8f0';
+                              e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
+                              e.currentTarget.style.transform = 'translateY(0)';
+                            }}
+                            title="Renommer le chapitre"
+                          >
+                            ✏️
+                          </button>
 
-                        {/* Supprimer */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteChapter(chapter.id);
-                          }}
-                          style={{
-                            width: 36,
-                            height: 36,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            background: 'linear-gradient(135deg, #fef2f2 0%, #ffffff 100%)',
-                            border: '1px solid #fecaca',
-                            borderRadius: 8,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
-                            fontSize: 18
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)';
-                            e.currentTarget.style.borderColor = '#ef4444';
-                            e.currentTarget.style.boxShadow = '0 2px 4px rgba(239, 68, 68, 0.15)';
-                            e.currentTarget.style.transform = 'translateY(-1px)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'linear-gradient(135deg, #fef2f2 0%, #ffffff 100%)';
-                            e.currentTarget.style.borderColor = '#fecaca';
-                            e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
-                            e.currentTarget.style.transform = 'translateY(0)';
-                          }}
-                          title="Supprimer le chapitre"
-                        >
-                          🗑️
-                        </button>
-                      </div>
+                          {/* Supprimer */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteChapter(chapter.id);
+                            }}
+                            style={{
+                              width: 36,
+                              height: 36,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              background: 'linear-gradient(135deg, #fef2f2 0%, #ffffff 100%)',
+                              border: '1px solid #fecaca',
+                              borderRadius: 8,
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+                              fontSize: 18
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)';
+                              e.currentTarget.style.borderColor = '#ef4444';
+                              e.currentTarget.style.boxShadow = '0 2px 4px rgba(239, 68, 68, 0.15)';
+                              e.currentTarget.style.transform = 'translateY(-1px)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'linear-gradient(135deg, #fef2f2 0%, #ffffff 100%)';
+                              e.currentTarget.style.borderColor = '#fecaca';
+                              e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
+                              e.currentTarget.style.transform = 'translateY(0)';
+                            }}
+                            title="Supprimer le chapitre"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1977,6 +2209,18 @@ export default function AdminProgramDetail() {
           </div>
         </div>
       )}
+
+      {/* Modal Chapitre */}
+      <ChapterModal
+        isOpen={isChapterModalOpen}
+        onClose={() => {
+          setIsChapterModalOpen(false);
+          setEditingChapter(null);
+        }}
+        onSave={handleSaveChapter}
+        chapter={editingChapter}
+        defaultOrder={(chapters?.length || 0) + 1}
+      />
     </div>
   );
 }
