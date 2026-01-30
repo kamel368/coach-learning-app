@@ -14,7 +14,8 @@ import {
 } from '@dnd-kit/sortable';
 import { v4 as uuid } from 'uuid';
 import { FileText, Package } from 'lucide-react';
-import { getLesson, saveLesson } from '../../services/lessonsService';
+import { getLesson, createLesson, updateLesson } from '../../services/supabase/lessons';
+import { useSupabaseAuth } from '../../hooks/useSupabaseAuth';
 import LessonOutlineTab from './LessonOutlineTab';
 import BlocksPaletteTab from './BlocksPaletteTab';
 import LessonEditorView from './LessonEditorView';
@@ -33,6 +34,11 @@ export default function LessonBuilder({ lessonId, chapterId, programId, organiza
   const [hasUnsavedBlock, setHasUnsavedBlock] = useState(false);
 
   // ============================================
+  // Hook Supabase
+  // ============================================
+  const { user: supabaseUser, organizationId: supabaseOrgId } = useSupabaseAuth();
+
+  // ============================================
   // 2. SENSORS (drag & drop)
   // ============================================
   const sensors = useSensors(
@@ -48,17 +54,59 @@ export default function LessonBuilder({ lessonId, chapterId, programId, organiza
   // ============================================
   useEffect(() => {
     async function load() {
-      console.log('🔍 LessonBuilder: Chargement avec organizationId:', organizationId);
-      const existing = await getLesson(lessonId, programId, chapterId, organizationId);
-      if (existing) {
-        console.log('✅ Leçon existante trouvée:', existing.title, '- Blocks:', existing.blocks?.length || 0);
-        setLesson(existing);
+      console.log('🔍 LessonBuilder: Chargement de la leçon:', lessonId);
+      
+      // Récupérer la leçon depuis Supabase
+      const { data: lessonData, error } = await getLesson(lessonId);
+      
+      if (error) {
+        console.error('❌ Erreur chargement leçon:', error);
+        // Créer une nouvelle leçon si elle n'existe pas
+        const empty = {
+          id: lessonId,
+          chapter_id: chapterId,
+          title: 'Nouvelle leçon',
+          blocks: [],
+        };
+        setLesson(empty);
+        return;
+      }
+      
+      if (lessonData) {
+        console.log('✅ Leçon existante trouvée:', lessonData.title);
+        
+        // Adapter la structure de données
+        // Supabase: editor_data.blocks ou editor_data directement
+        let blocks = [];
+        
+        if (lessonData.editor_data) {
+          if (Array.isArray(lessonData.editor_data)) {
+            // editor_data est directement un array de blocs
+            blocks = lessonData.editor_data;
+          } else if (lessonData.editor_data.blocks) {
+            // editor_data contient { blocks: [...] }
+            blocks = lessonData.editor_data.blocks;
+          }
+        }
+        
+        console.log('📦 Blocks chargés:', blocks.length);
+        
+        // Créer l'objet lesson avec la structure attendue par le builder
+        setLesson({
+          id: lessonData.id,
+          chapter_id: lessonData.chapter_id,
+          title: lessonData.title || 'Sans titre',
+          blocks: blocks,
+          order: lessonData.order,
+          hidden: lessonData.hidden,
+          duration_minutes: lessonData.duration_minutes,
+          reading_time_minutes: lessonData.reading_time_minutes,
+        });
       } else {
         console.log('📝 Création d\'une nouvelle leçon');
         const empty = {
           id: lessonId,
-          chapterId,
-          programId,
+          chapter_id: chapterId,
           title: 'Nouvelle leçon',
           blocks: [],
         };
@@ -66,7 +114,7 @@ export default function LessonBuilder({ lessonId, chapterId, programId, organiza
       }
     }
     load();
-  }, [lessonId, chapterId, programId, organizationId]);
+  }, [lessonId, chapterId]);
 
   // ============================================
   // 4. FONCTIONS MÉTIER (useCallback)
@@ -146,51 +194,97 @@ export default function LessonBuilder({ lessonId, chapterId, programId, organiza
       }
       
       // ✅ Nettoyer les blocs vides avant sauvegarde
-      const validLesson = {
-        ...lesson,
-        blocks: (lesson.blocks || []).filter(block => {
-          // Valider chaque type de bloc
-          if (block.type === 'text') {
-            return block.data?.html && 
-                   block.data.html.trim() !== '' && 
-                   block.data.html !== '<p></p>' &&
-                   block.data.html !== '<p><br></p>';
-          }
-          if (block.type === 'image') {
-            return block.data?.url && block.data.url.trim() !== '';
-          }
-          if (block.type === 'video') {
-            return block.data?.url && block.data.url.trim() !== '';
-          }
-          if (block.type === 'quote') {
-            return block.data?.content && block.data.content.trim() !== '';
-          }
-          if (block.type === 'list') {
-            return block.data?.items && block.data.items.length > 0;
-          }
-          if (block.type === 'info') {
-            return block.data?.body && block.data.body.trim() !== '';
-          }
-          if (block.type === 'toggle') {
-            return block.data?.body && block.data.body.trim() !== '';
-          }
-          // Divider, separator, timeline, lessonLink sont toujours valides
-          if (block.type === 'divider' || block.type === 'separator' || 
-              block.type === 'timeline' || block.type === 'lessonLink') {
-            return true;
-          }
-          return true; // Par défaut, garder le bloc
-        })
+      const validBlocks = (lesson.blocks || []).filter(block => {
+        // Valider chaque type de bloc
+        if (block.type === 'text') {
+          return block.data?.html && 
+                 block.data.html.trim() !== '' && 
+                 block.data.html !== '<p></p>' &&
+                 block.data.html !== '<p><br></p>';
+        }
+        if (block.type === 'image') {
+          return block.data?.url && block.data.url.trim() !== '';
+        }
+        if (block.type === 'video') {
+          return block.data?.url && block.data.url.trim() !== '';
+        }
+        if (block.type === 'quote') {
+          return block.data?.content && block.data.content.trim() !== '';
+        }
+        if (block.type === 'list') {
+          return block.data?.items && block.data.items.length > 0;
+        }
+        if (block.type === 'info') {
+          return block.data?.body && block.data.body.trim() !== '';
+        }
+        if (block.type === 'toggle') {
+          return block.data?.body && block.data.body.trim() !== '';
+        }
+        // Divider, separator, timeline, lessonLink sont toujours valides
+        if (block.type === 'divider' || block.type === 'separator' || 
+            block.type === 'timeline' || block.type === 'lessonLink') {
+          return true;
+        }
+        return true; // Par défaut, garder le bloc
+      });
+      
+      console.log('💾 Sauvegarde de la leçon:', lesson.id || 'nouvelle');
+      console.log('📦 Nombre de blocks valides:', validBlocks.length);
+      
+      // Préparer les données pour Supabase
+      const lessonData = {
+        title: lesson.title || 'Sans titre',
+        editor_data: validBlocks, // Stocker directement le tableau de blocs
+        duration_minutes: lesson.duration_minutes || null,
+        reading_time_minutes: lesson.reading_time_minutes || null,
+        order: lesson.order || 1,
+        hidden: lesson.hidden || false,
       };
       
-      console.log('💾 Sauvegarde avec organizationId:', organizationId);
-      console.log('📦 Nombre de blocks:', validLesson.blocks?.length || 0);
+      let result;
       
-      // ✅ CORRECTION: Passer organizationId à saveLesson
-      await saveLesson(validLesson, programId, chapterId, organizationId);
+      // Si la leçon a déjà un ID et existe dans Supabase
+      if (lesson.id && lesson.id !== 'new') {
+        // Mise à jour
+        console.log('🔄 Mise à jour de la leçon existante:', lesson.id);
+        const { data, error } = await updateLesson(lesson.id, lessonData);
+        
+        if (error) {
+          console.error('❌ Erreur mise à jour:', error);
+          throw new Error(error.message || 'Erreur lors de la mise à jour');
+        }
+        
+        result = data;
+        console.log('✅ Leçon mise à jour avec succès');
+      } else {
+        // Création
+        console.log('➕ Création d\'une nouvelle leçon');
+        const { data, error } = await createLesson({
+          ...lessonData,
+          chapter_id: chapterId,
+        });
+        
+        if (error) {
+          console.error('❌ Erreur création:', error);
+          throw new Error(error.message || 'Erreur lors de la création');
+        }
+        
+        result = data;
+        console.log('✅ Leçon créée avec succès, ID:', result.id);
+        
+        // Mettre à jour l'ID local après création
+        setLesson(prev => ({
+          ...prev,
+          id: result.id,
+        }));
+      }
       
-      // Mettre à jour l'état local avec la version nettoyée
-      setLesson(validLesson);
+      // Mettre à jour l'état local avec les blocs nettoyés
+      setLesson(prev => ({
+        ...prev,
+        blocks: validBlocks,
+      }));
+      
       setHasUnsavedBlock(false);
       
       toast.success('Leçon sauvegardée avec succès !', {
@@ -199,11 +293,11 @@ export default function LessonBuilder({ lessonId, chapterId, programId, organiza
       
     } catch (error) {
       console.error('❌ Erreur sauvegarde:', error);
-      toast.error('Erreur lors de la sauvegarde', {
+      toast.error(error.message || 'Erreur lors de la sauvegarde', {
         id: toastId,
       });
     }
-  }, [lesson, hasUnsavedBlock, programId, chapterId, organizationId]);
+  }, [lesson, hasUnsavedBlock, chapterId]);
 
   // ============================================
   // 5. useEffect - EXPOSITION AU PARENT (onReady)
