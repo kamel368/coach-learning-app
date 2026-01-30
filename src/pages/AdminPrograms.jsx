@@ -33,6 +33,9 @@ import {
   ListTree,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { getPrograms as getSupabasePrograms } from '../services/supabase/programs';
+import { getCategories as getSupabaseCategories } from '../services/supabase/categories';
+import { useSupabaseAuth } from '../hooks/useSupabaseAuth';
 
 // Labels de statut (temporaire - sera remplacé par badges Eye/EyeOff)
 const statusLabels = {
@@ -44,6 +47,10 @@ const statusLabels = {
 export default function AdminPrograms() {
   const navigate = useNavigate();
   const { user, organizationId } = useAuth();
+
+  // ✅ États pour le toggle Firebase/Supabase
+  const [useSupabase, setUseSupabase] = useState(false); // false = Firebase, true = Supabase
+  const { organizationId: supabaseOrgId } = useSupabaseAuth();
 
   const [programs, setPrograms] = useState([]);
   const [categories, setCategories] = useState([]); // catégories
@@ -92,13 +99,103 @@ export default function AdminPrograms() {
 
   // Charger programmes + rôles métier + compteurs chapitres
   useEffect(() => {
-    if (!organizationId) return; // Attendre l'organizationId
+    if (useSupabase) {
+      // Mode Supabase : attendre supabaseOrgId
+      if (supabaseOrgId) {
+        fetchData();
+      }
+    } else {
+      // Mode Firebase : attendre organizationId
+      if (organizationId) {
+        fetchData();
+      }
+    }
+  }, [organizationId, supabaseOrgId, useSupabase]); // Ajouter useSupabase aux dépendances
     
-    const fetchData = async () => {
-      try {
-        setLoadingList(true);
+  const fetchData = async () => {
+    try {
+      setLoadingList(true);
+      setError("");
 
-        // Charger depuis l'organisation de l'utilisateur
+      // ========== MODE SUPABASE ==========
+      if (useSupabase) {
+        console.log('🔷 [AdminPrograms] Chargement depuis SUPABASE');
+        
+        if (!supabaseOrgId) {
+          console.error('❌ Pas d\'organization_id Supabase');
+          setError("Organization ID manquant (Supabase)");
+          setLoadingList(false);
+          return;
+        }
+
+        // Charger programmes depuis Supabase
+        const { data: supabasePrograms, error: progError } = await getSupabasePrograms(supabaseOrgId);
+        
+        if (progError) {
+          console.error('❌ Erreur Supabase programmes:', progError);
+          setError("Erreur lors du chargement des programmes (Supabase)");
+          setLoadingList(false);
+          return;
+        }
+
+        // Transformer les données Supabase pour correspondre au format attendu
+        const transformedPrograms = (supabasePrograms || []).map(prog => ({
+          id: prog.id,
+          name: prog.title, // Supabase utilise "title", Firebase utilise "name"
+          description: prog.description,
+          categoryId: prog.category_id,
+          status: prog.hidden ? 'draft' : 'published', // Approximation
+          hidden: prog.hidden,
+          createdAt: { seconds: new Date(prog.created_at).getTime() / 1000 },
+          updatedAt: { seconds: new Date(prog.updated_at).getTime() / 1000 }
+        }));
+
+        setPrograms(transformedPrograms);
+        console.log('✅ Programmes Supabase chargés:', transformedPrograms.length);
+
+        // Charger catégories depuis Supabase
+        const { data: supabaseCategories, error: catError } = await getSupabaseCategories(supabaseOrgId);
+        
+        if (catError) {
+          console.error('❌ Erreur Supabase catégories:', catError);
+        } else {
+          const transformedCategories = (supabaseCategories || []).map(cat => ({
+            id: cat.id,
+            name: cat.name,
+            label: cat.name, // Alias pour compatibilité
+            description: cat.description,
+            color: cat.color
+          }));
+          setCategories(transformedCategories);
+          console.log('✅ Catégories Supabase chargées:', transformedCategories.length);
+        }
+
+        // Compter les chapitres (on garde Firebase pour l'instant car pas encore migré)
+        const countsPromises = transformedPrograms.map(async (prog) => {
+          const count = await fetchChaptersCount(prog.id);
+          return { id: prog.id, count };
+        });
+        
+        const countsResults = await Promise.all(countsPromises);
+        const countsMap = countsResults.reduce((acc, { id, count }) => {
+          acc[id] = count;
+          return acc;
+        }, {});
+        
+        setChaptersCount(countsMap);
+
+      } 
+      // ========== MODE FIREBASE (code existant) ==========
+      else {
+        console.log('🔥 [AdminPrograms] Chargement depuis FIREBASE');
+        
+        if (!organizationId) {
+          console.error('❌ Pas d\'organizationId Firebase');
+          setLoadingList(false);
+          return;
+        }
+
+        // CODE FIREBASE EXISTANT (ne pas modifier)
         let progSnap;
         if (organizationId) {
           // Nouvelle structure : /organizations/{orgId}/programs
@@ -145,17 +242,15 @@ export default function AdminPrograms() {
         }, {});
         
         setChaptersCount(countsMap);
-
-      } catch (err) {
-        console.error(err);
-        setError("Impossible de charger les programmes ou les catégories.");
-      } finally {
-        setLoadingList(false);
       }
-    };
 
-    fetchData();
-  }, [organizationId]);
+    } catch (err) {
+      console.error('❌ Erreur fetchData:', err);
+      setError("Erreur lors du chargement: " + err.message);
+    } finally {
+      setLoadingList(false);
+    }
+  };
 
   const getCategoryLabel = (id) => {
     if (!id) return "Sans catégorie";
@@ -1843,6 +1938,51 @@ export default function AdminPrograms() {
           >
             <Plus size={18} />
             Ajouter un programme
+          </button>
+        </div>
+
+        {/* Toggle Firebase/Supabase */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: '12px 16px',
+          background: useSupabase ? '#e7f3ff' : '#fff5e6',
+          borderRadius: 8,
+          marginTop: 20,
+          marginBottom: 20,
+          border: `2px solid ${useSupabase ? '#3b82f6' : '#f59e0b'}`
+        }}>
+          <div style={{
+            fontSize: 24,
+          }}>
+            {useSupabase ? '🔷' : '🔥'}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
+              Source de données : {useSupabase ? 'Supabase (PostgreSQL)' : 'Firebase (Firestore)'}
+            </div>
+            <div style={{ fontSize: 12, color: '#666' }}>
+              {useSupabase 
+                ? `Organisation: ${supabaseOrgId || 'Non connecté'}` 
+                : `Organisation: ${organizationId || 'Chargement...'}`
+              }
+            </div>
+          </div>
+          <button
+            onClick={() => setUseSupabase(!useSupabase)}
+            style={{
+              padding: '8px 16px',
+              background: useSupabase ? '#3b82f6' : '#f59e0b',
+              color: 'white',
+              border: 'none',
+              borderRadius: 6,
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: 14
+            }}
+          >
+            Basculer vers {useSupabase ? 'Firebase' : 'Supabase'}
           </button>
         </div>
 
