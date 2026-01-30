@@ -10,6 +10,8 @@ import { useViewAs } from '../../hooks/useViewAs';
 import ViewAsBanner from '../../components/ViewAsBanner';
 import { useAuth } from '../../context/AuthContext';
 import { getUserAssignedPrograms as getSupabaseAssignedPrograms } from '../../services/supabase/assignments';
+import { getCategories as getSupabaseCategories } from '../../services/supabase/categories';
+import { calculateProgramCompletion } from '../../services/supabase/progress';
 import { useSupabaseAuth } from '../../hooks/useSupabaseAuth';
 
 export default function ApprenantDashboard() {
@@ -112,7 +114,35 @@ export default function ApprenantDashboard() {
         }
 
         console.log('✅ Assigned programs (Supabase):', assignedPrograms);
-        setPrograms(assignedPrograms || []);
+
+        // Calculer la progression pour chaque programme
+        console.log('📊 Calculating progress for each program...');
+        const programsWithProgress = await Promise.all(
+          (assignedPrograms || []).map(async (program) => {
+            const percentage = await calculateProgramCompletion(
+              supabaseUser.id,
+              program.id
+            );
+            return { 
+              ...program, 
+              progressPercentage: percentage,
+              readingProgress: percentage // Pour compatibilité avec l'UI existante
+            };
+          })
+        );
+
+        console.log('✅ Programs with progress calculated:', programsWithProgress);
+        setPrograms(programsWithProgress);
+
+        // Charger les catégories depuis Supabase
+        const { data: supabaseCategories, error: catError } = await getSupabaseCategories(supabaseOrgId);
+
+        if (catError) {
+          console.error('❌ Erreur Supabase catégories:', catError);
+        } else {
+          console.log('✅ Catégories Supabase chargées:', supabaseCategories);
+          setCategories(supabaseCategories || []);
+        }
 
         // Récupérer le nom de l'utilisateur
         setUserName(viewAsUserName || supabaseUser.email?.split('@')[0] || 'Apprenant');
@@ -325,9 +355,10 @@ export default function ApprenantDashboard() {
 
   // Obtenir le nom d'une catégorie
   function getCategoryName(categoryId) {
-    if (categoryId === 'uncategorized') return 'Sans catégorie';
+    if (!categoryId || categories.length === 0) return 'Non catégorisé';
     const category = categories.find(c => c.id === categoryId);
-    return category ? category.label : 'Catégorie inconnue';
+    // Support Firebase (label) et Supabase (name)
+    return category?.name || category?.label || 'Catégorie inconnue';
   }
 
   // Obtenir l'icône d'une catégorie
