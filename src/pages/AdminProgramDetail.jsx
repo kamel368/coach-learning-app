@@ -18,6 +18,7 @@ import { useAuth } from "../context/AuthContext";
 import { useSupabaseAuth } from '../hooks/useSupabaseAuth';
 import { getPrograms } from '../services/supabase/programs';
 import { getChaptersByProgram, createChapter, updateChapter, deleteChapter } from '../services/supabase/chapters';
+import { getLessonsByChapter } from '../services/supabase/lessons';
 import ChapterModal from '../components/ChapterModal';
 
 export default function AdminProgramDetail() {
@@ -207,8 +208,28 @@ export default function AdminProgramDetail() {
       
       if (chaptersError) {
         console.error('Erreur chargement chapitres:', chaptersError);
+        setChapters([]); // Initialiser à vide en cas d'erreur
       } else {
-        setChapters(chaptersData || []);
+        // Pour chaque chapitre, charger ses leçons
+        const chaptersWithLessons = await Promise.all(
+          (chaptersData || []).map(async (chapter) => {
+            const { data: lessonsData, error: lessonsError } = await getLessonsByChapter(chapter.id);
+            
+            if (lessonsError) {
+              console.error(`Erreur chargement leçons chapitre ${chapter.id}:`, lessonsError);
+              return { ...chapter, lessons: [], lessonsCount: 0 };
+            }
+            
+            return {
+              ...chapter,
+              lessons: lessonsData || [],
+              lessonsCount: (lessonsData || []).length
+            };
+          })
+        );
+        
+        setChapters(chaptersWithLessons);
+        console.log('✅ Chapitres avec leçons chargés:', chaptersWithLessons);
       }
 
       setLoading(false);
@@ -1482,7 +1503,21 @@ export default function AdminProgramDetail() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleAddLessonForChapter(chapter.id);
+                            
+                            if (useSupabase) {
+                              // Mode Supabase: Vérifier s'il y a des leçons
+                              if (chapter.lessons && chapter.lessons.length > 0) {
+                                // Naviguer vers la première leçon
+                                const firstLesson = chapter.lessons[0];
+                                navigate(`/admin/programs/${programId}/chapters/${chapter.id}/lessons/${firstLesson.id}/edit`);
+                              } else {
+                                // Pas de leçons, afficher un message
+                                alert('Aucune leçon pour ce chapitre.\n\nPour créer une leçon, utilisez le bouton "Ajouter une leçon" dans l\'éditeur de programme ou créez-la depuis la base de données.');
+                              }
+                            } else {
+                              // Mode Firebase: Ancien comportement
+                              handleAddLessonForChapter(chapter.id);
+                            }
                           }}
                           style={{
                             padding: '8px 16px',
@@ -1506,7 +1541,7 @@ export default function AdminProgramDetail() {
                           }}
                         >
                           <FileText size={14} />
-                          Leçon
+                          Leçon {useSupabase && chapter.lessonsCount !== undefined && `(${chapter.lessonsCount})`}
                         </button>
 
                         <button
