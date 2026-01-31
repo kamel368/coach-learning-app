@@ -1881,7 +1881,7 @@ export default function AdminProgramDetail() {
                       </div>
                       
                       <DragDropContext onDragEnd={(result) => handleDragEnd(result, chapter.id)}>
-                        <Droppable droppableId={`lessons-${chapter.id}`}>
+                        <Droppable droppableId={chapter.id}>
                           {(provided) => (
                             <div
                               {...provided.droppableProps}
@@ -1890,17 +1890,18 @@ export default function AdminProgramDetail() {
                             >
                               {chapter.lessons
                                 .sort((a, b) => (a.order || 0) - (b.order || 0))
-                                .map((lesson, index) => (
+                                .map((lesson, lessonIndex) => (
                                   <Draggable
                                     key={lesson.id}
                                     draggableId={lesson.id}
-                                    index={index}
+                                    index={lessonIndex}
                                   >
                                     {(provided, snapshot) => (
                                       <div
                                         ref={provided.innerRef}
                                         {...provided.draggableProps}
                                         style={{
+                                          ...provided.draggableProps.style,
                                           padding: '12px 16px',
                                           background: snapshot.isDragging ? '#f0f9ff' : 'white',
                                           border: `1px solid ${snapshot.isDragging ? '#3b82f6' : '#e5e7eb'}`,
@@ -1908,8 +1909,7 @@ export default function AdminProgramDetail() {
                                           display: 'flex',
                                           alignItems: 'center',
                                           gap: 12,
-                                          transition: 'all 0.2s',
-                                          ...provided.draggableProps.style
+                                          transition: 'background 0.2s'
                                         }}
                                       >
                                         {/* Drag Handle */}
@@ -1919,7 +1919,8 @@ export default function AdminProgramDetail() {
                                             cursor: 'grab',
                                             color: '#9ca3af',
                                             display: 'flex',
-                                            alignItems: 'center'
+                                            alignItems: 'center',
+                                            fontSize: 18
                                           }}
                                         >
                                           ⋮⋮
@@ -1934,7 +1935,8 @@ export default function AdminProgramDetail() {
                                           display: 'flex',
                                           alignItems: 'center',
                                           justifyContent: 'center',
-                                          flexShrink: 0
+                                          flexShrink: 0,
+                                          fontSize: 16
                                         }}>
                                           📖
                                         </div>
@@ -1978,11 +1980,9 @@ export default function AdminProgramDetail() {
                                             try {
                                               console.log('🔄 Duplication de la leçon:', lesson.id);
                                               
-                                              // Charger la leçon complète
                                               const { data: originalLesson, error: fetchError } = await getLesson(lesson.id);
                                               if (fetchError) throw fetchError;
                                               
-                                              // Créer une copie
                                               const { data: duplicatedLesson, error: createError } = await createLesson({
                                                 chapter_id: chapter.id,
                                                 title: `${originalLesson.title} (copie)`,
