@@ -48,6 +48,7 @@ import LessonEditorPage from "./pages/LessonEditorPage";
 // ✅ Builder d'exercices
 import ExerciseEditorPage from "./pages/admin/ExerciseEditorPage";
 import ExerciseEditorPageTemp from "./pages/admin/ExerciseEditorPageTemp";
+import ExerciseEditorPageSupabase from "./pages/admin/ExerciseEditorPageSupabase";
 
 // ✅ Page temporaire de nettoyage Firebase
 import CleanupPage from "./pages/CleanupPage";
@@ -264,7 +265,7 @@ function AppContent() {
             path="/admin/exercise/:exerciseId"
             element={
               <ProtectedRoute>
-                <ExerciseEditorPageTemp />
+                <ExerciseEditorPageSupabase />
               </ProtectedRoute>
             }
           />
