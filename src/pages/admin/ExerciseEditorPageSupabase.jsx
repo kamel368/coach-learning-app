@@ -39,6 +39,7 @@ export default function ExerciseEditorPageSupabase() {
   
   const [exercise, setExercise] = useState(null);
   const [blocks, setBlocks] = useState([]);
+  const [title, setTitle] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('exercices');
@@ -56,6 +57,7 @@ export default function ExerciseEditorPageSupabase() {
       
       console.log('✅ Exercice chargé:', data);
       setExercise(data);
+      setTitle(data.title || 'Nouvel exercice');
       
       // Charger les blocs depuis exercise_data
       if (data.exercise_data?.blocks) {
@@ -75,8 +77,19 @@ export default function ExerciseEditorPageSupabase() {
 
   const handleSave = async () => {
     try {
+      // Validation
+      if (!title || title.trim() === '') {
+        alert('❌ Veuillez saisir un titre pour l\'exercice');
+        return;
+      }
+
+      if (blocks.length === 0) {
+        alert('❌ Ajoutez au moins un bloc d\'exercice');
+        return;
+      }
+
       setSaving(true);
-      console.log('💾 Sauvegarde exercice Supabase');
+      console.log('💾 Sauvegarde exercice Supabase avec titre:', title);
       console.log('📊 Blocs à sauvegarder:', blocks.length);
       
       // Déterminer le type d'exercice (premier bloc ou qcm par défaut)
@@ -85,7 +98,7 @@ export default function ExerciseEditorPageSupabase() {
       await updateExercise(
         exerciseId,
         {
-          title: exercise.title,
+          title: title.trim(),
           exercise_type: exerciseType,
           exercise_data: {
             type: exerciseType,
@@ -95,7 +108,7 @@ export default function ExerciseEditorPageSupabase() {
         organizationId
       );
       
-      console.log('✅ Exercice sauvegardé');
+      console.log('✅ Exercice sauvegardé (titre + données)');
       alert('✅ Exercice enregistré avec succès !');
       
     } catch (error) {
@@ -259,7 +272,7 @@ export default function ExerciseEditorPageSupabase() {
               Retour
             </button>
             <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1f2937' }}>
-              {exercise.title}
+              Éditeur d'exercice
             </h1>
           </div>
 
@@ -283,6 +296,36 @@ export default function ExerciseEditorPageSupabase() {
             <Save size={18} />
             {saving ? 'Enregistrement...' : 'Enregistrer'}
           </button>
+        </div>
+
+        {/* Input titre exercice */}
+        <div style={{ marginBottom: 30 }}>
+          <label style={{
+            display: 'block',
+            fontSize: 14,
+            fontWeight: 600,
+            color: '#374151',
+            marginBottom: 8
+          }}>
+            Titre de l'exercice
+          </label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Ex: QCM - Vitesse maximale en ville"
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              fontSize: 16,
+              border: '2px solid #e5e7eb',
+              borderRadius: 8,
+              outline: 'none',
+              transition: 'border-color 0.2s'
+            }}
+            onFocus={(e) => e.currentTarget.style.borderColor = '#3b82f6'}
+            onBlur={(e) => e.currentTarget.style.borderColor = '#e5e7eb'}
+          />
         </div>
 
         {/* Liste des blocs */}
