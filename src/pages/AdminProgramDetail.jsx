@@ -18,10 +18,11 @@ import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import LessonsList from '../components/LessonsList';
 import { useAuth } from "../context/AuthContext";
 import { useSupabaseAuth } from '../hooks/useSupabaseAuth';
+import { supabase } from '../lib/supabase';
 import { getPrograms } from '../services/supabase/programs';
 import { getChaptersByProgram, createChapter, updateChapter, deleteChapter, reorderChapters } from '../services/supabase/chapters';
 import { getLessonsByChapter, createLesson, deleteLesson, reorderLessons, getLesson } from '../services/supabase/lessons';
-import { createExercise } from '../services/supabase/exercises';
+import { createExercise, deleteExercise } from '../services/supabase/exercises';
 import ChapterModal from '../components/ChapterModal';
 
 export default function AdminProgramDetail() {
@@ -233,8 +234,36 @@ export default function AdminProgramDetail() {
           })
         );
         
-        setChapters(chaptersWithLessons);
-        console.log('✅ Chapitres avec leçons chargés:', chaptersWithLessons);
+        // Charger les exercices pour chaque chapitre
+        const chaptersWithExercises = await Promise.all(
+          chaptersWithLessons.map(async (chapter) => {
+            try {
+              const { data: exercises, error: exError } = await supabase
+                .from('exercises')
+                .select('*')
+                .eq('chapter_id', chapter.id)
+                .order('order', { ascending: true });
+
+              if (exError) throw exError;
+
+              return {
+                ...chapter,
+                exercises: exercises || [],
+                exercisesCount: (exercises || []).length
+              };
+            } catch (error) {
+              console.error('Erreur chargement exercices:', error);
+              return {
+                ...chapter,
+                exercises: [],
+                exercisesCount: 0
+              };
+            }
+          })
+        );
+        
+        setChapters(chaptersWithExercises);
+        console.log('✅ Chapitres avec leçons et exercices chargés:', chaptersWithExercises);
       }
 
       setLoading(false);
@@ -307,6 +336,56 @@ export default function AdminProgramDetail() {
     } catch (error) {
       console.error('❌ Erreur création exercice:', error);
       alert('Erreur lors de la création de l\'exercice');
+    }
+  };
+
+  // Éditer exercice
+  const handleEditExercise = (exerciseId) => {
+    navigate(`/admin/exercise/${exerciseId}`);
+  };
+
+  // Dupliquer exercice
+  const handleDuplicateExercise = async (exercise) => {
+    if (!window.confirm('Dupliquer cet exercice ?')) return;
+    
+    try {
+      console.log('🔄 Duplication exercice:', exercise.id);
+      const { data: newEx, error } = await supabase
+        .from('exercises')
+        .insert([{
+          chapter_id: exercise.chapter_id,
+          title: `${exercise.title} (copie)`,
+          exercise_type: exercise.exercise_type,
+          exercise_data: exercise.exercise_data,
+          order: exercise.order + 1,
+          hidden: exercise.hidden
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      console.log('✅ Exercice dupliqué:', newEx.id);
+      await loadSupabaseData(); // Recharger
+    } catch (error) {
+      console.error('❌ Erreur duplication:', error);
+      alert('Erreur lors de la duplication');
+    }
+  };
+
+  // Supprimer exercice
+  const handleDeleteExercise = async (exerciseId) => {
+    if (!window.confirm('Supprimer cet exercice définitivement ?')) return;
+    
+    try {
+      console.log('🗑️ Suppression exercice:', exerciseId);
+      await deleteExercise(exerciseId, supabaseOrgId);
+      
+      console.log('✅ Exercice supprimé');
+      await loadSupabaseData(); // Recharger
+    } catch (error) {
+      console.error('❌ Erreur suppression:', error);
+      alert('Erreur lors de la suppression');
     }
   };
 
@@ -1682,6 +1761,137 @@ export default function AdminProgramDetail() {
                       }
                     }}
                   />
+                )}
+                
+                {/* SECTION EXERCICES */}
+                {expandedChapters.has(chapter.id) && chapter.exercises && chapter.exercises.length > 0 && (
+                  <div style={{ marginTop: 30 }}>
+                    <div style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: '#6b7280',
+                      marginBottom: 12,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em'
+                    }}>
+                      🎯 EXERCICES ({chapter.exercises.length})
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {chapter.exercises.map((exercise) => (
+                        <div
+                          key={exercise.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 12,
+                            padding: '12px 16px',
+                            background: 'white',
+                            border: '2px solid #e5e7eb',
+                            borderRadius: 8
+                          }}
+                        >
+                          {/* Poignée drag (visuel seulement pour l'instant) */}
+                          <div style={{
+                            fontSize: 16,
+                            color: '#d1d5db',
+                            cursor: 'grab'
+                          }}>
+                            ⋮⋮
+                          </div>
+
+                          {/* Icône exercice */}
+                          <div style={{ fontSize: 20 }}>🎯</div>
+
+                          {/* Titre */}
+                          <div style={{
+                            flex: 1,
+                            fontSize: 15,
+                            fontWeight: 500,
+                            color: '#1f2937'
+                          }}>
+                            {exercise.title}
+                          </div>
+
+                          {/* Type exercice (badge) */}
+                          <div style={{
+                            padding: '4px 12px',
+                            background: '#fef3c7',
+                            border: '1px solid #fbbf24',
+                            borderRadius: 6,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: '#d97706'
+                          }}>
+                            {exercise.exercise_type}
+                          </div>
+
+                          {/* Boutons CRUD */}
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            {/* Éditer */}
+                            <button
+                              onClick={() => handleEditExercise(exercise.id)}
+                              style={{
+                                width: 36,
+                                height: 36,
+                                background: 'white',
+                                border: '2px solid #e5e7eb',
+                                borderRadius: 8,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: 16
+                              }}
+                              title="Éditer"
+                            >
+                              ✏️
+                            </button>
+
+                            {/* Dupliquer */}
+                            <button
+                              onClick={() => handleDuplicateExercise(exercise)}
+                              style={{
+                                width: 36,
+                                height: 36,
+                                background: 'white',
+                                border: '2px solid #e5e7eb',
+                                borderRadius: 8,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: 16
+                              }}
+                              title="Dupliquer"
+                            >
+                              📋
+                            </button>
+
+                            {/* Supprimer */}
+                            <button
+                              onClick={() => handleDeleteExercise(exercise.id)}
+                              style={{
+                                width: 36,
+                                height: 36,
+                                background: '#fef2f2',
+                                border: '2px solid #fee2e2',
+                                borderRadius: 8,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: 16
+                              }}
+                              title="Supprimer"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
             ))}
