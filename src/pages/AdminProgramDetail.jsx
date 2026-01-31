@@ -21,6 +21,7 @@ import { useSupabaseAuth } from '../hooks/useSupabaseAuth';
 import { getPrograms } from '../services/supabase/programs';
 import { getChaptersByProgram, createChapter, updateChapter, deleteChapter, reorderChapters } from '../services/supabase/chapters';
 import { getLessonsByChapter, createLesson, deleteLesson, reorderLessons, getLesson } from '../services/supabase/lessons';
+import { createExercise } from '../services/supabase/exercises';
 import ChapterModal from '../components/ChapterModal';
 
 export default function AdminProgramDetail() {
@@ -278,6 +279,34 @@ export default function AdminProgramDetail() {
     } catch (error) {
       console.error('❌ Exception création leçon:', error);
       alert('Erreur lors de la création de la leçon');
+    }
+  };
+
+  // Créer un nouvel exercice
+  const handleCreateExercise = async (chapterId) => {
+    try {
+      console.log('🎯 Création exercice pour chapitre:', chapterId);
+      
+      // Créer un exercice vide dans Supabase
+      const newExercise = await createExercise({
+        chapter_id: chapterId,
+        title: 'Nouvel exercice',
+        exercise_data: {
+          type: 'qcm',  // Type par défaut
+          questions: []
+        },
+        order: 1,
+        hidden: false
+      }, supabaseOrgId);
+
+      console.log('✅ Exercice créé:', newExercise.id);
+
+      // Naviguer vers l'éditeur d'exercice
+      navigate(`/admin/exercise/${newExercise.id}`);
+      
+    } catch (error) {
+      console.error('❌ Erreur création exercice:', error);
+      alert('Erreur lors de la création de l\'exercice');
     }
   };
 
@@ -1511,20 +1540,29 @@ export default function AdminProgramDetail() {
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate(`/admin/programs/${programId}/chapters/${chapter.id}/exercises`);
+                      handleCreateExercise(chapter.id);
                     }}
                     style={{
                       padding: '8px 16px',
-                      background: '#eff6ff',
-                      border: '2px solid #93c5fd',
+                      background: '#fef3c7',
+                      border: '2px solid #f59e0b',
                       borderRadius: 8,
                       cursor: 'pointer',
                       fontSize: 14,
                       fontWeight: 600,
-                      color: '#3b82f6',
+                      color: '#d97706',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 6
+                      gap: 6,
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#fde68a';
+                      e.currentTarget.style.transform = 'scale(1.05)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = '#fef3c7';
+                      e.currentTarget.style.transform = 'scale(1)';
                     }}
                   >
                     🎯 Exercices
