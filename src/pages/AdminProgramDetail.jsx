@@ -44,6 +44,8 @@ export default function AdminProgramDetail() {
   const [aiExercises, setAiExercises] = useState([]);
 
   const [expandedChapters, setExpandedChapters] = useState(new Set());
+  const [editingExerciseId, setEditingExerciseId] = useState(null);
+  const [editingExerciseTitle, setEditingExerciseTitle] = useState('');
 
   // États Supabase
   const [useSupabase, setUseSupabase] = useState(false);
@@ -386,6 +388,31 @@ export default function AdminProgramDetail() {
     } catch (error) {
       console.error('❌ Erreur suppression:', error);
       alert('Erreur lors de la suppression');
+    }
+  };
+
+  // Sauvegarder le titre de l'exercice
+  const handleSaveExerciseTitle = async (exerciseId) => {
+    if (!editingExerciseTitle.trim()) {
+      alert('Le titre ne peut pas être vide');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('exercises')
+        .update({ title: editingExerciseTitle.trim() })
+        .eq('id', exerciseId);
+
+      if (error) throw error;
+
+      console.log('✅ Titre exercice mis à jour');
+      setEditingExerciseId(null);
+      setEditingExerciseTitle('');
+      await loadSupabaseData(); // Recharger
+    } catch (error) {
+      console.error('❌ Erreur mise à jour titre:', error);
+      alert('Erreur lors de la mise à jour du titre');
     }
   };
 
@@ -1803,15 +1830,51 @@ export default function AdminProgramDetail() {
                           {/* Icône exercice */}
                           <div style={{ fontSize: 20 }}>🎯</div>
 
-                          {/* Titre */}
-                          <div style={{
-                            flex: 1,
-                            fontSize: 15,
-                            fontWeight: 500,
-                            color: '#1f2937'
-                          }}>
-                            {exercise.title}
-                          </div>
+                          {/* Titre éditable */}
+                          {editingExerciseId === exercise.id ? (
+                            // MODE ÉDITION
+                            <input
+                              type="text"
+                              value={editingExerciseTitle}
+                              onChange={(e) => setEditingExerciseTitle(e.target.value)}
+                              onBlur={() => handleSaveExerciseTitle(exercise.id)}
+                              onKeyPress={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleSaveExerciseTitle(exercise.id);
+                                }
+                              }}
+                              autoFocus
+                              style={{
+                                flex: 1,
+                                fontSize: 15,
+                                fontWeight: 500,
+                                color: '#1f2937',
+                                border: '2px solid #3b82f6',
+                                borderRadius: 6,
+                                padding: '6px 12px',
+                                outline: 'none'
+                              }}
+                            />
+                          ) : (
+                            // MODE LECTURE
+                            <div
+                              onDoubleClick={() => {
+                                setEditingExerciseId(exercise.id);
+                                setEditingExerciseTitle(exercise.title);
+                              }}
+                              style={{
+                                flex: 1,
+                                fontSize: 15,
+                                fontWeight: 500,
+                                color: '#1f2937',
+                                cursor: 'text',
+                                padding: '6px 0'
+                              }}
+                              title="Double-cliquez pour éditer"
+                            >
+                              {exercise.title}
+                            </div>
+                          )}
 
                           {/* Type exercice (badge) */}
                           <div style={{
