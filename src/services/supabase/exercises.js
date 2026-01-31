@@ -89,12 +89,16 @@ export const createExercise = async (exerciseData, organizationId) => {
       ? existingExercises[0].order + 1 
       : 1;
 
-    // 3. Créer l'exercice
+    // 3. Créer l'exercice avec TOUS les champs obligatoires
     const { data, error } = await supabase
       .from('exercises')
       .insert([{
-        ...exerciseData,
-        order: exerciseData.order || nextOrder
+        chapter_id: exerciseData.chapter_id,
+        title: exerciseData.title || 'Nouvel exercice',
+        exercise_type: exerciseData.exercise_data?.type || 'qcm',  // ← Champ obligatoire
+        exercise_data: exerciseData.exercise_data || { type: 'qcm', questions: [] },
+        order: exerciseData.order || nextOrder,
+        hidden: exerciseData.hidden !== undefined ? exerciseData.hidden : false
       }])
       .select()
       .single();
