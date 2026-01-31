@@ -1600,13 +1600,14 @@ export default function AdminProgramDetail() {
                               handleOpenChapterModal(chapter);
                             }}
                             style={{
-                              width: 36,
-                              height: 36,
+                              width: 40,
+                              height: 40,
+                              padding: 0,
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              background: '#ffffff',
-                              border: '1px solid #e5e7eb',
+                              background: 'white',
+                              border: '2px solid #e5e7eb',
                               borderRadius: 8,
                               cursor: 'pointer',
                               transition: 'all 0.2s',
@@ -1619,14 +1620,14 @@ export default function AdminProgramDetail() {
                               e.currentTarget.style.transform = 'translateY(-1px)';
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.background = '#ffffff';
+                              e.currentTarget.style.background = 'white';
                               e.currentTarget.style.borderColor = '#e5e7eb';
                               e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
                               e.currentTarget.style.transform = 'translateY(0)';
                             }}
                             title="Éditer le chapitre"
                           >
-                            <Pencil size={16} color="#666" />
+                            <Pencil size={18} color="#6b7280" strokeWidth={2} />
                           </button>
 
                           {/* Bouton Poubelle - Supprimer le chapitre */}
@@ -1636,13 +1637,14 @@ export default function AdminProgramDetail() {
                               handleDeleteChapter(chapter.id);
                             }}
                             style={{
-                              width: 36,
-                              height: 36,
+                              width: 40,
+                              height: 40,
+                              padding: 0,
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              background: '#ffffff',
-                              border: '1px solid #fee2e2',
+                              background: 'white',
+                              border: '2px solid #fee2e2',
                               borderRadius: 8,
                               cursor: 'pointer',
                               transition: 'all 0.2s',
@@ -1655,14 +1657,14 @@ export default function AdminProgramDetail() {
                               e.currentTarget.style.transform = 'translateY(-1px)';
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.background = '#ffffff';
+                              e.currentTarget.style.background = 'white';
                               e.currentTarget.style.borderColor = '#fee2e2';
                               e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
                               e.currentTarget.style.transform = 'translateY(0)';
                             }}
                             title="Supprimer le chapitre"
                           >
-                            <Trash2 size={16} color="#ef4444" />
+                            <Trash2 size={18} color="#ef4444" strokeWidth={2} />
                           </button>
                         </div>
                       )}
