@@ -19,7 +19,7 @@ import { useAuth } from "../context/AuthContext";
 import { useSupabaseAuth } from '../hooks/useSupabaseAuth';
 import { getPrograms } from '../services/supabase/programs';
 import { getChaptersByProgram, createChapter, updateChapter, deleteChapter } from '../services/supabase/chapters';
-import { getLessonsByChapter, createLesson, deleteLesson, reorderLessons } from '../services/supabase/lessons';
+import { getLessonsByChapter, createLesson, deleteLesson, reorderLessons, getLesson } from '../services/supabase/lessons';
 import ChapterModal from '../components/ChapterModal';
 
 export default function AdminProgramDetail() {
@@ -1608,7 +1608,7 @@ export default function AdminProgramDetail() {
                           title={useSupabase ? 'Créer une nouvelle leçon' : 'Ajouter une leçon'}
                         >
                           <FileText size={14} />
-                          📖 Leçon +
+                          Leçon +
                         </button>
 
                         <button
@@ -1639,7 +1639,7 @@ export default function AdminProgramDetail() {
                           }}
                         >
                           <HelpCircle size={14} />
-                          🎯 Exercices
+                          Exercices
                         </button>
 
                         <button
@@ -1952,31 +1952,6 @@ export default function AdminProgramDetail() {
                                         
                                         {/* Boutons d'action */}
                                         <button
-                                          onClick={() => {
-                                            // TODO: Implémenter la visualisation
-                                            console.log('Voir leçon:', lesson.id);
-                                          }}
-                                          style={{
-                                            width: 32,
-                                            height: 32,
-                                            padding: 0,
-                                            background: 'transparent',
-                                            border: 'none',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            borderRadius: 6,
-                                            transition: 'background 0.2s'
-                                          }}
-                                          onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
-                                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                          title="Voir"
-                                        >
-                                          <Eye size={16} color="#6b7280" />
-                                        </button>
-                                        
-                                        <button
                                           onClick={() => navigate(`/admin/programs/${programId}/chapters/${chapter.id}/lessons/${lesson.id}/edit`)}
                                           style={{
                                             width: 32,
@@ -1999,9 +1974,33 @@ export default function AdminProgramDetail() {
                                         </button>
                                         
                                         <button
-                                          onClick={() => {
-                                            // TODO: Implémenter la duplication
-                                            console.log('Dupliquer leçon:', lesson.id);
+                                          onClick={async () => {
+                                            try {
+                                              console.log('🔄 Duplication de la leçon:', lesson.id);
+                                              
+                                              // Charger la leçon complète
+                                              const { data: originalLesson, error: fetchError } = await getLesson(lesson.id);
+                                              if (fetchError) throw fetchError;
+                                              
+                                              // Créer une copie
+                                              const { data: duplicatedLesson, error: createError } = await createLesson({
+                                                chapter_id: chapter.id,
+                                                title: `${originalLesson.title} (copie)`,
+                                                editor_data: originalLesson.editor_data,
+                                                order: (chapter.lessons.length || 0) + 1,
+                                                duration_minutes: originalLesson.duration_minutes,
+                                                hidden: originalLesson.hidden
+                                              });
+                                              
+                                              if (createError) throw createError;
+                                              
+                                              console.log('✅ Leçon dupliquée:', duplicatedLesson.id);
+                                              await loadSupabaseData();
+                                              
+                                            } catch (error) {
+                                              console.error('❌ Erreur duplication:', error);
+                                              alert('Erreur lors de la duplication de la leçon');
+                                            }
                                           }}
                                           style={{
                                             width: 32,
