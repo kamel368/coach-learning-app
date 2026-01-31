@@ -120,9 +120,9 @@ export default function ExerciseEditorPageSupabase() {
     setEditingBlockId(newBlock.id);
   };
 
-  const handleUpdateBlock = (blockId, updates) => {
+  const handleUpdateBlock = (updatedBlock) => {
     setBlocks(blocks.map(block =>
-      block.id === blockId ? { ...block, ...updates } : block
+      block.id === updatedBlock.id ? updatedBlock : block
     ));
   };
 
@@ -382,43 +382,43 @@ export default function ExerciseEditorPageSupabase() {
                 {block.type === 'flashcard' && (
                   <FlashcardBlockEditor
                     block={block}
-                    onUpdate={(updates) => handleUpdateBlock(block.id, updates)}
+                    onChange={handleUpdateBlock}
                   />
                 )}
                 {block.type === 'true_false' && (
                   <TrueFalseBlockEditor
                     block={block}
-                    onUpdate={(updates) => handleUpdateBlock(block.id, updates)}
+                    onChange={handleUpdateBlock}
                   />
                 )}
                 {block.type === 'qcm' && (
                   <QCMBlockEditor
                     block={block}
-                    onUpdate={(updates) => handleUpdateBlock(block.id, updates)}
+                    onChange={handleUpdateBlock}
                   />
                 )}
                 {block.type === 'qcm_selective' && (
                   <QCMSelectiveBlockEditor
                     block={block}
-                    onUpdate={(updates) => handleUpdateBlock(block.id, updates)}
+                    onChange={handleUpdateBlock}
                   />
                 )}
                 {block.type === 'reorder' && (
                   <ReorderBlockEditor
                     block={block}
-                    onUpdate={(updates) => handleUpdateBlock(block.id, updates)}
+                    onChange={handleUpdateBlock}
                   />
                 )}
                 {block.type === 'drag_drop' && (
                   <DragDropBlockEditor
                     block={block}
-                    onUpdate={(updates) => handleUpdateBlock(block.id, updates)}
+                    onChange={handleUpdateBlock}
                   />
                 )}
                 {block.type === 'match_pairs' && (
                   <MatchPairsBlockEditor
                     block={block}
-                    onUpdate={(updates) => handleUpdateBlock(block.id, updates)}
+                    onChange={handleUpdateBlock}
                   />
                 )}
               </div>
