@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 import { Plus, FileText, HelpCircle, BrainCircuit, ListTree, Eye, EyeOff, Edit2, FileEdit, Trash2, GripVertical, Pencil, ChevronDown, Layers, ArrowLeft, Copy } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import LessonsList from '../components/LessonsList';
 import { useAuth } from "../context/AuthContext";
 import { useSupabaseAuth } from '../hooks/useSupabaseAuth';
 import { getPrograms } from '../services/supabase/programs';
@@ -1601,195 +1602,48 @@ export default function AdminProgramDetail() {
                 
                 {/* LISTE DES LEÇONS (avec drag & drop) */}
                 {expandedChapters.has(chapter.id) && chapter.lessons && chapter.lessons.length > 0 && (
-                  <div style={{
-                    marginTop: 24,
-                    paddingTop: 16,
-                    borderTop: '1px solid #e5e7eb'
-                  }}>
-                    <div style={{
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: '#6b7280',
-                      marginBottom: 12,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em'
-                    }}>
-                      📖 LEÇONS ({chapter.lessons.length})
-                    </div>
-                    
-                    <DragDropContext onDragEnd={(result) => handleLessonDragEnd(result, chapter.id)}>
-                      <Droppable droppableId={chapter.id}>
-                        {(provided) => (
-                          <div
-                            {...provided.droppableProps}
-                            ref={provided.innerRef}
-                            style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
-                          >
-                            {chapter.lessons
-                              .sort((a, b) => (a.order || 0) - (b.order || 0))
-                              .map((lesson, lessonIndex) => (
-                                <Draggable
-                                  key={lesson.id}
-                                  draggableId={lesson.id}
-                                  index={lessonIndex}
-                                >
-                                  {(provided, snapshot) => (
-                                    <div
-                                      ref={provided.innerRef}
-                                      {...provided.draggableProps}
-                                      style={{
-                                        ...provided.draggableProps.style,
-                                        padding: '12px 16px',
-                                        background: snapshot.isDragging ? '#f0f9ff' : 'white',
-                                        border: `1px solid ${snapshot.isDragging ? '#3b82f6' : '#e5e7eb'}`,
-                                        borderRadius: 8,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 12
-                                      }}
-                                    >
-                                      {/* Drag handle leçon */}
-                                      <div
-                                        {...provided.dragHandleProps}
-                                        style={{
-                                          cursor: 'grab',
-                                          color: '#9ca3af',
-                                          fontSize: 18
-                                        }}
-                                      >
-                                        ⋮⋮
-                                      </div>
-                                      
-                                      {/* Icône */}
-                                      <div style={{
-                                        width: 32,
-                                        height: 32,
-                                        background: '#eff6ff',
-                                        borderRadius: 6,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontSize: 16
-                                      }}>
-                                        📖
-                                      </div>
-                                      
-                                      {/* Titre */}
-                                      <div style={{ flex: 1, fontSize: 14, fontWeight: 600, color: '#1f2937' }}>
-                                        {lesson.title}
-                                      </div>
-                                      
-                                      {/* Bouton Éditer */}
-                                      <button
-                                        onClick={() => navigate(`/admin/programs/${programId}/chapters/${chapter.id}/lessons/${lesson.id}/edit`)}
-                                        style={{
-                                          width: 32,
-                                          height: 32,
-                                          padding: 0,
-                                          background: 'transparent',
-                                          border: 'none',
-                                          cursor: 'pointer',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                          borderRadius: 6,
-                                          transition: 'background 0.2s'
-                                        }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
-                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                        title="Éditer"
-                                      >
-                                        <Pencil size={16} color="#6b7280" />
-                                      </button>
-                                      
-                                      {/* Bouton Dupliquer */}
-                                      <button
-                                        onClick={async () => {
-                                          try {
-                                            const { data: originalLesson, error: fetchError } = await getLesson(lesson.id);
-                                            if (fetchError) throw fetchError;
-                                            
-                                            const { error: createError } = await createLesson({
-                                              chapter_id: chapter.id,
-                                              title: `${originalLesson.title} (copie)`,
-                                              editor_data: originalLesson.editor_data,
-                                              order: (chapter.lessons.length || 0) + 1,
-                                              duration_minutes: originalLesson.duration_minutes,
-                                              hidden: originalLesson.hidden
-                                            });
-                                            
-                                            if (createError) throw createError;
-                                            console.log('✅ Leçon dupliquée');
-                                            await loadSupabaseData();
-                                          } catch (error) {
-                                            console.error('❌ Erreur duplication:', error);
-                                            alert('Erreur lors de la duplication de la leçon');
-                                          }
-                                        }}
-                                        style={{
-                                          width: 32,
-                                          height: 32,
-                                          padding: 0,
-                                          background: 'transparent',
-                                          border: 'none',
-                                          cursor: 'pointer',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                          borderRadius: 6,
-                                          transition: 'background 0.2s'
-                                        }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
-                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                        title="Dupliquer"
-                                      >
-                                        <Copy size={16} color="#6b7280" />
-                                      </button>
-                                      
-                                      {/* Bouton Supprimer */}
-                                      <button
-                                        onClick={async () => {
-                                          if (window.confirm('Supprimer cette leçon ?')) {
-                                            try {
-                                              const { error } = await deleteLesson(lesson.id);
-                                              if (error) throw error;
-                                              console.log('✅ Leçon supprimée');
-                                              await loadSupabaseData();
-                                            } catch (error) {
-                                              console.error('❌ Erreur suppression:', error);
-                                              alert('Erreur lors de la suppression');
-                                            }
-                                          }
-                                        }}
-                                        style={{
-                                          width: 32,
-                                          height: 32,
-                                          padding: 0,
-                                          background: 'transparent',
-                                          border: 'none',
-                                          cursor: 'pointer',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                          borderRadius: 6,
-                                          transition: 'background 0.2s'
-                                        }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
-                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                        title="Supprimer"
-                                      >
-                                        <Trash2 size={16} color="#ef4444" />
-                                      </button>
-                                    </div>
-                                  )}
-                                </Draggable>
-                              ))}
-                            {provided.placeholder}
-                          </div>
-                        )}
-                      </Droppable>
-                    </DragDropContext>
-                  </div>
+                  <LessonsList
+                    chapterId={chapter.id}
+                    lessons={chapter.lessons}
+                    programId={programId}
+                    onReorder={handleLessonDragEnd}
+                    onEdit={(lessonId) => navigate(`/admin/programs/${programId}/chapters/${chapter.id}/lessons/${lessonId}/edit`)}
+                    onDuplicate={async (lesson, chapterId) => {
+                      try {
+                        const { data: originalLesson, error: fetchError } = await getLesson(lesson.id);
+                        if (fetchError) throw fetchError;
+                        
+                        const { error: createError } = await createLesson({
+                          chapter_id: chapterId,
+                          title: `${originalLesson.title} (copie)`,
+                          editor_data: originalLesson.editor_data,
+                          order: (chapter.lessons.length || 0) + 1,
+                          duration_minutes: originalLesson.duration_minutes,
+                          hidden: originalLesson.hidden
+                        });
+                        
+                        if (createError) throw createError;
+                        console.log('✅ Leçon dupliquée');
+                        await loadSupabaseData();
+                      } catch (error) {
+                        console.error('❌ Erreur duplication:', error);
+                        alert('Erreur lors de la duplication de la leçon');
+                      }
+                    }}
+                    onDelete={async (lessonId) => {
+                      if (window.confirm('Supprimer cette leçon ?')) {
+                        try {
+                          const { error } = await deleteLesson(lessonId);
+                          if (error) throw error;
+                          console.log('✅ Leçon supprimée');
+                          await loadSupabaseData();
+                        } catch (error) {
+                          console.error('❌ Erreur suppression:', error);
+                          alert('Erreur lors de la suppression');
+                        }
+                      }
+                    }}
+                  />
                 )}
               </div>
             ))}
