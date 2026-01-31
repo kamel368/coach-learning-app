@@ -1583,6 +1583,90 @@ export default function AdminProgramDetail() {
                         }}
                       />
 
+                      {/* Icônes actions - Desktop (Supabase) */}
+                      {useSupabase && (
+                        <div 
+                          className="desktop-only"
+                          style={{
+                            display: 'flex',
+                            gap: 8,
+                            flexShrink: 0
+                          }}
+                        >
+                          {/* Bouton Crayon - Éditer le chapitre */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenChapterModal(chapter);
+                            }}
+                            style={{
+                              width: 36,
+                              height: 36,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              background: '#ffffff',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: 8,
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = '#eff6ff';
+                              e.currentTarget.style.borderColor = '#3b82f6';
+                              e.currentTarget.style.boxShadow = '0 2px 4px rgba(59, 130, 246, 0.15)';
+                              e.currentTarget.style.transform = 'translateY(-1px)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = '#ffffff';
+                              e.currentTarget.style.borderColor = '#e5e7eb';
+                              e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
+                              e.currentTarget.style.transform = 'translateY(0)';
+                            }}
+                            title="Éditer le chapitre"
+                          >
+                            <Pencil size={16} color="#666" />
+                          </button>
+
+                          {/* Bouton Poubelle - Supprimer le chapitre */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteChapter(chapter.id);
+                            }}
+                            style={{
+                              width: 36,
+                              height: 36,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              background: '#ffffff',
+                              border: '1px solid #fee2e2',
+                              borderRadius: 8,
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = '#fef2f2';
+                              e.currentTarget.style.borderColor = '#ef4444';
+                              e.currentTarget.style.boxShadow = '0 2px 4px rgba(239, 68, 68, 0.15)';
+                              e.currentTarget.style.transform = 'translateY(-1px)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = '#ffffff';
+                              e.currentTarget.style.borderColor = '#fee2e2';
+                              e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
+                              e.currentTarget.style.transform = 'translateY(0)';
+                            }}
+                            title="Supprimer le chapitre"
+                          >
+                            <Trash2 size={16} color="#ef4444" />
+                          </button>
+                        </div>
+                      )}
+
                       {/* Icônes actions - Desktop (Firebase uniquement) */}
                       {!useSupabase && (
                         <div 
