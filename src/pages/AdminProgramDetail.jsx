@@ -13,12 +13,13 @@ import {
   deleteDoc,
   setDoc,
 } from "firebase/firestore";
-import { Plus, FileText, HelpCircle, BrainCircuit, ListTree, Eye, EyeOff, Edit2, FileEdit, Trash2, GripVertical, Pencil, ChevronDown, Layers, ArrowLeft } from "lucide-react";
+import { Plus, FileText, HelpCircle, BrainCircuit, ListTree, Eye, EyeOff, Edit2, FileEdit, Trash2, GripVertical, Pencil, ChevronDown, Layers, ArrowLeft, Copy } from "lucide-react";
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { useAuth } from "../context/AuthContext";
 import { useSupabaseAuth } from '../hooks/useSupabaseAuth';
 import { getPrograms } from '../services/supabase/programs';
 import { getChaptersByProgram, createChapter, updateChapter, deleteChapter } from '../services/supabase/chapters';
-import { getLessonsByChapter, createLesson, deleteLesson } from '../services/supabase/lessons';
+import { getLessonsByChapter, createLesson, deleteLesson, reorderLessons } from '../services/supabase/lessons';
 import ChapterModal from '../components/ChapterModal';
 
 export default function AdminProgramDetail() {
@@ -50,7 +51,6 @@ export default function AdminProgramDetail() {
   const [editingChapter, setEditingChapter] = useState(null);
 
   // État pour l'expansion des leçons
-  const [expandedChapterId, setExpandedChapterId] = useState(null);
 
   // --------- Détection automatique de la source ---------
   useEffect(() => {
@@ -277,6 +277,37 @@ export default function AdminProgramDetail() {
     } catch (error) {
       console.error('❌ Exception création leçon:', error);
       alert('Erreur lors de la création de la leçon');
+    }
+  };
+
+  const handleDragEnd = async (result, chapterId) => {
+    if (!result.destination) return;
+    
+    const chapter = chapters.find(m => m.id === chapterId);
+    if (!chapter || !chapter.lessons) return;
+    
+    const lessons = Array.from(chapter.lessons);
+    const [removed] = lessons.splice(result.source.index, 1);
+    lessons.splice(result.destination.index, 0, removed);
+    
+    // Mettre à jour les ordres
+    const updatedLessons = lessons.map((lesson, index) => ({
+      ...lesson,
+      order: index + 1
+    }));
+    
+    // Mettre à jour l'état local immédiatement
+    setChapters(chapters.map(m => 
+      m.id === chapterId ? { ...m, lessons: updatedLessons } : m
+    ));
+    
+    // Sauvegarder dans Supabase
+    try {
+      await reorderLessons(updatedLessons.map(l => ({ id: l.id, order: l.order })));
+      console.log('✅ Ordre des leçons mis à jour');
+    } catch (error) {
+      console.error('❌ Erreur réorganisation:', error);
+      await loadSupabaseData(); // Recharger en cas d'erreur
     }
   };
 
@@ -1443,7 +1474,7 @@ export default function AdminProgramDetail() {
                           fontWeight: 400,
                           flexShrink: 0
                         }}>
-                          ({lessons.length})
+                          ({useSupabase ? (chapter.lessonsCount || 0) : (lessons.length)})
                         </span>
                         
                         {/* Chevron */}
@@ -1577,7 +1608,7 @@ export default function AdminProgramDetail() {
                           title={useSupabase ? 'Créer une nouvelle leçon' : 'Ajouter une leçon'}
                         >
                           <FileText size={14} />
-                          Leçon {useSupabase && chapter.lessonsCount !== undefined && `(${chapter.lessonsCount})`}
+                          📖 Leçon +
                         </button>
 
                         <button
@@ -1827,6 +1858,215 @@ export default function AdminProgramDetail() {
                       )}
                     </div>
                   </div>
+
+                  {/* Liste des leçons (toujours visible en mode Supabase) */}
+                  {useSupabase && chapter.lessons && chapter.lessons.length > 0 && (
+                    <div style={{
+                      marginTop: 24,
+                      paddingTop: 16,
+                      borderTop: '1px solid #e5e7eb'
+                    }}>
+                      <div style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: '#6b7280',
+                        marginBottom: 12,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8
+                      }}>
+                        📖 LEÇONS ({chapter.lessons.length})
+                      </div>
+                      
+                      <DragDropContext onDragEnd={(result) => handleDragEnd(result, chapter.id)}>
+                        <Droppable droppableId={`lessons-${chapter.id}`}>
+                          {(provided) => (
+                            <div
+                              {...provided.droppableProps}
+                              ref={provided.innerRef}
+                              style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
+                            >
+                              {chapter.lessons
+                                .sort((a, b) => (a.order || 0) - (b.order || 0))
+                                .map((lesson, index) => (
+                                  <Draggable
+                                    key={lesson.id}
+                                    draggableId={lesson.id}
+                                    index={index}
+                                  >
+                                    {(provided, snapshot) => (
+                                      <div
+                                        ref={provided.innerRef}
+                                        {...provided.draggableProps}
+                                        style={{
+                                          padding: '12px 16px',
+                                          background: snapshot.isDragging ? '#f0f9ff' : 'white',
+                                          border: `1px solid ${snapshot.isDragging ? '#3b82f6' : '#e5e7eb'}`,
+                                          borderRadius: 8,
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: 12,
+                                          transition: 'all 0.2s',
+                                          ...provided.draggableProps.style
+                                        }}
+                                      >
+                                        {/* Drag Handle */}
+                                        <div
+                                          {...provided.dragHandleProps}
+                                          style={{
+                                            cursor: 'grab',
+                                            color: '#9ca3af',
+                                            display: 'flex',
+                                            alignItems: 'center'
+                                          }}
+                                        >
+                                          ⋮⋮
+                                        </div>
+                                        
+                                        {/* Icône Leçon */}
+                                        <div style={{
+                                          width: 32,
+                                          height: 32,
+                                          background: '#eff6ff',
+                                          borderRadius: 6,
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          flexShrink: 0
+                                        }}>
+                                          📖
+                                        </div>
+                                        
+                                        {/* Titre */}
+                                        <div style={{ flex: 1 }}>
+                                          <div style={{
+                                            fontSize: 14,
+                                            fontWeight: 600,
+                                            color: '#1f2937'
+                                          }}>
+                                            {lesson.title}
+                                          </div>
+                                        </div>
+                                        
+                                        {/* Boutons d'action */}
+                                        <button
+                                          onClick={() => {
+                                            // TODO: Implémenter la visualisation
+                                            console.log('Voir leçon:', lesson.id);
+                                          }}
+                                          style={{
+                                            width: 32,
+                                            height: 32,
+                                            padding: 0,
+                                            background: 'transparent',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            borderRadius: 6,
+                                            transition: 'background 0.2s'
+                                          }}
+                                          onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                          title="Voir"
+                                        >
+                                          <Eye size={16} color="#6b7280" />
+                                        </button>
+                                        
+                                        <button
+                                          onClick={() => navigate(`/admin/programs/${programId}/chapters/${chapter.id}/lessons/${lesson.id}/edit`)}
+                                          style={{
+                                            width: 32,
+                                            height: 32,
+                                            padding: 0,
+                                            background: 'transparent',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            borderRadius: 6,
+                                            transition: 'background 0.2s'
+                                          }}
+                                          onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                          title="Éditer"
+                                        >
+                                          <Pencil size={16} color="#6b7280" />
+                                        </button>
+                                        
+                                        <button
+                                          onClick={() => {
+                                            // TODO: Implémenter la duplication
+                                            console.log('Dupliquer leçon:', lesson.id);
+                                          }}
+                                          style={{
+                                            width: 32,
+                                            height: 32,
+                                            padding: 0,
+                                            background: 'transparent',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            borderRadius: 6,
+                                            transition: 'background 0.2s'
+                                          }}
+                                          onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                          title="Dupliquer"
+                                        >
+                                          <Copy size={16} color="#6b7280" />
+                                        </button>
+                                        
+                                        <button
+                                          onClick={async () => {
+                                            if (window.confirm('Supprimer cette leçon ?')) {
+                                              try {
+                                                const { error } = await deleteLesson(lesson.id);
+                                                if (error) throw error;
+                                                console.log('✅ Leçon supprimée');
+                                                await loadSupabaseData();
+                                              } catch (error) {
+                                                console.error('❌ Erreur suppression:', error);
+                                                alert('Erreur lors de la suppression');
+                                              }
+                                            }
+                                          }}
+                                          style={{
+                                            width: 32,
+                                            height: 32,
+                                            padding: 0,
+                                            background: 'transparent',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            borderRadius: 6,
+                                            transition: 'background 0.2s'
+                                          }}
+                                          onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
+                                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                          title="Supprimer"
+                                        >
+                                          <Trash2 size={16} color="#ef4444" />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </Draggable>
+                                ))}
+                              {provided.placeholder}
+                            </div>
+                          )}
+                        </Droppable>
+                      </DragDropContext>
+                    </div>
+                  )}
 
                   {/* Contenus du chapitre */}
                   {expanded && (
@@ -2185,181 +2425,6 @@ export default function AdminProgramDetail() {
                     </div>
                   )}
                 </div>
-
-                {/* Liste des leçons Supabase */}
-                {useSupabase && expanded && chapter.lessons && chapter.lessons.length > 0 && (
-                  <div style={{
-                    marginLeft: 48,
-                    marginTop: 16,
-                    padding: 20,
-                    background: '#f9fafb',
-                    borderRadius: 12,
-                    border: '2px solid #e5e7eb'
-                  }}>
-                    <div style={{
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: '#6b7280',
-                      marginBottom: 16,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8
-                    }}>
-                      📚 Leçons de ce chapitre ({chapter.lessons.length})
-                    </div>
-                    
-                    {chapter.lessons.map((lesson, index) => (
-                      <div
-                        key={lesson.id}
-                        style={{
-                          padding: 16,
-                          background: 'white',
-                          borderRadius: 8,
-                          border: '1px solid #e5e7eb',
-                          marginBottom: 12,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 16,
-                          transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.08)';
-                          e.currentTarget.style.transform = 'translateY(-1px)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.boxShadow = 'none';
-                          e.currentTarget.style.transform = 'translateY(0)';
-                        }}
-                      >
-                        {/* Numéro */}
-                        <div style={{
-                          width: 36,
-                          height: 36,
-                          background: '#eff6ff',
-                          borderRadius: 8,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: 14,
-                          fontWeight: 700,
-                          color: '#3b82f6',
-                          flexShrink: 0
-                        }}>
-                          {index + 1}
-                        </div>
-                        
-                        {/* Titre et durée */}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ 
-                            fontSize: 15, 
-                            fontWeight: 600, 
-                            color: '#1f2937',
-                            marginBottom: 4,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            {lesson.title}
-                          </div>
-                          <div style={{ 
-                            fontSize: 13, 
-                            color: '#6b7280',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8
-                          }}>
-                            <span>⏱️ {lesson.duration_minutes} min</span>
-                            {lesson.hidden && (
-                              <span style={{
-                                padding: '2px 8px',
-                                background: '#fee2e2',
-                                color: '#dc2626',
-                                borderRadius: 4,
-                                fontSize: 11,
-                                fontWeight: 600
-                              }}>
-                                Masqué
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* Boutons d'action */}
-                        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                          {/* Bouton Éditer */}
-                          <button
-                            onClick={() => navigate(`/admin/programs/${programId}/chapters/${chapter.id}/lessons/${lesson.id}/edit`)}
-                            style={{
-                              width: 36,
-                              height: 36,
-                              padding: 0,
-                              background: 'white',
-                              border: '2px solid #e5e7eb',
-                              borderRadius: 8,
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              transition: 'all 0.2s'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = '#eff6ff';
-                              e.currentTarget.style.borderColor = '#3b82f6';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = 'white';
-                              e.currentTarget.style.borderColor = '#e5e7eb';
-                            }}
-                            title="Éditer la leçon"
-                          >
-                            <Pencil size={16} color="#6b7280" strokeWidth={2} />
-                          </button>
-                          
-                          {/* Bouton Supprimer */}
-                          <button
-                            onClick={async () => {
-                              if (window.confirm(`Supprimer la leçon "${lesson.title}" ?`)) {
-                                try {
-                                  const { error } = await deleteLesson(lesson.id);
-                                  if (error) throw error;
-                                  console.log('✅ Leçon supprimée');
-                                  await loadSupabaseData();
-                                } catch (error) {
-                                  console.error('❌ Erreur suppression:', error);
-                                  alert('Erreur lors de la suppression de la leçon');
-                                }
-                              }
-                            }}
-                            style={{
-                              width: 36,
-                              height: 36,
-                              padding: 0,
-                              background: 'white',
-                              border: '2px solid #fee2e2',
-                              borderRadius: 8,
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              transition: 'all 0.2s'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = '#fef2f2';
-                              e.currentTarget.style.borderColor = '#ef4444';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = 'white';
-                              e.currentTarget.style.borderColor = '#fee2e2';
-                            }}
-                            title="Supprimer la leçon"
-                          >
-                            <Trash2 size={16} color="#ef4444" strokeWidth={2} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
 
                 </>
             );})}
