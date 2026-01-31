@@ -18,7 +18,7 @@ import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { useAuth } from "../context/AuthContext";
 import { useSupabaseAuth } from '../hooks/useSupabaseAuth';
 import { getPrograms } from '../services/supabase/programs';
-import { getChaptersByProgram, createChapter, updateChapter, deleteChapter } from '../services/supabase/chapters';
+import { getChaptersByProgram, createChapter, updateChapter, deleteChapter, reorderChapters } from '../services/supabase/chapters';
 import { getLessonsByChapter, createLesson, deleteLesson, reorderLessons, getLesson } from '../services/supabase/lessons';
 import ChapterModal from '../components/ChapterModal';
 
@@ -280,8 +280,36 @@ export default function AdminProgramDetail() {
     }
   };
 
-  const handleDragEnd = async (result, chapterId) => {
-    if (!result.destination) return;
+  // Drag & drop des CHAPITRES
+  const handleChapterDragEnd = async (result) => {
+    if (!result.destination || result.type !== 'CHAPTER') return;
+    
+    const chaptersArray = Array.from(chapters);
+    const [removed] = chaptersArray.splice(result.source.index, 1);
+    chaptersArray.splice(result.destination.index, 0, removed);
+    
+    // Mettre à jour les ordres
+    const updatedChapters = chaptersArray.map((chapter, index) => ({
+      ...chapter,
+      order: index + 1
+    }));
+    
+    // Mettre à jour l'état local
+    setChapters(updatedChapters);
+    
+    // Sauvegarder dans Supabase
+    try {
+      await reorderChapters(updatedChapters.map(c => ({ id: c.id, order: c.order })));
+      console.log('✅ Ordre des chapitres mis à jour');
+    } catch (error) {
+      console.error('❌ Erreur réorganisation chapitres:', error);
+      await loadSupabaseData();
+    }
+  };
+
+  // Drag & drop des LEÇONS (renommé l'ancien handleDragEnd)
+  const handleLessonDragEnd = async (result, chapterId) => {
+    if (!result.destination || result.type !== 'LESSON') return;
     
     const chapter = chapters.find(m => m.id === chapterId);
     if (!chapter || !chapter.lessons) return;
@@ -296,7 +324,7 @@ export default function AdminProgramDetail() {
       order: index + 1
     }));
     
-    // Mettre à jour l'état local immédiatement
+    // Mettre à jour l'état local
     setChapters(chapters.map(m => 
       m.id === chapterId ? { ...m, lessons: updatedLessons } : m
     ));
@@ -306,9 +334,21 @@ export default function AdminProgramDetail() {
       await reorderLessons(updatedLessons.map(l => ({ id: l.id, order: l.order })));
       console.log('✅ Ordre des leçons mis à jour');
     } catch (error) {
-      console.error('❌ Erreur réorganisation:', error);
-      await loadSupabaseData(); // Recharger en cas d'erreur
+      console.error('❌ Erreur réorganisation leçons:', error);
+      await loadSupabaseData();
     }
+  };
+
+  const toggleChapterExpanded = (chapterId) => {
+    setExpandedChapters(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(chapterId)) {
+        newSet.delete(chapterId);
+      } else {
+        newSet.add(chapterId);
+      }
+      return newSet;
+    });
   };
 
 
@@ -1327,7 +1367,465 @@ export default function AdminProgramDetail() {
         )}
       </div>
 
-      {/* Liste des chapitres avec drag & drop */}
+      {/* Liste des chapitres avec drag & drop - SUPABASE */}
+      {useSupabase && (
+        <DragDropContext onDragEnd={handleChapterDragEnd}>
+          <Droppable droppableId="all-chapters" type="CHAPTER">
+            {(provided) => (
+              <div
+                {...provided.droppableProps}
+                ref={provided.innerRef}
+                style={{ 
+                  display: "flex", 
+                  flexDirection: "column", 
+                  gap: 16,
+                  maxHeight: 'calc(100vh - 280px)',
+                  overflowY: 'auto',
+                  overflowX: 'hidden',
+                  paddingRight: 4
+                }}
+              >
+                {chapters
+                  .sort((a, b) => (a.order || 0) - (b.order || 0))
+                  .map((chapter, chapterIndex) => (
+                    <Draggable
+                      key={chapter.id}
+                      draggableId={`chapter-${chapter.id}`}
+                      index={chapterIndex}
+                      type="CHAPTER"
+                    >
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          style={{
+                            ...provided.draggableProps.style,
+                            marginBottom: 0
+                          }}
+                        >
+                          <div style={{
+                            borderRadius: 12,
+                            border: `2px solid ${snapshot.isDragging ? '#3b82f6' : '#e5e7eb'}`,
+                            background: snapshot.isDragging ? '#f0f9ff' : '#ffffff',
+                            padding: 20,
+                            boxShadow: snapshot.isDragging ? '0 8px 16px rgba(0,0,0,0.1)' : 'none',
+                            transition: 'box-shadow 0.2s'
+                          }}>
+                            {/* Header du chapitre */}
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 12,
+                              marginBottom: 16
+                            }}>
+                              {/* Drag handle pour le chapitre */}
+                              <div
+                                {...provided.dragHandleProps}
+                                style={{
+                                  cursor: 'grab',
+                                  color: '#9ca3af',
+                                  fontSize: 20,
+                                  display: 'flex',
+                                  alignItems: 'center'
+                                }}
+                                title="Glisser pour réordonner le chapitre"
+                              >
+                                ⋮⋮
+                              </div>
+                              
+                              {/* Icône du chapitre */}
+                              <div style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: 8,
+                                background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                              }}>
+                                <Layers size={18} color="#ffffff" />
+                              </div>
+                              
+                              {/* Titre du chapitre */}
+                              <div style={{ flex: 1, fontSize: 16, fontWeight: 600, color: '#1f2937' }}>
+                                {chapter.title} ({chapter.lessonsCount || 0})
+                              </div>
+                              
+                              {/* Badge "Masqué" si hidden */}
+                              {chapter.hidden && (
+                                <span style={{
+                                  padding: '4px 10px',
+                                  background: '#FEE2E2',
+                                  border: '1px solid #FCA5A5',
+                                  borderRadius: 6,
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  color: '#DC2626'
+                                }}>
+                                  ❌ Masqué
+                                </span>
+                              )}
+                              
+                              {/* Flèche accordéon */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleChapterExpanded(chapter.id);
+                                }}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  padding: 8,
+                                  fontSize: 16,
+                                  color: '#6b7280',
+                                  display: 'flex',
+                                  alignItems: 'center'
+                                }}
+                                title={expandedChapters.has(chapter.id) ? 'Masquer les leçons' : 'Afficher les leçons'}
+                              >
+                                {expandedChapters.has(chapter.id) ? '▼' : '▶'}
+                              </button>
+                            </div>
+                            
+                            {/* Boutons d'action du chapitre */}
+                            <div style={{
+                              display: 'flex',
+                              gap: 12,
+                              flexWrap: 'wrap',
+                              marginBottom: expandedChapters.has(chapter.id) && chapter.lessons?.length > 0 ? 0 : 16
+                            }}>
+                              {/* Bouton EN LIGNE */}
+                              <button
+                                onClick={() => navigate(`/admin/programs/${programId}/chapters/${chapter.id}/lessons`)}
+                                style={{
+                                  padding: '8px 16px',
+                                  background: '#dcfce7',
+                                  color: '#15803d',
+                                  border: '1px solid #bbf7d0',
+                                  borderRadius: 8,
+                                  fontSize: 14,
+                                  fontWeight: 500,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <ListTree size={14} style={{ marginRight: 6 }} />
+                                EN LIGNE
+                              </button>
+                              
+                              {/* Bouton Leçon + */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCreateLesson(chapter.id);
+                                }}
+                                style={{
+                                  padding: '8px 16px',
+                                  background: '#eff6ff',
+                                  border: '2px solid #3b82f6',
+                                  borderRadius: 8,
+                                  cursor: 'pointer',
+                                  fontSize: 14,
+                                  fontWeight: 600,
+                                  color: '#3b82f6'
+                                }}
+                                title="Créer une nouvelle leçon"
+                              >
+                                <FileText size={14} style={{ marginRight: 6 }} />
+                                Leçon +
+                              </button>
+                              
+                              {/* Bouton Exercices */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/admin/programs/${programId}/chapters/${chapter.id}/exercises`);
+                                }}
+                                style={{
+                                  padding: '8px 16px',
+                                  background: '#dbeafe',
+                                  color: '#1e40af',
+                                  border: '1px solid #bfdbfe',
+                                  borderRadius: 8,
+                                  fontSize: 14,
+                                  fontWeight: 500,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <HelpCircle size={14} style={{ marginRight: 6 }} />
+                                Exercices
+                              </button>
+                              
+                              {/* Bouton Toggle Visibilité */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleChapterHidden(chapter.id, !chapter.hidden);
+                                }}
+                                style={{
+                                  padding: '6px 12px',
+                                  background: chapter.hidden ? '#FEE2E2' : '#DCFCE7',
+                                  border: `1px solid ${chapter.hidden ? '#FCA5A5' : '#86EFAC'}`,
+                                  borderRadius: 8,
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 6
+                                }}
+                              >
+                                {chapter.hidden ? <EyeOff size={16} color="#DC2626" /> : <Eye size={16} color="#16A34A" />}
+                              </button>
+                              
+                              {/* Boutons Éditer/Supprimer */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenChapterModal(chapter);
+                                }}
+                                style={{
+                                  width: 40,
+                                  height: 40,
+                                  padding: 0,
+                                  background: 'white',
+                                  border: '2px solid #e5e7eb',
+                                  borderRadius: 8,
+                                  cursor: 'pointer'
+                                }}
+                                title="Éditer le chapitre"
+                              >
+                                <Pencil size={18} color="#6b7280" strokeWidth={2} />
+                              </button>
+                              
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteChapter(chapter.id);
+                                }}
+                                style={{
+                                  width: 40,
+                                  height: 40,
+                                  padding: 0,
+                                  background: 'white',
+                                  border: '2px solid #fee2e2',
+                                  borderRadius: 8,
+                                  cursor: 'pointer'
+                                }}
+                                title="Supprimer le chapitre"
+                              >
+                                <Trash2 size={18} color="#ef4444" strokeWidth={2} />
+                              </button>
+                            </div>
+                            
+                            {/* LISTE DES LEÇONS (visible si accordéon ouvert) */}
+                            {expandedChapters.has(chapter.id) && chapter.lessons && chapter.lessons.length > 0 && (
+                              <div style={{
+                                marginTop: 24,
+                                paddingTop: 16,
+                                borderTop: '1px solid #e5e7eb'
+                              }}>
+                                <div style={{
+                                  fontSize: 13,
+                                  fontWeight: 600,
+                                  color: '#6b7280',
+                                  marginBottom: 12,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.05em'
+                                }}>
+                                  📖 LEÇONS ({chapter.lessons.length})
+                                </div>
+                                
+                                {/* DragDropContext pour les LEÇONS */}
+                                <DragDropContext onDragEnd={(result) => handleLessonDragEnd(result, chapter.id)}>
+                                  <Droppable droppableId={`lessons-${chapter.id}`} type="LESSON">
+                                    {(provided) => (
+                                      <div
+                                        {...provided.droppableProps}
+                                        ref={provided.innerRef}
+                                        style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
+                                      >
+                                        {chapter.lessons
+                                          .sort((a, b) => (a.order || 0) - (b.order || 0))
+                                          .map((lesson, lessonIndex) => (
+                                            <Draggable
+                                              key={lesson.id}
+                                              draggableId={`lesson-${lesson.id}`}
+                                              index={lessonIndex}
+                                              type="LESSON"
+                                            >
+                                              {(provided, snapshot) => (
+                                                <div
+                                                  ref={provided.innerRef}
+                                                  {...provided.draggableProps}
+                                                  style={{
+                                                    ...provided.draggableProps.style,
+                                                    padding: '12px 16px',
+                                                    background: snapshot.isDragging ? '#f0f9ff' : 'white',
+                                                    border: `1px solid ${snapshot.isDragging ? '#3b82f6' : '#e5e7eb'}`,
+                                                    borderRadius: 8,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 12
+                                                  }}
+                                                >
+                                                  {/* Drag handle pour la leçon */}
+                                                  <div
+                                                    {...provided.dragHandleProps}
+                                                    style={{
+                                                      cursor: 'grab',
+                                                      color: '#9ca3af',
+                                                      fontSize: 18,
+                                                      display: 'flex',
+                                                      alignItems: 'center'
+                                                    }}
+                                                    title="Glisser pour réordonner la leçon"
+                                                  >
+                                                    ⋮⋮
+                                                  </div>
+                                                  
+                                                  {/* Icône Leçon */}
+                                                  <div style={{
+                                                    width: 32,
+                                                    height: 32,
+                                                    background: '#eff6ff',
+                                                    borderRadius: 6,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    fontSize: 16,
+                                                    flexShrink: 0
+                                                  }}>
+                                                    📖
+                                                  </div>
+                                                  
+                                                  {/* Titre */}
+                                                  <div style={{ flex: 1, fontSize: 14, fontWeight: 600, color: '#1f2937' }}>
+                                                    {lesson.title}
+                                                  </div>
+                                                  
+                                                  {/* Boutons CRUD */}
+                                                  <button
+                                                    onClick={() => navigate(`/admin/programs/${programId}/chapters/${chapter.id}/lessons/${lesson.id}/edit`)}
+                                                    style={{
+                                                      width: 32,
+                                                      height: 32,
+                                                      padding: 0,
+                                                      background: 'transparent',
+                                                      border: 'none',
+                                                      cursor: 'pointer',
+                                                      display: 'flex',
+                                                      alignItems: 'center',
+                                                      justifyContent: 'center',
+                                                      borderRadius: 6,
+                                                      transition: 'background 0.2s'
+                                                    }}
+                                                    onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                    title="Éditer"
+                                                  >
+                                                    <Pencil size={16} color="#6b7280" />
+                                                  </button>
+                                                  
+                                                  <button
+                                                    onClick={async () => {
+                                                      try {
+                                                        console.log('🔄 Duplication de la leçon:', lesson.id);
+                                                        const { data: originalLesson, error: fetchError } = await getLesson(lesson.id);
+                                                        if (fetchError) throw fetchError;
+                                                        const { data: duplicatedLesson, error: createError } = await createLesson({
+                                                          chapter_id: chapter.id,
+                                                          title: `${originalLesson.title} (copie)`,
+                                                          editor_data: originalLesson.editor_data,
+                                                          order: (chapter.lessons.length || 0) + 1,
+                                                          duration_minutes: originalLesson.duration_minutes,
+                                                          hidden: originalLesson.hidden
+                                                        });
+                                                        if (createError) throw createError;
+                                                        console.log('✅ Leçon dupliquée:', duplicatedLesson.id);
+                                                        await loadSupabaseData();
+                                                      } catch (error) {
+                                                        console.error('❌ Erreur duplication:', error);
+                                                        alert('Erreur lors de la duplication de la leçon');
+                                                      }
+                                                    }}
+                                                    style={{
+                                                      width: 32,
+                                                      height: 32,
+                                                      padding: 0,
+                                                      background: 'transparent',
+                                                      border: 'none',
+                                                      cursor: 'pointer',
+                                                      display: 'flex',
+                                                      alignItems: 'center',
+                                                      justifyContent: 'center',
+                                                      borderRadius: 6,
+                                                      transition: 'background 0.2s'
+                                                    }}
+                                                    onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                    title="Dupliquer"
+                                                  >
+                                                    <Copy size={16} color="#6b7280" />
+                                                  </button>
+                                                  
+                                                  <button
+                                                    onClick={async () => {
+                                                      if (window.confirm('Supprimer cette leçon ?')) {
+                                                        try {
+                                                          const { error } = await deleteLesson(lesson.id);
+                                                          if (error) throw error;
+                                                          console.log('✅ Leçon supprimée');
+                                                          await loadSupabaseData();
+                                                        } catch (error) {
+                                                          console.error('❌ Erreur suppression:', error);
+                                                          alert('Erreur lors de la suppression');
+                                                        }
+                                                      }
+                                                    }}
+                                                    style={{
+                                                      width: 32,
+                                                      height: 32,
+                                                      padding: 0,
+                                                      background: 'transparent',
+                                                      border: 'none',
+                                                      cursor: 'pointer',
+                                                      display: 'flex',
+                                                      alignItems: 'center',
+                                                      justifyContent: 'center',
+                                                      borderRadius: 6,
+                                                      transition: 'background 0.2s'
+                                                    }}
+                                                    onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
+                                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                    title="Supprimer"
+                                                  >
+                                                    <Trash2 size={16} color="#ef4444" />
+                                                  </button>
+                                                </div>
+                                              )}
+                                            </Draggable>
+                                          ))}
+                                        {provided.placeholder}
+                                      </div>
+                                    )}
+                                  </Droppable>
+                                </DragDropContext>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        </DragDropContext>
+      )}
+
+      {/* Liste des chapitres avec drag & drop - FIREBASE */}
+      {!useSupabase && (
       <div style={{ 
         display: "flex", 
         flexDirection: "column", 
@@ -2428,6 +2926,7 @@ export default function AdminProgramDetail() {
                 </>
             );})}
           </div>
+      )}
 
       {/* Modal création catégorie */}
       {showCategoryModal && (
