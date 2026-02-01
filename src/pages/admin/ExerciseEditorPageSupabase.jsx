@@ -42,12 +42,40 @@ export default function ExerciseEditorPageSupabase() {
   const [title, setTitle] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('exercices');
+  const [activeTab, setActiveTab] = useState('blocs');
   const [editingBlockId, setEditingBlockId] = useState(null);
+  const [chapterExercises, setChapterExercises] = useState([]);
 
   useEffect(() => {
     loadExercise();
   }, [exerciseId]);
+
+  // Charger les exercices du chapitre
+  useEffect(() => {
+    if (exercise?.chapter_id) {
+      loadChapterExercises(exercise.chapter_id);
+    }
+  }, [exercise?.chapter_id]);
+
+  const loadChapterExercises = async (chapterId) => {
+    try {
+      console.log('📚 Chargement exercices du chapitre:', chapterId);
+      
+      const { data, error } = await supabase
+        .from('exercises')
+        .select('id, title, exercise_type, order')
+        .eq('chapter_id', chapterId)
+        .order('order', { ascending: true });
+
+      if (error) throw error;
+      
+      console.log(`✅ ${data?.length || 0} exercices chargés`);
+      setChapterExercises(data || []);
+    } catch (error) {
+      console.error('❌ Erreur chargement exercices:', error);
+      setChapterExercises([]);
+    }
+  };
 
   const loadExercise = async () => {
     try {
@@ -129,7 +157,6 @@ export default function ExerciseEditorPageSupabase() {
     };
     
     setBlocks([...blocks, newBlock]);
-    setActiveTab('exercices');
     setEditingBlockId(newBlock.id);
   };
 
@@ -197,51 +224,202 @@ export default function ExerciseEditorPageSupabase() {
         overflowY: 'auto',
         padding: 20
       }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20, color: '#1f2937' }}>
-          Types d'exercices
-        </h2>
-        
-        {BLOCK_TYPES.map(blockType => {
-          const Icon = blockType.icon;
-          return (
-            <button
-              key={blockType.type}
-              onClick={() => handleAddBlock(blockType.type)}
-              style={{
-                width: '100%',
-                padding: 16,
-                marginBottom: 12,
-                background: 'white',
-                border: `2px solid ${blockType.color}20`,
-                borderRadius: 12,
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-start',
-                gap: 8,
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = `${blockType.color}10`;
-                e.currentTarget.style.borderColor = blockType.color;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'white';
-                e.currentTarget.style.borderColor = `${blockType.color}20`;
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Icon size={20} color={blockType.color} />
-                <span style={{ fontSize: 14, fontWeight: 600, color: '#1f2937' }}>
-                  {blockType.label}
-                </span>
+        {/* Header avec onglets toggle */}
+        <div style={{
+          display: 'flex',
+          gap: 8,
+          marginBottom: 20
+        }}>
+          {/* Onglet Exercices */}
+          <button
+            onClick={() => setActiveTab('exercices')}
+            style={{
+              flex: 1,
+              padding: '12px 20px',
+              background: activeTab === 'exercices' ? '#3b82f6' : 'white',
+              color: activeTab === 'exercices' ? 'white' : '#6b7280',
+              border: '2px solid',
+              borderColor: activeTab === 'exercices' ? '#3b82f6' : '#e5e7eb',
+              borderRadius: 8,
+              cursor: 'pointer',
+              fontSize: 14,
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              transition: 'all 0.2s'
+            }}
+          >
+            <span>📄</span>
+            Exercices ({chapterExercises.length})
+          </button>
+
+          {/* Onglet Blocs */}
+          <button
+            onClick={() => setActiveTab('blocs')}
+            style={{
+              flex: 1,
+              padding: '12px 20px',
+              background: activeTab === 'blocs' ? '#3b82f6' : 'white',
+              color: activeTab === 'blocs' ? 'white' : '#6b7280',
+              border: '2px solid',
+              borderColor: activeTab === 'blocs' ? '#3b82f6' : '#e5e7eb',
+              borderRadius: 8,
+              cursor: 'pointer',
+              fontSize: 14,
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              transition: 'all 0.2s'
+            }}
+          >
+            <span>🧩</span>
+            Blocs
+          </button>
+        </div>
+
+        {/* Contenu selon onglet actif */}
+        {activeTab === 'exercices' ? (
+          // ONGLET EXERCICES
+          <div>
+            <div style={{
+              fontSize: 12,
+              color: '#9ca3af',
+              marginBottom: 12,
+              textAlign: 'center'
+            }}>
+              Glisse pour réorganiser
+            </div>
+
+            {chapterExercises.length === 0 ? (
+              <div style={{
+                padding: 20,
+                textAlign: 'center',
+                color: '#9ca3af',
+                fontSize: 14
+              }}>
+                Aucun exercice dans ce chapitre
               </div>
-              <span style={{ fontSize: 12, color: '#6b7280' }}>
-                {blockType.desc}
-              </span>
-            </button>
-          );
-        })}
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {chapterExercises.map((ex, index) => {
+                  const isCurrentExercise = exercise?.id === ex.id;
+                  
+                  return (
+                    <div
+                      key={ex.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        padding: '12px 16px',
+                        background: isCurrentExercise ? '#eff6ff' : 'white',
+                        border: '2px solid',
+                        borderColor: isCurrentExercise ? '#3b82f6' : '#e5e7eb',
+                        borderRadius: 8,
+                        cursor: 'grab'
+                      }}
+                    >
+                      {/* Numéro */}
+                      <div style={{
+                        width: 28,
+                        height: 28,
+                        background: isCurrentExercise ? '#3b82f6' : '#f3f4f6',
+                        color: isCurrentExercise ? 'white' : '#6b7280',
+                        borderRadius: 6,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 14,
+                        fontWeight: 700,
+                        flexShrink: 0
+                      }}>
+                        {index + 1}
+                      </div>
+
+                      {/* Icône type */}
+                      <div style={{ fontSize: 20, flexShrink: 0 }}>
+                        {ex.exercise_type === 'true_false' ? '✓' : 
+                         ex.exercise_type === 'qcm' ? '⃝' : 
+                         ex.exercise_type === 'flashcard' ? '📇' :
+                         ex.exercise_type === 'qcm_selective' ? '☑' :
+                         ex.exercise_type === 'reorder' ? '↕' :
+                         ex.exercise_type === 'drag_drop' ? '🎯' :
+                         ex.exercise_type === 'match_pairs' ? '🔗' :
+                         '❓'}
+                      </div>
+
+                      {/* Titre */}
+                      <div style={{
+                        flex: 1,
+                        fontSize: 14,
+                        fontWeight: isCurrentExercise ? 600 : 500,
+                        color: isCurrentExercise ? '#1e40af' : '#374151',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {ex.title}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : (
+          // ONGLET BLOCS (palette existante)
+          <div>
+            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20, color: '#1f2937' }}>
+              Types d'exercices
+            </h2>
+            
+            {BLOCK_TYPES.map(blockType => {
+              const Icon = blockType.icon;
+              return (
+                <button
+                  key={blockType.type}
+                  onClick={() => handleAddBlock(blockType.type)}
+                  style={{
+                    width: '100%',
+                    padding: 16,
+                    marginBottom: 12,
+                    background: 'white',
+                    border: `2px solid ${blockType.color}20`,
+                    borderRadius: 12,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    gap: 8,
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = `${blockType.color}10`;
+                    e.currentTarget.style.borderColor = blockType.color;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'white';
+                    e.currentTarget.style.borderColor = `${blockType.color}20`;
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Icon size={20} color={blockType.color} />
+                    <span style={{ fontSize: 14, fontWeight: 600, color: '#1f2937' }}>
+                      {blockType.label}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: 12, color: '#6b7280' }}>
+                    {blockType.desc}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Zone centrale - Exercices */}
