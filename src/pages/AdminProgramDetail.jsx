@@ -1809,9 +1809,10 @@ export default function AdminProgramDetail() {
                             borderRadius: 8,
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center'
+                            justifyContent: 'center',
+                            flexShrink: 0
                           }}>
-                            <Target size={20} color="#d97706" strokeWidth={2.5} />
+                            <Target size={20} strokeWidth={2.5} stroke="#d97706" />
                           </div>
 
                           {/* Titre (non éditable inline) */}
@@ -1839,21 +1840,25 @@ export default function AdminProgramDetail() {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                transition: 'all 0.2s'
+                                transition: 'all 0.2s',
+                                padding: 0,
+                                outline: 'none'
                               }}
                               onMouseEnter={(e) => {
                                 e.currentTarget.style.background = '#f3f4f6';
                                 e.currentTarget.style.borderColor = '#3b82f6';
-                                e.currentTarget.querySelector('svg').style.color = '#3b82f6';
+                                const svg = e.currentTarget.querySelector('svg');
+                                if (svg) svg.style.stroke = '#3b82f6';
                               }}
                               onMouseLeave={(e) => {
                                 e.currentTarget.style.background = 'white';
                                 e.currentTarget.style.borderColor = '#e5e7eb';
-                                e.currentTarget.querySelector('svg').style.color = '#6b7280';
+                                const svg = e.currentTarget.querySelector('svg');
+                                if (svg) svg.style.stroke = '#6b7280';
                               }}
                               title="Éditer l'exercice"
                             >
-                              <Edit2 size={18} color="#6b7280" strokeWidth={2} />
+                              <Edit2 size={18} strokeWidth={2} stroke="#6b7280" />
                             </button>
 
                             {/* Dupliquer */}
@@ -1869,21 +1874,25 @@ export default function AdminProgramDetail() {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                transition: 'all 0.2s'
+                                transition: 'all 0.2s',
+                                padding: 0,
+                                outline: 'none'
                               }}
                               onMouseEnter={(e) => {
                                 e.currentTarget.style.background = '#f3f4f6';
                                 e.currentTarget.style.borderColor = '#3b82f6';
-                                e.currentTarget.querySelector('svg').style.color = '#3b82f6';
+                                const svg = e.currentTarget.querySelector('svg');
+                                if (svg) svg.style.stroke = '#3b82f6';
                               }}
                               onMouseLeave={(e) => {
                                 e.currentTarget.style.background = 'white';
                                 e.currentTarget.style.borderColor = '#e5e7eb';
-                                e.currentTarget.querySelector('svg').style.color = '#6b7280';
+                                const svg = e.currentTarget.querySelector('svg');
+                                if (svg) svg.style.stroke = '#6b7280';
                               }}
                               title="Dupliquer l'exercice"
                             >
-                              <Copy size={18} color="#6b7280" strokeWidth={2} />
+                              <Copy size={18} strokeWidth={2} stroke="#6b7280" />
                             </button>
 
                             {/* Supprimer */}
@@ -1899,21 +1908,25 @@ export default function AdminProgramDetail() {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                transition: 'all 0.2s'
+                                transition: 'all 0.2s',
+                                padding: 0,
+                                outline: 'none'
                               }}
                               onMouseEnter={(e) => {
                                 e.currentTarget.style.background = '#fef2f2';
                                 e.currentTarget.style.borderColor = '#ef4444';
-                                e.currentTarget.querySelector('svg').style.color = '#ef4444';
+                                const svg = e.currentTarget.querySelector('svg');
+                                if (svg) svg.style.stroke = '#ef4444';
                               }}
                               onMouseLeave={(e) => {
                                 e.currentTarget.style.background = 'white';
                                 e.currentTarget.style.borderColor = '#e5e7eb';
-                                e.currentTarget.querySelector('svg').style.color = '#6b7280';
+                                const svg = e.currentTarget.querySelector('svg');
+                                if (svg) svg.style.stroke = '#6b7280';
                               }}
                               title="Supprimer l'exercice"
                             >
-                              <Trash2 size={18} color="#6b7280" strokeWidth={2} />
+                              <Trash2 size={18} strokeWidth={2} stroke="#6b7280" />
                             </button>
                           </div>
                         </div>
