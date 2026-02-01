@@ -1813,27 +1813,14 @@ export default function AdminProgramDetail() {
                             {exercise.title}
                           </div>
 
-                          {/* Type exercice (badge) */}
-                          <div style={{
-                            padding: '4px 12px',
-                            background: '#fef3c7',
-                            border: '1px solid #fbbf24',
-                            borderRadius: 6,
-                            fontSize: 12,
-                            fontWeight: 600,
-                            color: '#d97706'
-                          }}>
-                            {exercise.exercise_type}
-                          </div>
-
-                          {/* Boutons CRUD */}
+                          {/* Boutons CRUD - IDENTIQUES AUX LEÇONS */}
                           <div style={{ display: 'flex', gap: 8 }}>
                             {/* Éditer */}
                             <button
                               onClick={() => handleEditExercise(exercise.id)}
                               style={{
-                                width: 36,
-                                height: 36,
+                                width: 40,
+                                height: 40,
                                 background: 'white',
                                 border: '2px solid #e5e7eb',
                                 borderRadius: 8,
@@ -1841,9 +1828,18 @@ export default function AdminProgramDetail() {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                fontSize: 16
+                                fontSize: 18,
+                                transition: 'all 0.2s'
                               }}
-                              title="Éditer"
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#f3f4f6';
+                                e.currentTarget.style.borderColor = '#3b82f6';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'white';
+                                e.currentTarget.style.borderColor = '#e5e7eb';
+                              }}
+                              title="Éditer l'exercice"
                             >
                               ✏️
                             </button>
@@ -1852,8 +1848,8 @@ export default function AdminProgramDetail() {
                             <button
                               onClick={() => handleDuplicateExercise(exercise)}
                               style={{
-                                width: 36,
-                                height: 36,
+                                width: 40,
+                                height: 40,
                                 background: 'white',
                                 border: '2px solid #e5e7eb',
                                 borderRadius: 8,
@@ -1861,9 +1857,18 @@ export default function AdminProgramDetail() {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                fontSize: 16
+                                fontSize: 18,
+                                transition: 'all 0.2s'
                               }}
-                              title="Dupliquer"
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#f3f4f6';
+                                e.currentTarget.style.borderColor = '#3b82f6';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'white';
+                                e.currentTarget.style.borderColor = '#e5e7eb';
+                              }}
+                              title="Dupliquer l'exercice"
                             >
                               📋
                             </button>
@@ -1872,18 +1877,27 @@ export default function AdminProgramDetail() {
                             <button
                               onClick={() => handleDeleteExercise(exercise.id)}
                               style={{
-                                width: 36,
-                                height: 36,
-                                background: '#fef2f2',
-                                border: '2px solid #fee2e2',
+                                width: 40,
+                                height: 40,
+                                background: 'white',
+                                border: '2px solid #e5e7eb',
                                 borderRadius: 8,
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                fontSize: 16
+                                fontSize: 18,
+                                transition: 'all 0.2s'
                               }}
-                              title="Supprimer"
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#fef2f2';
+                                e.currentTarget.style.borderColor = '#ef4444';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'white';
+                                e.currentTarget.style.borderColor = '#e5e7eb';
+                              }}
+                              title="Supprimer l'exercice"
                             >
                               🗑️
                             </button>
