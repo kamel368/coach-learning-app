@@ -13,7 +13,7 @@ import {
   deleteDoc,
   setDoc,
 } from "firebase/firestore";
-import { Plus, FileText, HelpCircle, BrainCircuit, ListTree, Eye, EyeOff, Edit2, FileEdit, Trash2, GripVertical, Pencil, ChevronDown, Layers, ArrowLeft, Copy } from "lucide-react";
+import { Plus, FileText, HelpCircle, BrainCircuit, ListTree, Eye, EyeOff, Edit2, FileEdit, Trash2, GripVertical, Pencil, ChevronDown, Layers, ArrowLeft, Copy, Target } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import LessonsList from '../components/LessonsList';
 import { useAuth } from "../context/AuthContext";
@@ -1801,7 +1801,18 @@ export default function AdminProgramDetail() {
                           </div>
 
                           {/* Icône exercice */}
-                          <div style={{ fontSize: 20 }}>🎯</div>
+                          <div style={{
+                            width: 40,
+                            height: 40,
+                            background: '#fef3c7',
+                            border: '2px solid #fbbf24',
+                            borderRadius: 8,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            <Target size={20} color="#d97706" strokeWidth={2.5} />
+                          </div>
 
                           {/* Titre (non éditable inline) */}
                           <div style={{
@@ -1828,20 +1839,21 @@ export default function AdminProgramDetail() {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                fontSize: 18,
                                 transition: 'all 0.2s'
                               }}
                               onMouseEnter={(e) => {
                                 e.currentTarget.style.background = '#f3f4f6';
                                 e.currentTarget.style.borderColor = '#3b82f6';
+                                e.currentTarget.querySelector('svg').style.color = '#3b82f6';
                               }}
                               onMouseLeave={(e) => {
                                 e.currentTarget.style.background = 'white';
                                 e.currentTarget.style.borderColor = '#e5e7eb';
+                                e.currentTarget.querySelector('svg').style.color = '#6b7280';
                               }}
                               title="Éditer l'exercice"
                             >
-                              ✏️
+                              <Edit2 size={18} color="#6b7280" strokeWidth={2} />
                             </button>
 
                             {/* Dupliquer */}
@@ -1857,20 +1869,21 @@ export default function AdminProgramDetail() {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                fontSize: 18,
                                 transition: 'all 0.2s'
                               }}
                               onMouseEnter={(e) => {
                                 e.currentTarget.style.background = '#f3f4f6';
                                 e.currentTarget.style.borderColor = '#3b82f6';
+                                e.currentTarget.querySelector('svg').style.color = '#3b82f6';
                               }}
                               onMouseLeave={(e) => {
                                 e.currentTarget.style.background = 'white';
                                 e.currentTarget.style.borderColor = '#e5e7eb';
+                                e.currentTarget.querySelector('svg').style.color = '#6b7280';
                               }}
                               title="Dupliquer l'exercice"
                             >
-                              📋
+                              <Copy size={18} color="#6b7280" strokeWidth={2} />
                             </button>
 
                             {/* Supprimer */}
@@ -1886,20 +1899,21 @@ export default function AdminProgramDetail() {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                fontSize: 18,
                                 transition: 'all 0.2s'
                               }}
                               onMouseEnter={(e) => {
                                 e.currentTarget.style.background = '#fef2f2';
                                 e.currentTarget.style.borderColor = '#ef4444';
+                                e.currentTarget.querySelector('svg').style.color = '#ef4444';
                               }}
                               onMouseLeave={(e) => {
                                 e.currentTarget.style.background = 'white';
                                 e.currentTarget.style.borderColor = '#e5e7eb';
+                                e.currentTarget.querySelector('svg').style.color = '#6b7280';
                               }}
                               title="Supprimer l'exercice"
                             >
-                              🗑️
+                              <Trash2 size={18} color="#6b7280" strokeWidth={2} />
                             </button>
                           </div>
                         </div>
