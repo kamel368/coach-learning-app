@@ -44,38 +44,10 @@ export default function ExerciseEditorPageSupabase() {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('blocs');
   const [editingBlockId, setEditingBlockId] = useState(null);
-  const [chapterExercises, setChapterExercises] = useState([]);
 
   useEffect(() => {
     loadExercise();
   }, [exerciseId]);
-
-  // Charger les exercices du chapitre
-  useEffect(() => {
-    if (exercise?.chapter_id) {
-      loadChapterExercises(exercise.chapter_id);
-    }
-  }, [exercise?.chapter_id]);
-
-  const loadChapterExercises = async (chapterId) => {
-    try {
-      console.log('📚 Chargement exercices du chapitre:', chapterId);
-      
-      const { data, error } = await supabase
-        .from('exercises')
-        .select('id, title, exercise_type, order')
-        .eq('chapter_id', chapterId)
-        .order('order', { ascending: true });
-
-      if (error) throw error;
-      
-      console.log(`✅ ${data?.length || 0} exercices chargés`);
-      setChapterExercises(data || []);
-    } catch (error) {
-      console.error('❌ Erreur chargement exercices:', error);
-      setChapterExercises([]);
-    }
-  };
 
   const loadExercise = async () => {
     try {
@@ -252,7 +224,7 @@ export default function ExerciseEditorPageSupabase() {
             }}
           >
             <span>📄</span>
-            Exercices ({chapterExercises.length})
+            Exercices ({blocks.length})
           </button>
 
           {/* Onglet Blocs */}
@@ -283,7 +255,7 @@ export default function ExerciseEditorPageSupabase() {
 
         {/* Contenu selon onglet actif */}
         {activeTab === 'exercices' ? (
-          // ONGLET EXERCICES
+          // ONGLET EXERCICES - Plan de l'exercice actuel
           <div>
             <div style={{
               fontSize: 12,
@@ -294,31 +266,50 @@ export default function ExerciseEditorPageSupabase() {
               Glisse pour réorganiser
             </div>
 
-            {chapterExercises.length === 0 ? (
+            {blocks.length === 0 ? (
               <div style={{
                 padding: 20,
                 textAlign: 'center',
                 color: '#9ca3af',
                 fontSize: 14
               }}>
-                Aucun exercice dans ce chapitre
+                Aucun bloc dans cet exercice
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {chapterExercises.map((ex, index) => {
-                  const isCurrentExercise = exercise?.id === ex.id;
-                  
+                {blocks.map((block, index) => {
+                  // Déterminer le nom du type
+                  const typeName = 
+                    block.type === 'flashcard' ? 'Flashcard' :
+                    block.type === 'true_false' ? 'Vrai/Faux' :
+                    block.type === 'qcm' ? 'QCM' :
+                    block.type === 'qcm_selective' ? 'QCM Sélectif' :
+                    block.type === 'reorder' ? 'Réorganiser' :
+                    block.type === 'drag_drop' ? 'Glisser-Déposer' :
+                    block.type === 'match_pairs' ? 'Paires' :
+                    'Bloc';
+
+                  // Déterminer l'icône
+                  const icon = 
+                    block.type === 'flashcard' ? '📇' :
+                    block.type === 'true_false' ? '✓' :
+                    block.type === 'qcm' ? '⃝' :
+                    block.type === 'qcm_selective' ? '☑' :
+                    block.type === 'reorder' ? '↕' :
+                    block.type === 'drag_drop' ? '🎯' :
+                    block.type === 'match_pairs' ? '🔗' :
+                    '📄';
+
                   return (
                     <div
-                      key={ex.id}
+                      key={block.id || index}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
                         gap: 12,
                         padding: '12px 16px',
-                        background: isCurrentExercise ? '#eff6ff' : 'white',
-                        border: '2px solid',
-                        borderColor: isCurrentExercise ? '#3b82f6' : '#e5e7eb',
+                        background: 'white',
+                        border: '2px solid #e5e7eb',
                         borderRadius: 8,
                         cursor: 'grab'
                       }}
@@ -327,8 +318,8 @@ export default function ExerciseEditorPageSupabase() {
                       <div style={{
                         width: 28,
                         height: 28,
-                        background: isCurrentExercise ? '#3b82f6' : '#f3f4f6',
-                        color: isCurrentExercise ? 'white' : '#6b7280',
+                        background: '#3b82f6',
+                        color: 'white',
                         borderRadius: 6,
                         display: 'flex',
                         alignItems: 'center',
@@ -342,27 +333,17 @@ export default function ExerciseEditorPageSupabase() {
 
                       {/* Icône type */}
                       <div style={{ fontSize: 20, flexShrink: 0 }}>
-                        {ex.exercise_type === 'true_false' ? '✓' : 
-                         ex.exercise_type === 'qcm' ? '⃝' : 
-                         ex.exercise_type === 'flashcard' ? '📇' :
-                         ex.exercise_type === 'qcm_selective' ? '☑' :
-                         ex.exercise_type === 'reorder' ? '↕' :
-                         ex.exercise_type === 'drag_drop' ? '🎯' :
-                         ex.exercise_type === 'match_pairs' ? '🔗' :
-                         '❓'}
+                        {icon}
                       </div>
 
                       {/* Titre */}
                       <div style={{
                         flex: 1,
                         fontSize: 14,
-                        fontWeight: isCurrentExercise ? 600 : 500,
-                        color: isCurrentExercise ? '#1e40af' : '#374151',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
+                        fontWeight: 500,
+                        color: '#374151'
                       }}>
-                        {ex.title}
+                        {typeName} #{index + 1}
                       </div>
                     </div>
                   );
